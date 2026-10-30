@@ -42,7 +42,22 @@
     else if (o.intimacao) inicio = proximoUtil(soma(dia(o.intimacao), 1), ex);
     else throw new Error('Informe a data de disponibilização ou de intimação.');
     let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
-    return { publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
+    // memória de cálculo: cada dia não contado entre o marco e o vencimento, com o motivo
+    const br = x => iso(x).split('-').reverse().join('/'), saltos = [];
+    for (let x = soma(dia(o.disponibilizacao || o.intimacao), 1); x <= d; x = soma(x, 1)) {
+      if (util(x, ex, TRIB)) continue;
+      const m = x.getDay() === 6 ? 'sábado' : x.getDay() === 0 ? 'domingo' : !expediente(x, ex, TRIB) ? (ex.includes(iso(x)) ? 'feriado informado' : (TRIBUNAIS[TRIB] && TRIBUNAIS[TRIB].natal && ((x.getMonth() === 11 && x.getDate() >= 20) || (x.getMonth() === 0 && x.getDate() <= 6))) ? 'recesso da Justiça Federal, Lei 5.010/1966, art. 62, I' : 'feriado') : 'suspensão do art. 220 do CPC';
+      saltos.push({ data: iso(x), motivo: m }); }
+    // agrupa dias seguidos (ignorando fins de semana no meio) com o mesmo motivo
+    const faixas = l => { const out = []; let ini = null, fim = null, mot = '';
+      const fecha = () => { if (ini) out.push((ini === fim ? br(dia(ini)) : 'de ' + br(dia(ini)) + ' a ' + br(dia(fim))) + ' (' + mot + ')'); };
+      l.forEach(s => { const contiguo = fim && s.motivo === mot && saltos.filter(z => z.data > fim && z.data < s.data).every(z => /sábado|domingo/.test(z.motivo)) && (dia(s.data) - dia(fim)) / 864e5 <= 3;
+        if (contiguo) fim = s.data; else { fecha(); ini = fim = s.data; mot = s.motivo; } }); fecha(); return out; };
+    const fora = saltos.filter(s => !/sábado|domingo/.test(s.motivo));
+    const memoria = (o.disponibilizacao ? 'Disponibilizado em ' + br(dia(o.disponibilizacao)) + '; publicação em ' + br(publicacao) + ' (art. 224, § 2º); ' : 'Intimação em ' + br(dia(o.intimacao)) + '; ') +
+      'início em ' + br(inicio) + ' (art. 224, § 3º); ' + n + ' dias úteis' + (o.dobro ? ' (em dobro, arts. 183/186)' : '') + '; ' +
+      (fora.length ? 'não contados além dos fins de semana: ' + faixas(fora).join(', ') : 'só fins de semana excluídos') + '; vencimento em ' + br(d) + '.';
+    return { memoria, saltos, publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
       tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + (TRIB === 'tjce' && d.getFullYear() > 2026 ? '; o calendário de ' + d.getFullYear() + ' ainda precisa ser conferido' : '') + ')' : 'sem calendário de tribunal',
       aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
   }

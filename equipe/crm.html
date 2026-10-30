@@ -184,7 +184,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     { k: 'novo', n: 'Novo contato' }, { k: 'reuniao', n: 'Primeira reunião' }, { k: 'proposta', n: 'Proposta enviada' },
     { k: 'contratado', n: 'Contratado' }, { k: 'perdido', n: 'Não avançou' }];
   const ABERTAS = new Set(['novo', 'reuniao', 'proposta']);
-  const AREAS = ['Tributário', 'Execução fiscal', 'Previdenciário', 'Empresarial e societário', 'Administrativo e licitações', 'Cível', 'Trabalhista', 'Outra'];
+  const AREAS = ['Tributário', 'Execução fiscal', 'Cível', 'Administrativo e licitações', 'Empresarial e societário', 'Imobiliário', 'Previdenciário', 'Trabalhista', 'Constitucional', 'Eleitoral', 'Outra'];
   const ORIGENS = ['Indicação', 'Site', 'Redes sociais', 'Evento', 'WhatsApp', 'Cliente da carteira', 'Outra'];
   const MOTIVOS = ['Preço', 'Prazo', 'Desistiu ou adiou', 'Escolheu outro escritório', 'Resolveu com o contador', 'Fora do perfil do escritório', 'Conflito de interesses', 'Sem retorno do contato', 'Outro'];
   const DIA = 86400000;
@@ -308,7 +308,11 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     [/licita|contrato administrativo|prefeitura|munic[ií]pio|empenho|reajuste de contrato/i, 'Administrativo e licitações'],
     [/trabalhis|demiss|\bCLT\b|reclama[cç][aã]o trabalhista|funcion[aá]ri/i, 'Trabalhista'],
     [/holding|societ|s[oó]cio|contrato social|sucess/i, 'Empresarial e societário'],
-    [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário']];
+    [/im[oó]ve(l|is)|escritura|matr[ií]cula|usucapi|ITBI|terreno|loteamento/i, 'Imobiliário'],
+    [/elei[cç][aã]o|eleitoral|candidat|propaganda eleitoral/i, 'Eleitoral'],
+    [/mandado de seguran[cç]a|inconstitucional/i, 'Constitucional'],
+    [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário'],
+    [/cobran[cç]a|indeniza|execu[cç][aã]o de t[ií]tulo|contrato|danos|a[cç][aã]o c[ií]vel/i, 'Cível']];
   const dataLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   function area(texto) { const t = String(texto || ''); const a = AREAS.find(([re]) => re.test(t)); return a ? a[1] : ''; }
   // c: conversa; rotas: ROTAS do Atendimento; hoje: Date

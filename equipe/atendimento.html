@@ -443,6 +443,19 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       <div><button class="btn" type="button" id="pp-calc">Calcular</button></div>
       <div id="pp-res" class="hint" role="status"></div>
     </div>
+    <div class="panel" id="pub-panel" style="display:grid;gap:10px;max-width:760px">
+      <h3 style="margin:0">Classificar publicação</h3>
+      <p class="hint" style="margin:0">Cole o texto da publicação do DJEN (ou várias de uma vez, como vêm na rotina “Publicações do dia”). O sistema identifica o tipo, o processo, o prazo expresso e sugere o vencimento e a tarefa. É sugestão: a Controladoria confere antes de lançar no Astrea.</p>
+      <div class="grid2"><div class="fld"><label for="pub-data">Data de disponibilização</label><input id="pub-data" type="date"></div><div class="fld"><label for="pub-por">Conferido por</label><input id="pub-por" placeholder="seu nome" autocomplete="off"></div></div>
+      <textarea id="pub-tx" rows="6" placeholder="Ex.: Processo 0000000-00.0000.0.00.0000 — Fica a parte intimada para manifestar-se no prazo de 15 (quinze) dias…"></textarea>
+      <div><button class="btn" type="button" id="pub-class">Classificar</button></div>
+      <div id="pub-res"></div>
+    </div>
+    <div class="panel" id="acomp-panel" style="display:grid;gap:10px;max-width:760px">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h3 style="margin:0">Processos acompanhados</h3><label class="hint">Parado há mais de <input id="ac-dias" type="number" min="7" max="365" value="60" style="width:70px"> dias</label></div>
+      <p class="hint" style="margin:0">Montado a partir das publicações registradas e dos processos informados nas fichas. “Parado” é alerta para conferir o andamento no PJe, não conclusão.</p>
+      <div id="ac-res"></div>
+    </div>
   </section>
   <section id="v-ind" hidden>
     <h2 class="sec">Indicadores do atendimento</h2>
@@ -477,6 +490,111 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </footer>
 </div>
 
+<script>
+/* Classificador de publicações (DJEN/DJe) com prazo sugerido e tarefa (v1.0, 30/10/2026).
+ * Regras objetivas, sem IA: identifica tipo, processo (CNJ), tribunal, prazo expresso no texto, dobro e audiência;
+ * calcula o vencimento com PrazoProcessual (dias úteis, CPC arts. 219/224) e monta o bloco "Para lançar no Astrea".
+ * Aponta; não decide: a Controladoria confere antes de lançar. Prazos sem número expresso recebem o prazo legal
+ * mais comum para o tipo, marcado como "prazo legal presumido", e precisam de confirmação. */
+(function (root) {
+  'use strict';
+  const pp = () => root.PrazoProcessual || (typeof require !== 'undefined' ? (() => { try { return require('./prazo_processual.js'); } catch (e) { return null; } })() : null);   // resolvido na hora do uso (a calculadora pode carregar depois)
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const CNJ = /\b(\d{7})-?(\d{2})\.?(\d{4})\.?(\d)\.?(\d{2})\.?(\d{4})\b/g;
+  const fmtCNJ = m => `${m[1]}-${m[2]}.${m[3]}.${m[4]}.${m[5]}.${m[6]}`;
+  const EXT = { um: 1, uma: 1, dois: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, quinze: 15, vinte: 20, trinta: 30, quarenta: 40, quarenta_e_cinco: 45, sessenta: 60, noventa: 90 };
+  // tipos em ordem de prioridade (o primeiro que casar vence); prazo = dias úteis presumidos quando o texto não traz número
+  const TIPOS = [
+    { k: 'penhora', nome: 'Penhora, bloqueio ou constrição', re: /\bpenhora\b|\bbloqueio\b|sisbajud|bacenjud|\barresto\b|indisponibilidade|constri[cç][aã]o|renajud/, prazo: 15, base: 'CPC, art. 525, § 11, ou art. 917, § 1º (15 dias úteis para impugnar a penhora)', urgente: true, rota: 'urgencia' },
+    { k: 'citacao', nome: 'Citação', re: /\bcita[cç][aã]o\b|\bcitad[oa]s?\b/, prazo: 15, base: 'CPC, art. 335 (contestação em 15 dias úteis)', urgente: true, rota: 'urgencia',
+      ef: { prazo: 5, base: 'Lei 6.830/1980, art. 8º (pagar ou garantir em 5 dias); embargos em 30 dias da garantia (art. 16). Conferir a contagem', contagem: 'conferir (LEF)' } },
+    { k: 'sentenca', nome: 'Sentença', re: /\bsentenca\b|julgo (procedente|improcedente|parcialmente|extint)|resolvo o merito|extingo (o processo|a execucao)/, prazo: 15, base: 'CPC, art. 1.003, § 5º (apelação em 15 dias úteis); embargos de declaração em 5 (art. 1.023)', urgente: true, rota: 'urgencia' },
+    { k: 'acordao', nome: 'Acórdão', re: /\bacordao\b|\bementa\b|turma recursal|camara (civel|de direito)|por unanimidade|negaram provimento|deram provimento/, prazo: 15, base: 'CPC, art. 1.003, § 5º (recurso em 15 dias úteis); embargos de declaração em 5 (art. 1.023)', urgente: false, rota: 'processo' },
+    { k: 'audiencia', nome: 'Audiência', re: /\baudiencia\b/, prazo: null, base: 'comparecer na data designada; preparar o cliente e as testemunhas', urgente: false, rota: 'processo' },
+    { k: 'pagamento', nome: 'Intimação para pagamento (cumprimento de sentença)', re: /cumprimento de sentenca|art\.? ?523|pag(ar|amento)[^.]{0,40}(15|quinze) dias/, prazo: 15, base: 'CPC, art. 523 (pagamento em 15 dias úteis, sob pena de multa de 10% e honorários de 10%); impugnação nos 15 dias seguintes (art. 525)', urgente: true, rota: 'urgencia' },
+    { k: 'tutela', nome: 'Decisão interlocutória (tutela, liminar)', re: /\btutela\b|\bliminar\b|decisao interlocutoria|\bdefiro\b|\bindefiro\b|concedo|nego seguimento/, prazo: 15, base: 'CPC, arts. 1.015 e 1.003, § 5º (agravo de instrumento em 15 dias úteis)', urgente: false, rota: 'processo' },
+    { k: 'contrarrazoes', nome: 'Intimação para contrarrazões', re: /contrarraz/, prazo: 15, base: 'CPC, art. 1.010, § 1º (15 dias úteis)', urgente: false, rota: 'processo' },
+    { k: 'replica', nome: 'Intimação para réplica', re: /\breplica\b|impugna[cç][aã]o a contestacao|manifest[^.]{0,30}contestacao/, prazo: 15, base: 'CPC, art. 351 (15 dias úteis)', urgente: false, rota: 'processo' },
+    { k: 'alegacoes', nome: 'Alegações finais', re: /alegacoes finais|memoriais/, prazo: 15, base: 'CPC, art. 364, § 2º (15 dias úteis)', urgente: false, rota: 'processo' },
+    { k: 'provas', nome: 'Especificação de provas', re: /especifi(que|car|cacao de) provas|provas que pretende/, prazo: 5, base: 'prazo fixado pelo juízo; quando omisso, 5 dias úteis (CPC, art. 218, § 3º)', urgente: false, rota: 'processo' },
+    { k: 'manifestacao', nome: 'Intimação para manifestação', re: /\bmanifest/, prazo: 5, base: 'prazo fixado pelo juízo; quando omisso, 5 dias úteis (CPC, art. 218, § 3º)', urgente: false, rota: 'processo' },
+    { k: 'despacho', nome: 'Despacho de expediente (ciência)', re: /\bdespacho\b|intime-se|\bvista\b|\bciencia\b|conclusos|aguarde-se|cumpra-se/, prazo: null, base: 'sem prazo para a parte; apenas ciência', urgente: false, rota: 'processo' }
+  ];
+  function tribunalDe(cnj) { if (!cnj) return { k: '', nome: '' }; const [, , , j, tr] = cnj.split(/[-.]/);
+    if (j === '4') return { k: 'jf', nome: 'Justiça Federal' + (tr === '05' ? ' (TRF5)' : ' (TRF' + +tr + ')') };
+    if (j === '8') return { k: tr === '06' ? 'tjce' : '', nome: tr === '06' ? 'TJCE' : 'Justiça Estadual (TJ' + tr + ')' };
+    if (j === '5') return { k: '', nome: 'Justiça do Trabalho (prazos pela CLT, art. 775: conferir)' };
+    if (j === '3') return { k: '', nome: 'STJ' }; if (j === '1') return { k: '', nome: 'STF' };
+    return { k: '', nome: 'outro' }; }
+  function prazoExpresso(t) {
+    const n = norm(t).replace(/\s+/g, ' ');
+    let m = /prazo (?:comum |sucessivo |improrrogavel |legal )?de (\d{1,3}) ?(?:\([a-z\s]+\) ?)?(dias?|horas?)( uteis| corridos)?/.exec(n)
+      || /(?:em|no prazo de) (\d{1,3}) ?(?:\([a-z\s]+\) ?)?(dias?|horas?)( uteis| corridos)?/.exec(n)
+      || /(\d{1,3}) ?\((?:[a-z\s]+)\) (dias?)( uteis| corridos)?/.exec(n);
+    if (!m) { const x = /prazo (?:comum |sucessivo )?de ([a-z_]+) (dias?)( uteis| corridos)?/.exec(n.replace(/quarenta e cinco/g, 'quarenta_e_cinco')); if (x && EXT[x[1]]) m = [x[0], String(EXT[x[1]]), x[2], x[3]]; }
+    if (!m) return null;
+    return { dias: +m[1], unidade: /hora/.test(m[2]) ? 'horas' : 'dias', contagem: /corrid/.test(m[3] || '') ? 'corridos' : 'úteis', dobro: /\bem dobro\b|prazo em dobro/.test(n) };
+  }
+  function dataBR(s) { const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s || ''); return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : ''; }
+  function audienciaDe(t) { const n = norm(t); const m = /audiencia[^.]{0,120}?(\d{1,2}\/\d{1,2}\/\d{4})(?:[^.]{0,25}?(\d{1,2})[:h](\d{2}))?/.exec(n); return m ? { data: dataBR(m[1]), hora: m[2] ? `${m[2].padStart(2, '0')}:${m[3]}` : '' } : null; }
+  function somaCorridos(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+  const br = iso => iso ? iso.split('-').reverse().join('/') : '';
+  /* classificar(texto, { disponibilizacao: 'AAAA-MM-DD', hoje: 'AAAA-MM-DD' }) */
+  function classificar(texto, o) {
+    o = o || {}; const t = String(texto || '').trim(), n = norm(t);
+    const cnjs = [...new Set([...t.matchAll(CNJ)].map(fmtCNJ))], cnj = cnjs[0] || '';
+    const trib = tribunalDe(cnj), disp = o.disponibilizacao || dataBR((/disponibiliza[cç][aã]o:?\s*(\d{1,2}\/\d{1,2}\/\d{4})/i.exec(t) || [])[1]) || '';
+    let tipo = TIPOS.find(x => x.re.test(n)) || { k: 'outro', nome: 'Comunicação', prazo: null, base: 'prazo a definir pela Controladoria', urgente: false, rota: 'processo' };
+    const ef = /execucao fiscal|divida ativa|certidao de divida ativa/.test(n);
+    if (tipo.k === 'citacao' && ef && tipo.ef) tipo = Object.assign({}, tipo, tipo.ef);
+    const exp = prazoExpresso(t), aud = tipo.k === 'audiencia' ? audienciaDe(t) : null;
+    let prazoDias = exp && exp.unidade === 'dias' ? exp.dias : tipo.prazo, contagem = exp ? exp.contagem : (tipo.contagem || 'úteis'), dobro = !!(exp && exp.dobro);
+    const origemPrazo = exp && exp.unidade === 'dias' ? 'expresso no texto' : prazoDias ? 'prazo legal presumido: confirmar' : 'sem prazo';
+    let venc = '', memoria = '', erro = '';
+    if (prazoDias && disp) {
+      if (contagem === 'corridos') { venc = somaCorridos(disp, prazoDias * (dobro ? 2 : 1)); memoria = `${prazoDias} dias corridos${dobro ? ' em dobro' : ''} a partir da disponibilização em ${br(disp)} (confira se a contagem é mesmo em dias corridos).`; }
+      else if (pp()) { try { const r = pp().calcular({ disponibilizacao: disp, dias: prazoDias, dobro, tribunal: trib.k }); venc = r.vencimento; memoria = r.memoria; } catch (e) { erro = e.message; } }
+      else erro = 'calculadora de prazos indisponível';
+    }
+    const hoje = o.hoje || new Date().toLocaleDateString('sv-SE');
+    const diasAte = iso => iso ? Math.round((Date.parse(iso + 'T12:00:00') - Date.parse(hoje + 'T12:00:00')) / 864e5) : null;
+    const urgente = !!tipo.urgente || (venc && diasAte(venc) <= 7) || (aud && aud.data && diasAte(aud.data) <= 7);
+    const resumo = t.replace(/\s+/g, ' ').slice(0, 240) + (t.length > 240 ? '…' : '');
+    const titulo = `${tipo.nome} – ${cnj || '[processo não identificado]'}`;
+    const astrea = [`Título: ${titulo}`, aud && aud.data ? `Audiência: ${br(aud.data)}${aud.hora ? ' às ' + aud.hora : ''}` : '',
+      venc ? `Data fatal (estimativa a conferir): ${br(venc)}` : prazoDias ? 'Data fatal: a calcular (informe a data de disponibilização)' : 'Data fatal: a definir pela Controladoria',
+      `Observação: ${memoria || tipo.base}${exp ? '' : prazoDias ? ' · prazo presumido pelo tipo da publicação, confirmar no texto' : ''}`,
+      `Fonte: publicação${disp ? ' disponibilizada em ' + br(disp) : ''}${trib.nome ? ' · ' + trib.nome : ''}`].filter(Boolean).join('\n');
+    return { cnj, cnjs, tribunal: trib.k, tribunalNome: trib.nome, tipo: tipo.k, tipoNome: tipo.nome, urgente, rota: urgente ? 'urgencia' : tipo.rota,
+      prazoDias, contagem, dobro, origemPrazo, base: tipo.base, disponibilizacao: disp, vencimento: venc, diasAteVencimento: diasAte(venc), memoria, erro,
+      audiencia: aud, execucaoFiscal: ef, resumo, titulo, astrea, texto: t };
+  }
+  /* lote(texto, o): várias publicações coladas de uma vez; separa pelo início de cada número de processo */
+  function lote(texto, o) {
+    const t = String(texto || ''); const pos = [...t.matchAll(CNJ)].map(m => m.index);
+    if (pos.length <= 1) return t.trim() ? [classificar(t, o)] : [];
+    const cortes = [0]; for (let i = 1; i < pos.length; i++) { const ini = t.lastIndexOf('\n', pos[i]) + 1; if (ini > cortes[cortes.length - 1] + 20) cortes.push(ini); }
+    const blocos = cortes.map((c, i) => t.slice(c, cortes[i + 1] === undefined ? t.length : cortes[i + 1]).trim()).filter(Boolean);
+    return blocos.map(b => classificar(b, o));
+  }
+  /* acompanhados(publicacoes, fichas, hoje, limiteDias): processos com a última publicação, próximo vencimento e sinal de "parado" */
+  function acompanhados(pubs, fichas, hoje, limite) {
+    limite = limite || 60; const M = new Map();
+    const get = cnj => { if (!M.has(cnj)) M.set(cnj, { cnj, cliente: '', ultima: '', proximo: '', pendentes: 0, publicacoes: 0, tipoUltimo: '' }); return M.get(cnj); };
+    for (const f of fichas || []) { const cnj = f && f.cnj; if (!cnj) continue; const x = get(cnj); x.cliente = x.cliente || f.cliente || ''; if (f.desde && (!x.ultima || f.desde > x.ultima)) { x.ultima = f.desde; x.tipoUltimo = x.tipoUltimo || 'protocolo'; } }
+    for (const p of pubs || []) { if (!p.cnj) continue; const x = get(p.cnj); x.publicacoes++; x.cliente = x.cliente || p.cliente || '';
+      if (p.disp && p.disp > x.ultima) { x.ultima = p.disp; x.tipoUltimo = p.tipoNome || p.tipo || ''; }
+      if (p.venc && p.venc >= hoje && (!x.proximo || p.venc < x.proximo)) x.proximo = p.venc;
+      if (p.status !== 'lancada') x.pendentes++; }
+    const dias = iso => iso ? Math.round((Date.parse(hoje + 'T12:00:00') - Date.parse(iso + 'T12:00:00')) / 864e5) : null;
+    return [...M.values()].map(x => Object.assign(x, { diasSem: dias(x.ultima), parado: x.ultima ? dias(x.ultima) > limite : true }))
+      .sort((a, b) => (b.parado - a.parado) || ((a.proximo || '9') < (b.proximo || '9') ? -1 : 1));
+  }
+  const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Publicacao = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>
 /* Prazos processuais em dias úteis (CPC, arts. 219, 220 e 224) (v1.0, 30/10/2026).
  * Separado do prazo de atendimento (horas úteis, 8h–17h), que não deve ser usado para prazo processual.
@@ -1216,6 +1334,7 @@ function salvar(){ salvarLocal(); if(!DBA) return;
   st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
     FILA[c.id]=(FILA[c.id]||Promise.resolve()).then(()=>DBA.doc('atendimento/'+c.id).set({conv:JSON.parse(h),atualizado:new Date().toISOString()})).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar na base do escritório agora.'; }); }); }
 (async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const db=await window.claude.use('db'); if(!db) return; DBA=db;
+  try{ db.collection('publicacoes').limit(500).onSnapshot(sn=>{ pubsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   db.collection('atendimento').limit(500).onSnapshot(sn=>{ const docs=sn.docs.map(d=>d.data()).filter(x=>x&&x.conv);
     const info=document.getElementById('base-info'); if(info) info.textContent='Base do escritório: '+docs.length+' conversa(s) compartilhada(s) com a equipe.';
     if(!docs.length){ salvar(); return; }
@@ -1251,7 +1370,7 @@ function novaFicha(c,rota,doc,resumo,origem){
 
 // abas
 const tabs=[...document.querySelectorAll("nav.tabs button")];
-const RENDER={prazos:()=>{},mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
+const RENDER={prazos:()=>{ if(!document.getElementById("pub-data").value) document.getElementById("pub-data").value=hojeISO(); renderAcomp(); },mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
 function mostrar(v){
   tabs.forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===v)));
   Object.keys(RENDER).forEach(k=>document.getElementById("v-"+k).hidden=(k!==v));
@@ -1423,6 +1542,50 @@ document.getElementById("ficha").addEventListener("change",ev=>{ const c=conv(),
   if(ev.target.id==="fx-astrea"){ f.astrea.lancado=ev.target.checked?hojeISO():""; f.log.push(ev.target.checked?"Processo lançado no Astrea":"Lançamento no Astrea desmarcado"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
   if(ev.target.id==="fx-arq"){ f.encerramento=Object.assign({},f.encerramento,{arquivado:ev.target.checked?hojeISO():""}); f.log.push(ev.target.checked?"Caso arquivado na pasta do cliente":"Arquivamento desmarcado"); salvar(); setTimeout(()=>renderMesa(),0) }
   if(ev.target.id==="fx-guarda"){ f.encerramento=Object.assign({},f.encerramento,{guarda:ev.target.value.trim()||GUARDA_PADRAO}); salvar() } });
+
+// ---------- classificador de publicações e processos acompanhados ----------
+const PUBDB={}; let pubsDb=null;
+function pubsTodas(){ const m=new Map(); (st&&st.publicacoes||[]).forEach(p=>m.set(p.id,p)); (pubsDb||[]).forEach(p=>m.set(p.id,p)); return [...m.values()]; }
+function salvarPub(p){ st.publicacoes=(st.publicacoes||[]).filter(x=>x.id!==p.id).concat([p]); salvarLocal();
+  if(DBA){ PUBDB[p.id]=(PUBDB[p.id]||Promise.resolve()).then(()=>DBA.doc('publicacoes/'+p.id).set(p)).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar a publicação na base do escritório agora.'; }); } }
+function fichaDoCnj(cnj){ return st.convs.find(c=>c.ficha&&c.ficha.astrea&&c.ficha.astrea.cnj===cnj); }
+let pubUltimas=[];
+function renderPubs(){ const el=document.getElementById("pub-res"); if(!pubUltimas.length){ el.innerHTML=""; return }
+  const reg=new Set(pubsTodas().map(p=>p.chave));
+  el.innerHTML=pubUltimas.map((r,i)=>{ const f=r.cnj?fichaDoCnj(r.cnj):null, ja=reg.has(r.chave), rota=ROTAS[r.rota];
+    return '<div class="resumo" style="margin-top:8px;display:grid;gap:6px"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="pill '+(r.urgente?'crit':'info')+'">'+(r.urgente?'Urgente':'Normal')+'</span><b>'+esc(r.tipoNome)+'</b><span class="mono">'+esc(r.cnj||'processo não identificado')+'</span>'+(r.tribunalNome?'<span class="hint">'+esc(r.tribunalNome)+'</span>':'')+'</div>'+
+      '<div class="hint">'+esc(r.resumo)+'</div>'+
+      '<div>'+(r.vencimento?'<b>Vencimento (estimativa): '+esc(r.vencimento.split("-").reverse().join("/"))+'</b> · '+esc(r.prazoDias+' dias '+r.contagem+(r.dobro?' em dobro':''))+' · '+esc(r.origemPrazo):r.prazoDias?'<b>Prazo: '+r.prazoDias+' dias</b> · informe a data de disponibilização para calcular':'<b>Sem prazo</b> · '+esc(r.base))+(r.audiencia&&r.audiencia.data?' · <b>Audiência '+esc(r.audiencia.data.split("-").reverse().join("/"))+(r.audiencia.hora?' às '+esc(r.audiencia.hora):'')+'</b>':'')+'</div>'+
+      (r.memoria?'<div class="hint">'+esc(r.memoria)+'</div>':'')+(r.erro?'<div class="falta">'+esc(r.erro)+'</div>':'')+
+      '<div class="hint">Tarefa sugerida: <b>'+esc(rota.setor)+'</b> ('+esc(rota.resp)+') · '+(f?'demanda '+esc(f.ficha.proto)+' de '+esc(f.nome):'sem demanda com este processo: “Registrar” cria uma')+'</div>'+
+      '<textarea class="mono" rows="4" readonly style="font-size:12px" id="pub-ast-'+i+'">'+esc(r.astrea)+'</textarea>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost small" type="button" data-pubcopy="'+i+'">Copiar para o Astrea</button>'+(ja?'<span class="pill ok">Registrada</span>':'<button class="btn small" type="button" data-pubreg="'+i+'">Registrar'+(f?'':' e criar demanda')+'</button>')+'</div></div>' }).join(""); }
+document.getElementById("pub-class").addEventListener("click",()=>{ const tx=document.getElementById("pub-tx").value, d=document.getElementById("pub-data").value;
+  pubUltimas=Publicacao.lote(tx,{disponibilizacao:d||undefined}).map(r=>Object.assign(r,{chave:(r.cnj||'x')+'|'+(r.disponibilizacao||d||'')+'|'+r.tipo+'|'+r.resumo.slice(0,40)}));
+  if(!pubUltimas.length){ document.getElementById("pub-res").innerHTML='<div class="hint">Cole o texto da publicação.</div>'; return } renderPubs(); });
+document.getElementById("pub-res").addEventListener("click",e=>{ const b=e.target.closest("[data-pubcopy],[data-pubreg]"); if(!b) return;
+  if(b.dataset.pubcopy!=null){ const ta=document.getElementById("pub-ast-"+b.dataset.pubcopy); ta.select(); try{ navigator.clipboard&&navigator.clipboard.writeText(ta.value) }catch(err){} document.execCommand&&document.execCommand("copy"); b.textContent="Copiado"; return }
+  const r=pubUltimas[+b.dataset.pubreg]; if(!r) return; const por=document.getElementById("pub-por").value.trim()||"Equipe", agora=new Date().toISOString(), hoje=hojeISO();
+  let c=r.cnj?fichaDoCnj(r.cnj):null;
+  if(!c){ c={id:"pb"+Date.now(),canal:"Publicação (DJEN)",nome:r.cnj?"Processo "+r.cnj:"Publicação sem processo",tel:"",doc:"",cliente:true,etapa:"fim",manual:true,msgs:[{de:"sys",tx:"Publicação registrada por "+por+": "+r.resumo,em:agora}],ficha:null};
+    st.convs.push(c); const f=novaFicha(c,r.rota,r.cnj||"",r.tipoNome+(r.cnj?" – "+r.cnj:"")+"\n"+r.resumo,"publicação do DJEN"); f.completoEntrada=true; f.status="Nova";
+    if(r.cnj) f.astrea={cnj:r.cnj,protocoloEm:r.disponibilizacao||hoje}; }
+  else { c.ficha.log.push("Publicação registrada por "+por+": "+r.tipoNome+(r.vencimento?" · vencimento estimado "+r.vencimento.split("-").reverse().join("/"):"")); c.msgs.push({de:"sys",tx:"Publicação ("+r.tipoNome+"): "+r.resumo,em:agora}); if(c.ficha.status==="Concluída") c.ficha.status="Nova"; if(c.ficha.astrea) c.ficha.astrea.lancado=""; }
+  const p={id:"pub"+Date.now()+Math.floor(Math.random()*1000),chave:r.chave,cnj:r.cnj,tipo:r.tipo,tipoNome:r.tipoNome,urgente:r.urgente,disp:r.disponibilizacao||"",prazoDias:r.prazoDias,contagem:r.contagem,venc:r.vencimento||"",audiencia:r.audiencia||null,resumo:r.resumo,astrea:r.astrea,fichaId:c.id,cliente:c.nome,fonte:"manual",status:"nova",registradaEm:agora,por};
+  salvarPub(p); salvar(); renderMesa(); renderFila&&renderFila(); renderPubs(); renderAcomp(); });
+function renderAcomp(){ const el=document.getElementById("ac-res"); if(!el) return; const lim=+document.getElementById("ac-dias").value||60, hoje=hojeISO();
+  const fichas=st.convs.filter(c=>c.ficha&&c.ficha.astrea&&c.ficha.astrea.cnj).map(c=>({cnj:c.ficha.astrea.cnj,cliente:c.nome,desde:c.ficha.astrea.protocoloEm||""}));
+  const pubs=pubsTodas(), ac=Publicacao.acompanhados(pubs,fichas,hoje,lim), br=s=>s?s.split("-").reverse().join("/"):"—";
+  if(!ac.length){ el.innerHTML='<div class="hint">Nenhum processo registrado ainda. Informe o número CNJ na ficha da demanda ou registre uma publicação.</div>'; return }
+  el.innerHTML='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Processo</th><th>Cliente</th><th>Última publicação</th><th>Próximo vencimento</th><th>Astrea</th><th>Situação</th></tr></thead><tbody>'+
+    ac.map(x=>'<tr><td class="mono">'+esc(x.cnj)+'</td><td>'+esc(x.cliente||"—")+'</td><td>'+br(x.ultima)+(x.tipoUltimo?'<div class="hint">'+esc(x.tipoUltimo)+'</div>':'')+'</td><td>'+(x.proximo?'<b>'+br(x.proximo)+'</b>':'—')+'</td><td>'+(x.pendentes?'<span class="pill warn">'+x.pendentes+' a lançar</span>':'<span class="pill ok">em dia</span>')+'</td><td>'+(x.parado?'<span class="pill crit">parado há '+(x.diasSem==null?"?":x.diasSem)+' dias</span>':'<span class="hint">'+(x.diasSem==null?"—":x.diasSem+" dias sem publicação")+'</span>')+'</td></tr>').join("")+'</tbody></table></div>'+
+    '<details style="margin-top:8px"><summary class="hint">Publicações registradas ('+pubs.length+')</summary><ul class="hint" style="margin:6px 0 0 16px">'+pubs.sort((a,b)=>a.disp<b.disp?1:-1).slice(0,50).map(p=>'<li><label><input type="checkbox" data-publanc="'+esc(p.id)+'"'+(p.status==="lancada"?" checked":"")+'> '+esc(br(p.disp))+' · '+esc(p.tipoNome)+' · <span class="mono">'+esc(p.cnj||"—")+'</span>'+(p.venc?' · vence '+esc(br(p.venc)):'')+' · lançada no Astrea</label></li>').join("")+'</ul></details>'; }
+document.getElementById("ac-dias").addEventListener("change",renderAcomp);
+document.getElementById("ac-res").addEventListener("change",e=>{ const id=e.target.getAttribute("data-publanc"); if(!id) return; const p=pubsTodas().find(x=>x.id===id); if(!p) return;
+  p.status=e.target.checked?"lancada":"nova"; p.lancadaEm=e.target.checked?hojeISO():""; salvarPub(p);
+  const c=st.convs.find(x=>x.id===p.fichaId); if(c&&c.ficha&&c.ficha.astrea&&e.target.checked){ c.ficha.astrea.lancado=hojeISO(); c.ficha.log.push("Prazo da publicação lançado no Astrea"); salvar(); renderMesa(); }
+  setTimeout(renderAcomp,0); });
+window.__pubs={classificar:(t,o)=>Publicacao.lote(t,o),todas:()=>pubsTodas(),renderAcomp:()=>renderAcomp()};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};

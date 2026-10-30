@@ -473,8 +473,8 @@ function selosTravas(l){ const t=CRM.travas(l), tv=l.travas||{};
   return tv.pastaDrive?'<span class="chip ok">pasta no Drive</span>':'<span class="chip ok">pronto para a pasta</span>' }
 function travaStatus(v){ const t=CRM.travas(v), tv=v.travas||{};
   const it=[["G1 conflito",t.g1],["G3 contrato, procuração e link",t.g3],["G4 liberação",t.g4]].map(([n,ok])=>(ok?"✓ ":"○ ")+n).join(" · ");
-  return esc(it)+(tv.pastaDrive?'<br>Pasta no Drive: <a href="'+esc(tv.pastaDrive)+'" target="_blank" rel="noopener">abrir</a>':'')+(tv.astreaId?'<br>Cadastrado no Astrea (id '+esc(tv.astreaId)+').':'')+
-    '<br>A Ponte RD cria a pasta no Drive após G1, G3 e G4, e o processo no Astrea só quando houver número CNJ.' }
+  return esc(it)+(tv.pastaDrive?'<br>Pasta no Drive: <a href="'+esc(tv.pastaDrive)+'" target="_blank" rel="noopener">abrir</a>':'')+(tv.planejaTribId?'<br>Cliente criado no PlanejaTrib ('+esc(tv.planejaTribId)+').':'')+(tv.astreaId?'<br>Cadastrado no Astrea (id '+esc(tv.astreaId)+').':'')+
+    '<br>Com G1, G3 e G4 completos, a Ponte RD cria a pasta no Drive e o cliente no PlanejaTrib; o processo vai ao Astrea à mão, quando houver número CNJ.' }
 function card(l,h){
   const venc=CRM.vencida(l,h), frio=CRM.semContato(l,h), d=l.ultimo?CRM.dias(l.ultimo,h):null;
   return '<article class="card'+(venc?" venc":"")+'" draggable="true" tabindex="0" data-id="'+esc(l.id)+'" aria-label="'+esc(l.nome)+'">'+

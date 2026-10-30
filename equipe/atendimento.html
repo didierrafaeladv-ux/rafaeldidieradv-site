@@ -207,6 +207,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     <button role="tab" aria-selected="true" data-view="mesa" id="tab-mesa">Atendimento</button>
     <button role="tab" aria-selected="false" data-view="fila" id="tab-fila">Fila única <span id="cnt"></span></button>
     <button role="tab" aria-selected="false" data-view="docs" id="tab-docs">Documentos</button>
+    <button role="tab" aria-selected="false" data-view="prazos" id="tab-prazos">Prazos processuais</button>
     <button role="tab" aria-selected="false" data-view="ind" id="tab-ind">Indicadores</button>
     <button role="tab" aria-selected="false" data-view="regras" id="tab-regras">Regras de triagem</button>
   </nav>
@@ -408,6 +409,23 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </section>
 
   <!-- INDICADORES -->
+
+  <section id="v-prazos" hidden>
+    <h2 class="sec">Prazos processuais</h2>
+    <p class="sub">Contagem em dias úteis (CPC, art. 219), com a suspensão de 20/12 a 20/1 (art. 220) e os feriados nacionais, do Ceará e de Sobral. Este cálculo não substitui a conferência no calendário do tribunal: informe abaixo os feriados forenses e os dias de indisponibilidade do sistema (art. 224, § 1º).</p>
+    <div class="panel" style="display:grid;gap:12px;max-width:760px">
+      <div class="grid2">
+        <div class="fld"><label for="pp-tipo">A data informada é</label><select id="pp-tipo"><option value="disponibilizacao">Disponibilização no DJe/DJEN</option><option value="intimacao">Intimação ou ciência (portal, oficial, carga)</option></select></div>
+        <div class="fld"><label for="pp-data">Data</label><input id="pp-data" type="date"></div>
+        <div class="fld"><label for="pp-dias">Prazo (dias)</label><input id="pp-dias" type="number" min="1" max="365" value="15"></div>
+        <div class="fld"><label for="pp-proc">Processo (opcional)</label><input id="pp-proc" placeholder="0000000-00.0000.0.00.0000"></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="pp-dobro"> Prazo em dobro (Fazenda Pública, art. 183; Defensoria, art. 186)</label>
+      <div class="fld"><label for="pp-extras">Feriados forenses e indisponibilidades (uma data por linha, AAAA-MM-DD)</label><textarea id="pp-extras" rows="2" placeholder="2026-12-08"></textarea></div>
+      <div><button class="btn" type="button" id="pp-calc">Calcular</button></div>
+      <div id="pp-res" class="hint" role="status"></div>
+    </div>
+  </section>
   <section id="v-ind" hidden>
     <h2 class="sec">Indicadores do atendimento</h2>
     <p class="sub">Calculados a partir das fichas desta página. Servem para ajustar os prazos de cada setor depois de algumas semanas de uso.</p>
@@ -439,6 +457,48 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </footer>
 </div>
 
+<script>
+/* Prazos processuais em dias úteis (CPC, arts. 219, 220 e 224) (v1.0, 30/10/2026).
+ * Separado do prazo de atendimento (horas úteis, 8h–17h), que não deve ser usado para prazo processual.
+ * Feriados: nacionais, Carnaval (seg/ter), Sexta-feira Santa, Corpus Christi, Data Magna do CE (25/3), Sobral (5/7)
+ * + feriadosExtras do calendário do tribunal [CONFIRMAR o calendário anual do TJCE/TRF5]. */
+(function (root) {
+  'use strict';
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dia = s => { const [a, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(a, m - 1, d, 12); };
+  const soma = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12);
+  function pascoa(a) { const b = a % 19, c = Math.floor(a / 100), d = a % 100, e = Math.floor(c / 4), f = c % 4, g = Math.floor((c + 8) / 25), h = Math.floor((c - g + 1) / 3),
+      i = (19 * b + c - e - h + 15) % 30, k = Math.floor(d / 4), l = d % 4, m = (32 + 2 * f + 2 * k - i - l) % 7, n = Math.floor((b + 11 * i + 22 * m) / 451),
+      mes = Math.floor((i + m - 7 * n + 114) / 31), dd = ((i + m - 7 * n + 114) % 31) + 1; return new Date(a, mes - 1, dd, 12); }
+  function feriados(ano, extras) {
+    const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25]].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
+    const p = pascoa(ano); [-48, -47, -2, 60].forEach(n => f.push(iso(soma(p, n))));
+    return new Set(f.concat((extras || []).filter(x => String(x).startsWith(String(ano)))));
+  }
+  // art. 220: suspensão de 20/12 a 20/1, inclusive
+  const recesso = d => (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 20);
+  function util(d, extras) { return d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras).has(iso(d)) && !recesso(d); }
+  const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras)) x = soma(x, 1); return x; };
+  /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), feriadosExtras: ['AAAA-MM-DD'] }
+   * - disponibilizacao no DJe/DJEN: publicação = 1º dia útil seguinte (art. 224, § 2º); início = 1º dia útil após a publicação (§ 3º)
+   * - intimacao (data da ciência): início = 1º dia útil seguinte (art. 224, caput: exclui o dia do começo) */
+  function calcular(o) {
+    const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1);
+    if (!(n > 0)) throw new Error('Informe o número de dias do prazo.');
+    let publicacao = null, inicio;
+    if (o.disponibilizacao) { publicacao = proximoUtil(soma(dia(o.disponibilizacao), 1), ex); inicio = proximoUtil(soma(publicacao, 1), ex); }
+    else if (o.intimacao) inicio = proximoUtil(soma(dia(o.intimacao), 1), ex);
+    else throw new Error('Informe a data de disponibilização ou de intimação.');
+    let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
+    return { publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
+      aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
+  }
+  const API = { calcular, util: (s, ex) => util(dia(s), ex), feriados, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PrazoProcessual = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>
 /* Atendimento RD — leitura de documentos recebidos (v1.0, 30/10/2026).
  * Recebe o TEXTO do documento (PDF com texto, OCR feito no n8n ou texto colado pela equipe), identifica o tipo
@@ -1142,7 +1202,7 @@ function novaFicha(c,rota,doc,resumo,origem){
 
 // abas
 const tabs=[...document.querySelectorAll("nav.tabs button")];
-const RENDER={mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
+const RENDER={prazos:()=>{},mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
 function mostrar(v){
   tabs.forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===v)));
   Object.keys(RENDER).forEach(k=>document.getElementById("v-"+k).hidden=(k!==v));
@@ -1675,6 +1735,22 @@ document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.c
   document.getElementById("cidade").value="Sobral/CE, "+d.getDate()+" de "+M[d.getMonth()]+" de "+d.getFullYear();
   const e=document.getElementById("v-END_ESC"); try{ e.value=localStorage.getItem("rd-end-escritorio")||"Rua Padre Fialho, 117, Centro, Sobral/CE" }catch(x){ e.value="Rua Padre Fialho, 117, Centro, Sobral/CE" }
   e.addEventListener("change",()=>{ try{ localStorage.setItem("rd-end-escritorio",e.value.trim()) }catch(x){} }); })();
+
+// ---------- prazos processuais (30/10/2026) ----------
+(function(){ const $=id=>document.getElementById(id), br=s=>s?s.split('-').reverse().join('/'):'—';
+  try{ $("pp-extras").value=localStorage.getItem("rd-feriados-forenses")||"" }catch(e){}
+  $("pp-calc").addEventListener("click",()=>{ const el=$("pp-res"), proc=$("pp-proc").value.trim();
+    try{ const extras=$("pp-extras").value.split(/\s+/).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)); try{ localStorage.setItem("rd-feriados-forenses",extras.join("\n")) }catch(e){}
+      if(proc&&!Leitura.cnjValido(proc)) throw new Error("O número do processo não confere (dígito verificador). Use o número CNJ completo.");
+      const o={dias:+$("pp-dias").value,dobro:$("pp-dobro").checked,feriadosExtras:extras}; o[$("pp-tipo").value]=$("pp-data").value;
+      const r=PrazoProcessual.calcular(o);
+      const tx=(proc?"Processo "+Modelos.fmtCNJ(proc)+"\n":"")+(r.publicacao?"Publicação: "+br(r.publicacao)+"\n":"")+"Início da contagem: "+br(r.inicio)+"\nPrazo: "+r.diasUteis+" dias úteis"+(o.dobro?" (em dobro)":"")+"\nVencimento: "+br(r.vencimento);
+      el.innerHTML='<div style="font-size:15px;color:var(--fg)"><b>Vence em '+br(r.vencimento)+'</b></div><pre style="white-space:pre-wrap;margin:6px 0">'+esc(tx)+'</pre><div>'+esc(r.aviso)+'</div><button class="btn ghost small" type="button" id="pp-copia" style="margin-top:6px">Copiar para o Astrea</button>';
+      $("pp-copia").onclick=()=>{ try{ navigator.clipboard.writeText(tx).then(()=>toastPP("Copiado."),()=>toastPP("Selecione o texto e copie.")) }catch(e){ toastPP("Selecione o texto e copie.") } };
+    }catch(err){ el.textContent=err.message } });
+  function toastPP(t){ const b=$("pp-copia"); if(b) b.textContent=t }
+})();
+
 // indicadores
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}
 function renderInd(){

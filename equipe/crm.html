@@ -323,13 +323,15 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     const resp = f.rota === 'urgencia' ? 'Rafael Didier' : f.rota === 'nova' ? 'Ana Maria Bezerra Silva' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
     const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
     return {
-      id: 'at-' + c.id, nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
+      id: docId(c) || 'at-' + c.id, /* mesmo CPF/CNPJ = mesmo lead, ainda que venha de outra conversa */ nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
       contato: c.tel || '', area: area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
       ultimo: cli ? dataLocal(new Date(cli)) : dataLocal(h), proxAcao: 'Agendar primeira reunião e confirmar consentimento LGPD', proxData: dataLocal(amanha),
       lgpd: { status: 'pendente', data: '', forma: '' }, criado: dataLocal(h),
       hist: [{ data: dataLocal(h), canal: 'Atendimento RD', nota, por: '' }]
     };
   }
+  // chave única do cliente entre os sistemas: CPF/CNPJ só com dígitos (válido pelo tamanho)
+  function docId(c) { const d = String(c.doc || (c.ficha && c.ficha.doc) || '').replace(/\D/g, ''); return d.length === 11 || d.length === 14 ? 'doc-' + d : ''; }
   const cartao = lead => PREFIXO + JSON.stringify(lead);
   // lê um ou mais cartões colados (CRM)
   function lerCartoes(texto) {
@@ -344,7 +346,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     if (!out.length) throw new Error('Nenhum lead encontrado. No Atendimento RD, use “Virar lead no CRM” e cole aqui o que foi copiado.');
     return out;
   }
-  const API = { PREFIXO, area, daConversa, cartao, lerCartoes, versao: '1.0' };
+  const API = { docId, PREFIXO, area, daConversa, cartao, lerCartoes, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.LeadRD = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 

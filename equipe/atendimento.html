@@ -1301,6 +1301,7 @@ document.getElementById("quick").addEventListener("click",ev=>{const b=ev.target
 function renderFicha(){
   const c=conv(); const f=c.ficha; const el=document.getElementById("ficha");
   if(!f){el.innerHTML='<div class="empty">A ficha é criada quando o assistente termina a triagem. Responda às perguntas na conversa como se fosse o cliente.<div class="hint" style="margin-top:8px">Etapa atual: '+({cliente:"identificação",doc:"CPF/CNPJ",menu:"escolha do assunto",desc:"descrição do pedido"}[c.etapa]||"—")+'</div></div>';return}
+  if(checaExcluir(c,f)) salvar();
   const r=ROTAS[f.rota]; const fl=faltando(f); const p=prio(f);
   el.innerHTML='<div class="ficha"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span><span class="pill '+PCLS[p]+'">'+p+'</span> <span class="mono" style="font-weight:600">'+f.proto+'</span></span>'+prazoTxt(f)+'</div>'+
    (fl.length&&f.status!=="Concluída"?'<div class="falta">Pedido incompleto. Falta: '+esc(fl.join("; "))+'.</div>':'')+
@@ -1308,7 +1309,7 @@ function renderFicha(){
    '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
    '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
    '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
-   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+
+   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+
    '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
@@ -1396,7 +1397,33 @@ document.getElementById("nm-cancela").addEventListener("click",()=>document.getE
 document.getElementById("nm-form").addEventListener("submit",e=>{ e.preventDefault(); const g=id=>document.getElementById(id);
   const r=registraManual({canal:g("nm-canal").value,nome:g("nm-nome").value,doc:g("nm-doc").value,contato:g("nm-contato").value,rota:g("nm-rota").value,resumo:g("nm-resumo").value,cliente:g("nm-cli").checked,lgpd:g("nm-lgpd").checked,por:g("nm-por").value});
   if(r.erro){ g("nm-msg").textContent=r.erro; return } g("nm-dlg").close(); const t=document.getElementById("base-info"); if(t) t.textContent="Demanda "+r.proto+" registrada e enviada à fila do setor."; });
-window.__atend={estado:()=>st};
+
+// ---------- retornos e encerramento (fluxograma de 30/10/2026) ----------
+var GUARDA_PADRAO="a definir", RESP_ENC="Coordenação Administrativa";
+function hojeISO(){ return new Date().toLocaleDateString("sv-SE") }
+function checaExcluir(c,f){ if(f.lgpdExclusao) return false; const m=(c.msgs||[]).find(x=>x.de==="cli"&&/^\s*excluir\s*[.!]?\s*$/i.test(x.tx||""));
+  if(!m) return false; f.lgpdExclusao={status:"pendente",pedidoEm:m.em||new Date().toISOString(),resp:RESP_ENC}; f.log.push("Pedido de exclusão de dados (LGPD) recebido: "+RESP_ENC+" atende"); return true }
+function pendFluxo(f){ const p=[]; if(f.lgpdExclusao&&f.lgpdExclusao.status==="pendente") p.push("LGPD: exclusão pendente");
+  const a=f.astrea||{}; if(a.cnj&&!a.lancado) p.push("Lançar no Astrea"+(a.protocoloEm&&a.protocoloEm<hojeISO()?" (atrasado)":" hoje")); return p }
+function painelFluxo(c,f){ const a=f.astrea||{}, e=f.encerramento||{}, lx=f.lgpdExclusao; let h='<div class="resumo" id="fx-box" style="display:grid;gap:6px"><div class="hint" style="font-weight:600">Andamento do fluxo</div>';
+  if(lx) h+='<div class="'+(lx.status==="pendente"?"falta":"hint")+'">Pedido de exclusão de dados (LGPD) em '+esc(String(lx.pedidoEm).slice(0,10).split("-").reverse().join("/"))+': '+(lx.status==="pendente"?'pendente com '+esc(lx.resp)+'. <button class="btn ghost small" type="button" id="fx-lgpd">Exclusão atendida</button>':'atendida em '+esc(lx.atendidaEm.split("-").reverse().join("/"))+'.')+'</div>';
+  if(f.rota==="nova"&&f.status==="Aguardando checagem de conflito") h+='<div><button class="btn ghost small" type="button" id="fx-conflito">Conflito impedido: encerrar atendimento</button></div>';
+  if(f.rota==="urgencia"||f.rota==="processo"||a.cnj) h+='<div style="display:grid;gap:4px"><label class="hint">Processo protocolado (nº CNJ completo)<input id="fx-cnj" value="'+esc(a.cnj||"")+'" placeholder="0000000-00.0000.0.00.0000" autocomplete="off"></label>'+
+    (a.cnj?'<label class="hint"><input type="checkbox" id="fx-astrea"'+(a.lancado?" checked":"")+'> Lançado no Astrea'+(a.lancado?' em '+esc(a.lancado.split("-").reverse().join("/")):' (regra: no mesmo dia do protocolo)')+'</label>':'')+'</div>';
+  if(f.status==="Concluída") h+='<div style="display:grid;gap:4px"><div class="hint">Encerramento · responsável: '+esc(RESP_ENC)+(e.motivo?' · motivo: '+esc(e.motivo):'')+'</div>'+
+    '<label class="hint"><input type="checkbox" id="fx-arq"'+(e.arquivado?" checked":"")+'> Caso arquivado na pasta do cliente</label>'+
+    '<label class="hint">Guarda dos documentos<input id="fx-guarda" value="'+esc(e.guarda||GUARDA_PADRAO)+'" autocomplete="off"></label></div>';
+  const p=pendFluxo(f); if(p.length) h+='<div>'+p.map(x=>'<span class="pill warn">'+esc(x)+'</span>').join(" ")+'</div>';
+  return h+'</div>' }
+document.getElementById("ficha").addEventListener("click",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
+  if(ev.target.id==="fx-conflito"){ f.status="Concluída"; f.encerramento=Object.assign({},f.encerramento,{motivo:"conflito de interesses impedido",em:new Date().toISOString(),resp:RESP_ENC}); f.log.push("Conflito impedido: atendimento encerrado (etapa 9)"); salvar(); renderMesa(); renderFila&&renderFila() }
+  if(ev.target.id==="fx-lgpd"){ f.lgpdExclusao.status="atendida"; f.lgpdExclusao.atendidaEm=hojeISO(); f.log.push("Exclusão de dados (LGPD) atendida"); salvar(); renderMesa(); renderFila&&renderFila() } });
+document.getElementById("ficha").addEventListener("change",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
+  if(ev.target.id==="fx-cnj"){ const v=ev.target.value.trim(); f.astrea=Object.assign({},f.astrea,{cnj:v,protocoloEm:(f.astrea&&f.astrea.protocoloEm)||hojeISO()}); if(!v) delete f.astrea; f.log.push(v?"Processo protocolado: "+v+" (lançar no Astrea hoje)":"Número do processo removido"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
+  if(ev.target.id==="fx-astrea"){ f.astrea.lancado=ev.target.checked?hojeISO():""; f.log.push(ev.target.checked?"Processo lançado no Astrea":"Lançamento no Astrea desmarcado"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
+  if(ev.target.id==="fx-arq"){ f.encerramento=Object.assign({},f.encerramento,{arquivado:ev.target.checked?hojeISO():""}); f.log.push(ev.target.checked?"Caso arquivado na pasta do cliente":"Arquivamento desmarcado"); salvar(); setTimeout(()=>renderMesa(),0) }
+  if(ev.target.id==="fx-guarda"){ f.encerramento=Object.assign({},f.encerramento,{guarda:ev.target.value.trim()||GUARDA_PADRAO}); salvar() } });
+window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};
 function anexaZip(conv){ if(!ZIPMID.length) return; const agora=new Date().toISOString();
@@ -1439,7 +1466,7 @@ function renderFila(){
     return '<tr><td><span class="pill '+PCLS[p]+'">'+p+'</span></td><td class="mono">'+f.proto+'</td>'+
     '<td><button type="button" class="linkbtn" data-abrir="'+c.id+'">'+esc(c.nome)+'</button><div class="hint">'+c.canal+(c.cliente?"":" · novo cliente")+'</div></td>'+
     '<td>'+r.curto+'<div class="hint">'+r.setor+' · '+r.resp+'</div></td>'+
-    '<td style="max-width:34ch">'+esc(f.resumo.split("\n")[0])+(fl.length&&f.status!=="Concluída"?'<div class="hint" style="color:var(--ochre);font-weight:600">Falta: '+esc(fl.join("; "))+'</div>':'')+'</td>'+
+    '<td style="max-width:34ch">'+esc(f.resumo.split("\n")[0])+(typeof pendFluxo==="function"&&pendFluxo(f).length?'<div>'+pendFluxo(f).map(x=>'<span class="pill warn">'+esc(x)+'</span>').join(" ")+'</div>':'')+(fl.length&&f.status!=="Concluída"?'<div class="hint" style="color:var(--ochre);font-weight:600">Falta: '+esc(fl.join("; "))+'</div>':'')+'</td>'+
     '<td>'+prazoTxt(f)+'</td>'+
     '<td><select data-st="'+c.id+'" aria-label="Status de '+esc(f.proto)+'">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select></td></tr>'}).join("");
 }

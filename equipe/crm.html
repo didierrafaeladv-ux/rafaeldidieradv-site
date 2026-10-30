@@ -118,6 +118,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
 
   <section class="kpis" aria-label="Indicadores" id="kpis"></section>
   <details class="metas" id="metas"><summary>Metas do trimestre (Comercial)</summary><div id="metas-c"></div></details>
+  <details class="metas" id="tempos"><summary>Tempo por etapa (dias úteis)</summary><div id="tempos-c"></div></details>
 
   <div class="filtros" role="search">
     <input id="f-busca" type="search" placeholder="Buscar por nome, empresa ou próxima ação" aria-label="Buscar">
@@ -347,7 +348,25 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     };
   }
 
-  const API = { cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+
+  // Prazos por etapa (fluxograma de 30/10/2026): combinados pelo Dr. Rafael; vazio = a definir. Dias úteis.
+  const PRAZOS_ETAPA = { novo: null, reuniao: null, proposta: null, negociacao: null, contratacao: null };
+  function entradas(l) { const ent = { novo: l.criado };
+    for (const h of l.hist || []) { if (h.canal !== 'Funil') continue; const m = /para “([^”]+)”/.exec(h.nota || ''); const e = m && ETAPAS.find(x => x.n === m[1]); if (e && !ent[e.k]) ent[e.k] = h.data; }
+    return ent; }
+  function tempos(leads, hoje, prazos) {
+    hoje = hoje || hojeISO(); prazos = Object.assign({}, PRAZOS_ETAPA, prazos || {});
+    const ORD = ['novo', 'reuniao', 'proposta', 'contratado', 'perdido'], acc = {}, add = (k, d, curso) => { const a = acc[k] = acc[k] || { soma: 0, n: 0, curso: 0, maior: 0 }; a.soma += d; a.n++; if (curso) a.curso++; a.maior = Math.max(a.maior, d); };
+    for (const l of leads) { if (!l.criado) continue; const ent = entradas(l);
+      ['novo', 'reuniao', 'proposta'].forEach((k, i) => { if (!ent[k]) return; const prox = ORD.slice(i + 1).map(x => ent[x]).filter(Boolean).sort()[0];
+        if (prox) add(k, diasUteisEntre(ent[k], prox), false); else if (l.etapa === k) add(k, diasUteisEntre(ent[k], hoje), true); });
+      if (ent.contratado) add('negociacao', diasUteisEntre(l.criado, ent.contratado), false); else if (ABERTAS.has(l.etapa)) add('negociacao', diasUteisEntre(l.criado, hoje), true);
+      if (l.etapa === 'contratado' && ent.contratado) { const lib = ((l.travas || {}).liberado || {}).data; add('contratacao', diasUteisEntre(ent.contratado, lib || hoje), !lib); } }
+    const NOMES = { novo: 'Novo contato', reuniao: 'Primeira reunião', proposta: 'Proposta enviada', negociacao: 'Negociação (entrada até contrato)', contratacao: 'Contratação (contrato até liberação G4)' };
+    return Object.keys(NOMES).map(k => { const a = acc[k] || { soma: 0, n: 0, curso: 0, maior: 0 }, media = a.n ? Math.round(a.soma / a.n * 10) / 10 : null, prazo = prazos[k];
+      return { k, nome: NOMES[k], media, n: a.n, emCurso: a.curso, maior: a.maior, prazo, ok: prazo == null || media == null ? null : media <= prazo }; });
+  }
+  const API = { tempos, entradas, PRAZOS_ETAPA, cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -503,7 +522,12 @@ function renderMetas(){
    linha('Motivo de perda registrado',p(m.motivo.v),'100%',m.motivo.v==null?null:m.motivo.v>=1,m.motivo.de+' lead(s) em Não avançou')+
    linha('Satisfação','—','9 ou mais',null,'pesquisa fora do CRM; anote a nota no histórico')+'</tbody></table><p class="s">Nenhuma meta depende do valor dos honorários (EAOAB, art. 34, III).</p>';
 }
-function render(){ renderKpis(); renderMetas(); renderFiltros(); renderBoard(); renderDemo() }
+function renderTempos(){
+  const t=CRM.tempos(CRM.filtrar(leads,filtro),HOJE()), f=v=>v==null?"—":String(v).replace(".",",");
+  $("tempos-c").innerHTML='<p class="s">Tempo médio em cada etapa do funil, contado pelo histórico de movimentações. Prazos combinados: a definir pelo Dr. Rafael (fluxograma de 30/10/2026).</p><table><thead><tr><th>Etapa</th><th>Média</th><th>Maior</th><th>Leads</th><th>Em curso</th><th>Prazo combinado</th><th>Situação</th></tr></thead><tbody>'+
+   t.map(r=>'<tr><th scope="row">'+r.nome+'</th><td>'+f(r.media)+'</td><td>'+(r.n?r.maior:"—")+'</td><td>'+r.n+'</td><td>'+r.emCurso+'</td><td>'+(r.prazo==null?"a definir":r.prazo+" dias úteis")+'</td><td class="'+(r.ok==null?'':r.ok?'m-ok':'m-nao')+'">'+(r.ok==null?(r.n?"sem prazo":"sem dados"):r.ok?"Dentro":"Acima")+'</td></tr>').join("")+'</tbody></table>';
+}
+function render(){ renderKpis(); renderMetas(); renderTempos(); renderFiltros(); renderBoard(); renderDemo() }
 
 // arrastar entre etapas
 $("board").addEventListener("dragstart",e=>{ const c=e.target.closest(".card"); if(!c) return; arrastando=c.dataset.id; c.classList.add("drag"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",arrastando) });

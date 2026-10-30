@@ -117,6 +117,14 @@ td select{width:auto;font-size:13px;padding:5px 8px}
 
 /* documentos */
 .docs{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
+.mdl-lista{display:grid;gap:6px;margin-top:10px}
+.mdl-item{display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px;flex-wrap:wrap}
+.mdl-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0}
+.mdl-campos label{display:grid;gap:3px;font-size:12.5px;font-weight:600}
+.mdl-campos input.falta{border-color:var(--crit);background:var(--crit-soft)}
+#md-box{border-top:1px solid var(--line);padding:10px;display:grid;gap:8px;max-height:60vh;overflow:auto}
+#md-prev{white-space:pre-wrap;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:220px;overflow:auto;background:var(--surface)}
+.m .anexo{display:block;font-weight:600;margin-bottom:2px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
 .panel h3{margin:0 0 4px;font-size:15px}
 .cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
@@ -217,7 +225,23 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
         </div>
         <div class="msgs" id="msgs" aria-live="polite"></div>
         <div class="quick" id="quick"></div>
+        <div id="md-box" hidden>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label class="hint" for="md-sel" style="font-weight:600">Modelo</label>
+            <select id="md-sel" style="flex:1;min-width:160px"></select>
+            <button class="btn ghost small" type="button" id="md-fecha">Fechar</button>
+          </div>
+          <div id="md-cnpj" hidden class="hint"></div>
+          <div class="mdl-campos" id="md-campos"></div>
+          <div id="md-prev" hidden></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" type="button" id="md-envia">Enviar na conversa</button>
+            <button class="btn ghost small" type="button" id="md-baixa">Baixar</button>
+          </div>
+          <div class="hint" id="md-msg" role="status"></div>
+        </div>
         <form class="compose" id="compose">
+          <button class="btn ghost small" type="button" id="md-abre" title="Preencher um modelo com os dados deste cliente e enviar">📎 Modelo</button>
           <input id="txt" autocomplete="off" placeholder="Digite a mensagem do cliente">
           <button class="btn" type="submit">Enviar</button>
         </form>
@@ -275,6 +299,25 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   <section id="v-docs" hidden>
     <h2 class="sec">Gerador de documentos</h2>
     <p class="sub">Os documentos que o cliente envia pelo WhatsApp são lidos, os campos são extraídos e alguém da equipe confere antes de gerar. Leitura simulada: em produção, a extração é feita por IA no n8n e os dados de CNPJ vêm de consulta pública pelo número.</p>
+    <div class="panel" id="mdl-painel" style="margin-bottom:16px">
+      <h3>Modelos do escritório</h3>
+      <p class="hint">Envie um modelo em Word (.docx) ou texto com os campos entre chaves duplas, por exemplo <span class="mono">{{NOME}}</span>, <span class="mono">{{CPF}}</span>, <span class="mono">{{Razão social}}</span>. A formatação do Word é mantida. Na conversa, use <b>Enviar modelo</b>: os campos são preenchidos com os dados do cliente e o que faltar é pedido antes de gerar.</p>
+      <details class="hint" style="margin:6px 0"><summary>Campos preenchidos automaticamente</summary>
+        <span class="mono">NOME · CPF · CNPJ · DOCUMENTO (CPF/CNPJ) · TELEFONE · PROTOCOLO · ASSUNTO · RESUMO · DATA · DATA_EXTENSO</span><br>
+        Depois de buscar o CNPJ na conversa: <span class="mono">RAZAO_SOCIAL · NOME_FANTASIA · ENDERECO · MUNICIPIO · UF · MUNICIPIO_UF · CEP · EMAIL · CNAE · REPRESENTANTE · CARGO · SITUACAO</span>.
+        Qualquer outro campo (honorários, OAB, número do processo…) é pedido na hora e fica guardado na conversa.</details>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label class="btn ghost small" style="cursor:pointer">Enviar modelo (.docx ou .txt)<input type="file" id="mdl-arq" accept=".docx,.txt,.md" hidden></label>
+        <button class="btn ghost small" type="button" id="mdl-novo-tx">Escrever modelo de texto</button>
+        <span class="hint" id="mdl-msg" role="status"></span>
+      </div>
+      <div id="mdl-tx-box" hidden style="display:grid;gap:6px;margin-top:8px">
+        <input id="mdl-tx-nome" placeholder="Nome do modelo (ex.: Pedido de documentos)">
+        <textarea id="mdl-tx" rows="6" placeholder="Olá, {{NOME}}. Para darmos andamento ao protocolo {{PROTOCOLO}}, envie…"></textarea>
+        <div><button class="btn small" type="button" id="mdl-tx-salva">Salvar modelo</button> <button class="btn ghost small" type="button" id="mdl-tx-cancela">Cancelar</button></div>
+      </div>
+      <div class="mdl-lista" id="mdl-lista"></div>
+    </div>
     <div class="docs">
       <div class="panel">
         <h3>1. Documentos recebidos</h3>
@@ -370,6 +413,129 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </footer>
 </div>
 
+<script>
+/* Atendimento RD — modelos de documentos com preenchimento automático (v1.0, 30/10/2026).
+ * Campos no modelo: {{NOME}}, {{CPF_CNPJ}}, {{Razão social}} … (maiúsculas, acentos e espaços são indiferentes).
+ * Texto simples e .docx (document.xml, cabeçalhos, rodapés e notas), inclusive quando o Word quebra o campo em
+ * vários trechos de formatação: o valor herda a formatação do trecho onde está o nome do campo.
+ * Navegador (window.Modelos) e node. */
+(function (root) {
+  'use strict';
+  const RE = /\{\{\s*([^{}]+?)\s*\}\}/g;
+  const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+  function chave(rotulo) {
+    return String(rotulo || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+  function campos(texto) {
+    const vistos = new Map(); let m; RE.lastIndex = 0;
+    while ((m = RE.exec(String(texto || '')))) { const k = chave(m[1]); if (k && !vistos.has(k)) vistos.set(k, { chave: k, rotulo: m[1].trim() }); }
+    return [...vistos.values()];
+  }
+
+  // sinônimos → chave canônica
+  const ALIAS = {
+    NOME_CLIENTE: 'NOME', CLIENTE: 'NOME', NOME_DO_CLIENTE: 'NOME', OUTORGANTE: 'NOME', CONTRATANTE: 'NOME',
+    CPF_CNPJ: 'DOCUMENTO', CPF_OU_CNPJ: 'DOCUMENTO', DOC: 'DOCUMENTO',
+    WHATSAPP: 'TELEFONE', FONE: 'TELEFONE', CELULAR: 'TELEFONE',
+    RAZAO: 'RAZAO_SOCIAL', EMPRESA: 'RAZAO_SOCIAL', NOME_EMPRESARIAL: 'RAZAO_SOCIAL',
+    SEDE: 'ENDERECO', ENDERECO_DA_SEDE: 'ENDERECO', CIDADE_UF: 'MUNICIPIO_UF',
+    REP_NOME: 'REPRESENTANTE', SOCIO_ADMINISTRADOR: 'REPRESENTANTE', ADMINISTRADOR: 'REPRESENTANTE',
+    PEDIDO: 'RESUMO', DESCRICAO: 'RESUMO', DATA_HOJE: 'DATA', HOJE: 'DATA', DATA_POR_EXTENSO: 'DATA_EXTENSO'
+  };
+  const fmtDoc = d => { const x = String(d || '').replace(/\D/g, '');
+    if (x.length === 14) return x.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    if (x.length === 11) return x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    return String(d || ''); };
+
+  // base de valores a partir da conversa; extra: { assunto, hoje: Date, escritorio:{...} }
+  function dadosDaConversa(c, extra) {
+    const x = extra || {}, f = c.ficha || {}, j = c.cnpj || {}, hoje = x.hoje || new Date(), dig = String(c.doc || (f.doc || '')).replace(/\D/g, '');
+    const v = {
+      NOME: j.razao || c.nome || '', DOCUMENTO: fmtDoc(c.doc || f.doc), TELEFONE: c.tel || '', PROTOCOLO: f.proto || '',
+      ASSUNTO: x.assunto || '', RESUMO: f.resumo || '',
+      DATA: hoje.toLocaleDateString('pt-BR'), DATA_EXTENSO: hoje.getDate() + ' de ' + MESES[hoje.getMonth()] + ' de ' + hoje.getFullYear()
+    };
+    if (dig.length === 14) v.CNPJ = fmtDoc(dig); if (dig.length === 11) v.CPF = fmtDoc(dig);
+    if (j.razao) Object.assign(v, { RAZAO_SOCIAL: j.razao, NOME_FANTASIA: j.fantasia || '', ENDERECO: j.endereco || '', MUNICIPIO: j.municipio || '', UF: j.uf || '',
+      MUNICIPIO_UF: j.municipio ? j.municipio + '/' + (j.uf || '') : '', CEP: j.cep || '', EMAIL: j.email || '', CNAE: j.cnae || '',
+      REPRESENTANTE: j.representante || '', CARGO: j.cargo || '', SITUACAO: j.situacao || '' });
+    Object.assign(v, x.escritorio || {});
+    Object.entries(c.dados || {}).forEach(([k, val]) => { if (String(val).trim()) v[k] = val; });
+    return v;
+  }
+  function valorDe(v, k) { if (v[k] != null && String(v[k]) !== '') return String(v[k]); const a = ALIAS[k]; return a && v[a] != null && String(v[a]) !== '' ? String(v[a]) : ''; }
+  function faltando(lista, v) { return lista.filter(cp => !valorDe(v, cp.chave)); }
+
+  function preencherTexto(texto, v) {
+    const falta = new Set();
+    const out = String(texto).replace(RE, (m, r) => { const k = chave(r), val = valorDe(v, k); if (!val) { falta.add(k); return m; } return val; });
+    return { texto: out, faltando: [...falta] };
+  }
+
+  // ---------- .docx ----------
+  const desXml = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+  const xml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const RE_T = /(<w:t(?:\s[^>]*)?>)([\s\S]*?)(<\/w:t>)/g, RE_P = /<w:p[\s>][\s\S]*?<\/w:p>/g;
+
+  function preencherParagrafo(p, v, falta) {
+    const nos = []; let m; RE_T.lastIndex = 0;
+    while ((m = RE_T.exec(p))) nos.push({ ini: m.index, len: m[0].length, abre: m[1], tx: desXml(m[2]), fecha: m[3] });
+    if (!nos.length) return p;
+    const todo = nos.map(n => n.tx).join(''); if (todo.indexOf('{{') < 0) return p;
+    const mapa = []; nos.forEach((n, i) => { for (let o = 0; o < n.tx.length; o++) mapa.push([i, o]); });
+    const achados = []; RE.lastIndex = 0; while ((m = RE.exec(todo))) achados.push([m.index, m.index + m[0].length, chave(m[1])]);
+    let mudou = false;
+    for (let a = achados.length - 1; a >= 0; a--) {
+      const [s, e, k] = achados[a], val = valorDe(v, k); if (!val) { falta.add(k); continue; }
+      // o valor herda a formatação do trecho onde está o nome do campo (primeiro caractere após "{{")
+      let anc = s + 2; while (anc < e - 2 && /\s/.test(todo[anc])) anc++;
+      const [ia, oa] = mapa[s], [ib, ob] = mapa[e - 1], ian = mapa[anc][0];
+      for (let k2 = ia; k2 <= ib; k2++) { const t0 = nos[k2].tx, a0 = k2 === ia ? oa : 0, b0 = k2 === ib ? ob + 1 : t0.length;
+        nos[k2].tx = t0.slice(0, a0) + (k2 === ian ? val : '') + t0.slice(b0); }
+      mudou = true;
+    }
+    if (!mudou) return p;
+    let out = '', pos = 0;
+    nos.forEach(n => { const abre = /xml:space=/.test(n.abre) ? n.abre : n.abre.replace(/^<w:t/, '<w:t xml:space="preserve"');
+      const partes = String(n.tx).split('\n');   // quebras de linha do valor viram <w:br/>
+      const corpo = partes.map(xml).join(n.fecha + '<w:br/>' + abre);
+      out += p.slice(pos, n.ini) + abre + corpo + n.fecha; pos = n.ini + n.len; });
+    return out + p.slice(pos);
+  }
+  function preencherXml(x, v, falta) { const fl = falta || new Set(); return String(x).replace(RE_P, p => preencherParagrafo(p, v, fl)); }
+  function textoXml(x) { return (String(x).match(RE_P) || []).map(p => { const t = []; let m; RE_T.lastIndex = 0; while ((m = RE_T.exec(p))) t.push(desXml(m[2])); return t.join(''); }).join('\n'); }
+  const PARTES = /^word\/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$/;
+
+  async function camposDocx(zip) {
+    let t = ''; for (const n of Object.keys(zip.files).filter(n => PARTES.test(n))) t += textoXml(await zip.file(n).async('string')) + '\n';
+    return { campos: campos(t), texto: t };
+  }
+  async function preencherDocx(zip, v) {
+    const falta = new Set();
+    for (const n of Object.keys(zip.files).filter(n => PARTES.test(n))) zip.file(n, preencherXml(await zip.file(n).async('string'), v, falta));
+    return { zip, faltando: [...falta] };
+  }
+
+  // nome do arquivo gerado
+  function nomeArquivo(modelo, v, ext) {
+    const base = (String(modelo || 'Documento') + ' - ' + (v.NOME || v.RAZAO_SOCIAL || '')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').replace(/ - $/, '').trim();
+    return base.slice(0, 90) + '.' + ext;
+  }
+  // partes de até n caracteres (base de dados limita cada registro)
+  function fatiar(s, n) { const out = []; for (let i = 0; i < s.length; i += n) out.push(s.slice(i, i + n)); return out.length ? out : ['']; }
+  // janela de 24 h do WhatsApp para mensagem livre (contada da última mensagem do cliente)
+  function dentroDaJanela(c, agora) {
+    const ult = (c.msgs || []).filter(m => m.de === 'cli').map(m => Date.parse(m.em)).filter(Boolean).sort().pop();
+    return !!ult && ((agora || Date.now()) - ult) < 24 * 3600000;
+  }
+
+  const API = { chave, campos, ALIAS, dadosDaConversa, valorDe, faltando, preencherTexto, preencherXml, textoXml, camposDocx, preencherDocx, nomeArquivo, fatiar, dentroDaJanela, fmtDoc, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Modelos = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>
 /* RD Integra — consulta assistida de CNPJ (v1.0, 30/10/2026).
  * As páginas publicadas no Claude não podem chamar APIs externas; por isso a ferramenta abre a consulta
@@ -747,7 +913,7 @@ function renderMsgs(){
     if(m.de==="sys")return '<div class="m note">'+esc(m.tx)+'</div>';
     const cls=m.de==="cli"?"in":"out";
     const by=m.de==="bot"?'<span class="by">Assistente virtual</span>':m.de==="eq"?'<span class="by">'+esc(m.por||"Equipe")+'</span>':'';
-    return '<div class="m '+cls+'">'+by+esc(m.tx)+'<span class="t">'+hm(new Date(m.em))+'</span></div>';
+    return '<div class="m '+cls+'">'+by+(m.anexo?'<span class="anexo">Documento</span>':m.modelo?'<span class="anexo">Modelo: '+esc(m.modelo)+'</span>':'')+esc(m.tx)+'<span class="t">'+hm(new Date(m.em))+'</span></div>';
   }).join("");
   box.scrollTop=box.scrollHeight;
 }
@@ -1026,6 +1192,113 @@ function registrar(txt){
 }
 document.getElementById("enviar-ass").addEventListener("click",()=>registrar("Documento enviado ao cliente para assinatura"));
 document.getElementById("salvar-pasta").addEventListener("click",()=>registrar("Documento salvo na pasta do cliente"));
+
+
+// ---------- modelos de documentos (30/10/2026) ----------
+const MDK="rd-modelos"; let MODELOS=[], MDB=null, DLS=null;
+try{ MODELOS=JSON.parse(localStorage.getItem(MDK)||"[]") }catch(e){}
+const mdlMsg=t=>{document.getElementById("mdl-msg").textContent=t};
+function salvaLocalModelos(){ try{ localStorage.setItem(MDK,JSON.stringify(MODELOS)) }catch(e){ mdlMsg("Modelo grande demais para guardar neste navegador; use a versão no Claude (base do escritório).") } }
+function b64DeBuf(buf){ const u=new Uint8Array(buf); let s=""; for(let i=0;i<u.length;i+=32768) s+=String.fromCharCode.apply(null,u.subarray(i,i+32768)); return btoa(s) }
+function bufDeB64(b){ const s=atob(b), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u }
+async function conteudoModelo(m){ if(m.tipo==="texto") return m.texto; if(m.b64) return m.b64;
+  if(!MDB) throw new Error("Modelo guardado na base do escritório; abra o Atendimento pelo Claude.");
+  let s=""; for(let i=0;i<m.partes;i++){ const d=await MDB.doc("modelos_partes/"+m.id+"_"+i).get(); if(!d.exists) throw new Error("Arquivo do modelo incompleto na base; envie-o de novo."); s+=d.data().b64 } return s }
+async function gravaModelo(m,b64){
+  if(MDB){ const partes=b64?Modelos.fatiar(b64,200000):[]; const meta=Object.assign({},m,{partes:partes.length}); delete meta.b64;
+    for(let i=0;i<partes.length;i++) await MDB.doc("modelos_partes/"+m.id+"_"+i).set({b64:partes[i]});
+    await MDB.doc("modelos/"+m.id).set(meta); return }
+  if(b64) m.b64=b64; MODELOS=MODELOS.filter(x=>x.id!==m.id).concat([m]); salvaLocalModelos(); renderModelos() }
+async function removeModelo(id){ const m=MODELOS.find(x=>x.id===id); if(!m) return;
+  if(MDB){ await MDB.doc("modelos/"+id).delete(); for(let i=0;i<(m.partes||0);i++) await MDB.doc("modelos_partes/"+id+"_"+i).delete().catch(()=>{}); return }
+  MODELOS=MODELOS.filter(x=>x.id!==id); salvaLocalModelos(); renderModelos() }
+function renderModelos(){
+  const el=document.getElementById("mdl-lista"); if(!el) return;
+  el.innerHTML=MODELOS.length?MODELOS.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>'<div class="mdl-item"><span><b>'+esc(m.nome)+'</b> <span class="pill line">'+(m.tipo==="docx"?"Word":"texto")+'</span><br><span class="hint">'+(m.campos.length?m.campos.map(c=>"{{"+esc(c.rotulo)+"}}").join(" "):"sem campos")+'</span></span><span><button class="btn ghost small" type="button" data-mdl-rm="'+m.id+'">Remover</button></span></div>').join(""):'<div class="hint">Nenhum modelo ainda.</div>';
+  const sel=document.getElementById("md-sel"); if(sel){ const v=sel.value; sel.innerHTML=MODELOS.length?MODELOS.map(m=>'<option value="'+m.id+'">'+esc(m.nome)+'</option>').join(""):'<option value="">Nenhum modelo: envie na aba Documentos</option>'; if(MODELOS.some(m=>m.id===v)) sel.value=v } }
+document.getElementById("mdl-lista").addEventListener("click",async e=>{ const b=e.target.closest("[data-mdl-rm]"); if(!b) return;
+  const m=MODELOS.find(x=>x.id===b.dataset.mdlRm); if(!m||!confirmaRemocao(b,m)) return;
+  try{ await removeModelo(m.id); mdlMsg("Modelo removido.") }catch(err){ mdlMsg("Não foi possível remover: "+err.message) } });
+function confirmaRemocao(b,m){ if(b.dataset.ok==="1") return true; b.dataset.ok="1"; b.textContent="Confirmar remoção"; setTimeout(()=>{b.dataset.ok="";b.textContent="Remover"},4000); return false }
+const novoId=()=>"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+document.getElementById("mdl-arq").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{ const nome=f.name.replace(/\.(docx|txt|md)$/i,"");
+    if(/\.docx$/i.test(f.name)){ if(f.size>3*1024*1024) throw new Error("arquivo acima de 3 MB; reduza imagens do modelo");
+      const Z=await carregaJSZip(); const buf=await f.arrayBuffer(); const z=await Z.loadAsync(buf); if(!z.file("word/document.xml")) throw new Error("não parece um documento do Word (.docx)");
+      const {campos}=await Modelos.camposDocx(z); await gravaModelo({id:novoId(),nome,tipo:"docx",campos,criado:new Date().toISOString()},b64DeBuf(buf));
+      mdlMsg("Modelo “"+nome+"” salvo com "+campos.length+" campo(s)."+(campos.length?"":" Nenhum {{CAMPO}} encontrado: confira as chaves duplas.")) }
+    else { const tx=await f.text(); const campos=Modelos.campos(tx); await gravaModelo({id:novoId(),nome,tipo:"texto",texto:tx,campos,criado:new Date().toISOString()}); mdlMsg("Modelo “"+nome+"” salvo com "+campos.length+" campo(s).") }
+  }catch(err){ mdlMsg("Não foi possível salvar o modelo: "+err.message+".") } });
+document.getElementById("mdl-novo-tx").addEventListener("click",()=>{document.getElementById("mdl-tx-box").hidden=false;document.getElementById("mdl-tx-nome").focus()});
+document.getElementById("mdl-tx-cancela").addEventListener("click",()=>{document.getElementById("mdl-tx-box").hidden=true});
+document.getElementById("mdl-tx-salva").addEventListener("click",async()=>{ const nome=document.getElementById("mdl-tx-nome").value.trim(), tx=document.getElementById("mdl-tx").value;
+  if(!nome||!tx.trim()){ mdlMsg("Dê um nome e escreva o texto do modelo."); return }
+  try{ await gravaModelo({id:novoId(),nome,tipo:"texto",texto:tx,campos:Modelos.campos(tx),criado:new Date().toISOString()}); document.getElementById("mdl-tx-box").hidden=true; document.getElementById("mdl-tx").value=""; document.getElementById("mdl-tx-nome").value=""; mdlMsg("Modelo “"+nome+"” salvo.") }catch(err){ mdlMsg("Não foi possível salvar: "+err.message) } });
+
+// na conversa
+const mdMsg=t=>{document.getElementById("md-msg").textContent=t};
+function mdValores(c){ return Modelos.dadosDaConversa(c,{assunto:c.ficha&&ROTAS[c.ficha.rota]?ROTAS[c.ficha.rota].nome:""}) }
+function mdModelo(){ return MODELOS.find(m=>m.id===document.getElementById("md-sel").value) }
+function mdRender(){ const c=conv(), m=mdModelo(), box=document.getElementById("md-campos"), prev=document.getElementById("md-prev"), cn=document.getElementById("md-cnpj");
+  if(!m){ box.innerHTML='<div class="hint">Cadastre um modelo na aba Documentos.</div>'; prev.hidden=true; cn.hidden=true; return }
+  const v=mdValores(c), dig=String(c.doc||(c.ficha&&c.ficha.doc)||"").replace(/\D/g,"");
+  const precisaPJ=m.campos.some(x=>/^(RAZAO|NOME_FANTASIA|ENDERECO|MUNICIPIO|UF|CEP|EMAIL|CNAE|REPRESENTANTE|CARGO|SITUACAO|SEDE|EMPRESA)/.test(x.chave));
+  cn.hidden=!(dig.length===14&&!c.cnpj);
+  if(!cn.hidden) cn.innerHTML=(precisaPJ?"O modelo usa dados da empresa. ":"")+'<button class="btn ghost small" type="button" id="md-cnpj-auto">Buscar dados do CNPJ '+esc(Modelos.fmtDoc(dig))+'</button> <span id="md-cnpj-alt"></span>';
+  box.innerHTML=m.campos.map(x=>{ const val=Modelos.valorDe(v,x.chave); return '<label>'+esc(x.rotulo)+'<input data-md="'+x.chave+'" value="'+esc(val)+'" class="'+(val?"":"falta")+'"'+(val?"":' placeholder="preencher"')+'></label>' }).join("")||'<div class="hint">Este modelo não tem campos.</div>';
+  if(m.tipo==="texto"){ prev.hidden=false; prev.textContent=Modelos.preencherTexto(m.texto,mdValoresTela(c)).texto } else prev.hidden=true;
+  const f=m.campos.filter(x=>!Modelos.valorDe(v,x.chave)).length; mdMsg(f?f+" campo(s) a preencher, em vermelho.":"Todos os campos preenchidos. Confira antes de enviar."); }
+function mdValoresTela(c){ const v=mdValores(c); document.querySelectorAll("#md-campos input[data-md]").forEach(i=>{ v[i.dataset.md]=i.value }); return v }
+document.getElementById("md-campos").addEventListener("input",e=>{ const i=e.target.closest("input[data-md]"); if(!i) return; i.classList.toggle("falta",!i.value.trim());
+  const m=mdModelo(); if(m&&m.tipo==="texto") document.getElementById("md-prev").textContent=Modelos.preencherTexto(m.texto,mdValoresTela(conv())).texto });
+document.getElementById("md-sel").addEventListener("change",mdRender);
+document.getElementById("md-fecha").addEventListener("click",()=>{document.getElementById("md-box").hidden=true});
+document.getElementById("md-abre").addEventListener("click",()=>{ const b=document.getElementById("md-box"); b.hidden=!b.hidden; if(!b.hidden){ renderModelos(); mdRender() } });
+document.getElementById("md-cnpj").addEventListener("click",async e=>{ if(!e.target.closest("#md-cnpj-auto")) return; const c=conv(), dig=String(c.doc||c.ficha&&c.ficha.doc||"").replace(/\D/g,""), alt=document.getElementById("md-cnpj-alt");
+  alt.textContent="Consultando…";
+  for(const f of CNPJ.fontes(dig)){ try{ const r=await fetch(f.url); if(!r.ok) continue; aplicaCnpjConv(c,CNPJ.normalizar(await r.text())); return }catch(err){} }
+  alt.innerHTML='A busca automática só funciona com o Atendimento hospedado. Abra <a href="'+CNPJ.fontes(dig)[0].url+'" target="_blank" rel="noopener">a consulta</a>, copie tudo e cole aqui: <textarea id="md-cnpj-cola" rows="2" style="width:100%"></textarea>' });
+document.getElementById("md-cnpj").addEventListener("input",e=>{ if(e.target.id!=="md-cnpj-cola"||!e.target.value.trim()) return; try{ aplicaCnpjConv(conv(),CNPJ.normalizar(e.target.value)) }catch(err){ mdMsg(err.message) } });
+function aplicaCnpjConv(c,n){ const adm=n.socios.find(s=>/administrador/i.test(s.qualificacao))||n.socios[0]||{nome:"",qualificacao:""};
+  c.cnpj={razao:n.razao,fantasia:n.fantasia||"",endereco:n.endereco||"",municipio:n.municipio||"",uf:n.uf||"",cep:(n.cep||"").replace(/^(\d{5})(\d{3})$/,"$1-$2"),email:n.email||"",cnae:n.cnaePrincipal?n.cnaePrincipal.codigo+" "+(n.cnaePrincipal.descricao||""):"",representante:adm.nome||"",cargo:(adm.qualificacao||"").toLowerCase(),situacao:n.situacao||"",fonte:n.fonte};
+  if(c.ficha) c.ficha.log.push("Dados do CNPJ consultados ("+n.fonte+")"); salvar(); mdRender(); mdMsg("Dados da Receita aplicados. Confira o representante no contrato social."+(/ATIVA/i.test(n.situacao||"")?"":" Situação cadastral: "+n.situacao+".")) }
+async function mdGera(){ const c=conv(), m=mdModelo(); if(!m) throw new Error("Escolha um modelo.");
+  const v=mdValoresTela(c), falta=m.campos.filter(x=>!Modelos.valorDe(v,x.chave));
+  if(falta.length) throw new Error("Preencha: "+falta.map(x=>x.rotulo).join(", ")+".");
+  c.dados=c.dados||{}; const base=Modelos.dadosDaConversa(Object.assign({},c,{dados:{}}),{}); document.querySelectorAll("#md-campos input[data-md]").forEach(i=>{ if(i.value.trim()&&Modelos.valorDe(base,i.dataset.md)!==i.value) c.dados[i.dataset.md]=i.value });
+  if(m.tipo==="texto") return {texto:Modelos.preencherTexto(m.texto,v).texto,nome:Modelos.nomeArquivo(m.nome,v,"txt"),mime:"text/plain"};
+  const Z=await carregaJSZip(), z=await Z.loadAsync(bufDeB64(await conteudoModelo(m))); const r=await Modelos.preencherDocx(z,v);
+  if(r.faltando.length) throw new Error("O arquivo tem campos não reconhecidos: "+r.faltando.join(", ")+".");
+  const blob=await r.zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  return {blob,nome:Modelos.nomeArquivo(m.nome,v,"docx"),mime:blob.type} }
+async function mdSalvaArquivo(g){ const dado=g.blob||new Blob([g.texto],{type:"text/plain;charset=utf-8"});
+  if(DLS){ await DLS.save({filename:g.nome,data:dado}); return }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(dado); a.download=g.nome; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000) }
+document.getElementById("md-baixa").addEventListener("click",async()=>{ try{ const g=await mdGera(); await mdSalvaArquivo(g); salvar(); mdMsg("Arquivo gerado: "+g.nome+".") }catch(err){ mdMsg(err.message||"Download cancelado.") } });
+function urlEnvio(){ return lv.url?lv.url.replace(/atendimento-rd\/mensagens.*$/,"atendimento-rd/enviar"):"" }
+document.getElementById("md-envia").addEventListener("click",async()=>{ const c=conv(); let g; try{ g=await mdGera() }catch(err){ mdMsg(err.message); return }
+  const agora=new Date().toISOString(), tel=String(c.tel||"").replace(/\D/g,""), aoVivo=!!(lv.url&&lv.chave&&tel.length>=10&&c.canal!=="Site");
+  let situacao="registrado na conversa", idEnvio="";
+  if(aoVivo){ if(!Modelos.dentroDaJanela(c)){ mdMsg("Passaram mais de 24 h desde a última mensagem do cliente: o WhatsApp só aceita modelo aprovado pela Meta. Baixe o arquivo e envie pelo app, ou peça ao cliente que mande uma mensagem."); return }
+    try{ const corpo={chave:lv.chave,para:(tel.length<=11?"55":"")+tel,nome:g.nome};
+      if(g.texto!=null) corpo.texto=g.texto; else { corpo.arquivo=b64DeBuf(await g.blob.arrayBuffer()); corpo.mime=g.mime; corpo.legenda=g.nome.replace(/\.docx$/,"") }
+      const r=await fetch(urlEnvio(),{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(corpo)}); const j=await r.json().catch(()=>({}));
+      if(!r.ok||j.erro) throw new Error(j.erro||("HTTP "+r.status)); situacao="enviado pelo WhatsApp"; idEnvio=j.id||"" }
+    catch(err){ mdMsg("O WhatsApp não aceitou o envio ("+err.message+"). Nada foi registrado; tente de novo ou baixe o arquivo."); return } }
+  const msg=g.texto!=null?{de:"eq",por:"Equipe",tx:g.texto,em:agora,modelo:mdModelo().nome}:{de:"eq",por:"Equipe",tx:"📎 "+g.nome,em:agora,anexo:g.nome};
+  if(idEnvio) msg.id=idEnvio; c.msgs.push(msg);   // mesmo id da planilha: a leitura ao vivo não duplica
+  if(c.ficha){ c.ficha.log.push("Modelo “"+mdModelo().nome+"” "+situacao); if(!c.ficha.primeiraResp) c.ficha.primeiraResp=new Date().toISOString(); if(c.ficha.status==="Nova") c.ficha.status="Em andamento" }
+  salvar(); renderMesa(); document.getElementById("md-box").hidden=true;
+  if(!aoVivo){ if(g.blob) try{ await mdSalvaArquivo(g) }catch(e){} mdMsg("") }
+  const t=document.getElementById("base-info"); if(t&&!aoVivo) t.textContent=g.blob?"Documento registrado na conversa e baixado. Com o WhatsApp ao vivo ligado, ele segue direto ao cliente.":"Texto registrado na conversa. Com o WhatsApp ao vivo ligado, ele segue direto ao cliente."; });
+renderModelos();
+(async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const dl=await window.claude.use("downloads"); if(dl) DLS=dl;
+  const db=await window.claude.use("db"); if(!db) return; MDB=db;
+  const locais=MODELOS.slice();
+  db.collection("modelos").limit(200).onSnapshot(sn=>{ const daBase=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); MODELOS=daBase; renderModelos();
+    const info=document.getElementById("mdl-msg"); if(info&&!info.textContent) info.textContent="Base do escritório: "+daBase.length+" modelo(s) compartilhado(s) com a equipe." },()=>{});
+  if(locais.length){ for(const m of locais){ try{ await gravaModelo(Object.assign({},m),m.b64||null) }catch(e){} } try{ localStorage.removeItem(MDK) }catch(e){} }
+}catch(e){} })();
 
 // indicadores
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}

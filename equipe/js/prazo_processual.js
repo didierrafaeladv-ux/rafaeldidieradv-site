@@ -14,17 +14,19 @@
   // dias sem expediente próprios de cada justiça (conferir a portaria anual do tribunal)
   const TRIBUNAIS = {
     tjce: { nome: 'Justiça Estadual do Ceará (TJCE)', fonte: 'Portaria TJCE nº 2.924/2025 (calendário de 2026)', fixos: [[3, 19], [10, 28], [12, 8]], pascoa: [-3] },
-    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3] }
+    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3], natal: true }
   };
   function feriados(ano, extras, tribunal) {
     const t = TRIBUNAIS[tribunal] || { fixos: [], pascoa: [] };
     const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...t.fixos].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
     const p = pascoa(ano); [-48, -47, -2, 60, ...t.pascoa].forEach(n => f.push(iso(soma(p, n))));
+    if (t.natal) { for (let d = 20; d <= 31; d++) f.push(iso(new Date(ano, 11, d, 12))); for (let d = 1; d <= 6; d++) f.push(iso(new Date(ano, 0, d, 12))); }   // Lei 5.010/1966, art. 62, I
     return new Set(f.concat((extras || []).filter(x => String(x).startsWith(String(ano)))));
   }
   // art. 220: suspensão de 20/12 a 20/1, inclusive
   const recesso = d => (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 20);
-  function util(d, extras, tribunal) { return d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d)) && !recesso(d); }
+  const expediente = (d, extras, tribunal) => d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d));
+  function util(d, extras, tribunal) { return expediente(d, extras, tribunal) && !recesso(d); }
   let TRIB = '';
   const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras, TRIB)) x = soma(x, 1); return x; };
   /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), feriadosExtras: ['AAAA-MM-DD'] }
@@ -34,12 +36,14 @@
     const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1); TRIB = o.tribunal || '';
     if (!(n > 0)) throw new Error('Informe o número de dias do prazo.');
     let publicacao = null, inicio;
-    if (o.disponibilizacao) { publicacao = proximoUtil(soma(dia(o.disponibilizacao), 1), ex); inicio = proximoUtil(soma(publicacao, 1), ex); }
+    // a publicação ocorre no 1º dia com expediente (a suspensão do art. 220 atinge a contagem, não a publicação):
+    // leitura conservadora, que antecipa o início da contagem
+    if (o.disponibilizacao) { let pb = soma(dia(o.disponibilizacao), 1); while (!expediente(pb, ex, TRIB)) pb = soma(pb, 1); publicacao = pb; inicio = proximoUtil(soma(publicacao, 1), ex); }
     else if (o.intimacao) inicio = proximoUtil(soma(dia(o.intimacao), 1), ex);
     else throw new Error('Informe a data de disponibilização ou de intimação.');
     let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
     return { publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
-      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + ')' : 'sem calendário de tribunal',
+      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + (TRIB === 'tjce' && d.getFullYear() > 2026 ? '; o calendário de ' + d.getFullYear() + ' ainda precisa ser conferido' : '') + ')' : 'sem calendário de tribunal',
       aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
   }
   const API = { TRIBUNAIS, calcular, util: (s, ex, t) => util(dia(s), ex, t), feriados, versao: '1.0' };

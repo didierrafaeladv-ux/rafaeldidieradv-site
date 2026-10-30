@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="pt-BR"><head><meta name="robots" content="noindex,nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Atendimento RD</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -218,7 +218,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       <div class="col">
         <h2>Conversas <button class="btn small" id="nova-conv" type="button">Simular novo contato</button></h2>
         <p class="hint" id="wa-msg" role="status" style="margin:4px 0 8px"><label class="btn small ghost" for="wa-arq" style="margin-right:6px">Importar do WhatsApp</label>Exporte em: conversa → Mais → Exportar conversa → Sem mídia.</p><span class="hint" id="base-info" style="display:block;margin:0 0 6px">Conversas guardadas só neste navegador.</span><input type="file" id="wa-arq" accept=".txt,.zip,text/plain,application/zip" multiple hidden>
-        <details id="lv-box" style="margin:0 0 8px"><summary class="hint">Conexão ao vivo com o WhatsApp</summary><div style="display:grid;gap:6px;margin-top:6px"><input id="lv-url" placeholder="Endereço do n8n (…/webhook/atendimento-rd/mensagens)" autocomplete="off"><input id="lv-chave" type="password" placeholder="Chave da equipe" autocomplete="off"><button class="btn small" type="button" id="lv-ok">Conectar</button><div class="hint" id="lv-st" role="status">Desconectado.</div></div></details>
+        <details id="lv-box" style="margin:0 0 8px"><summary class="hint">Conexão ao vivo com o WhatsApp</summary><div style="display:grid;gap:6px;margin-top:6px"><input id="lv-url" aria-label="Endereço do n8n" placeholder="Endereço do n8n (…/webhook/atendimento-rd/mensagens)" autocomplete="off"><input id="lv-chave" aria-label="Chave da equipe" type="password" placeholder="Chave da equipe" autocomplete="off"><button class="btn small" type="button" id="lv-ok">Conectar</button><div class="hint" id="lv-st" role="status">Desconectado.</div></div></details>
         <ul class="inbox" id="inbox"></ul>
       </div>
       <div class="col chat" aria-label="Conversa">
@@ -240,7 +240,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
             <label class="btn ghost small" style="cursor:pointer">Escolher arquivo (PDF ou foto)<input type="file" id="doc-arq" accept=".pdf,image/*,.txt" hidden></label>
             <span class="hint" id="doc-nome"></span>
           </div>
-          <textarea id="doc-tx" rows="3" placeholder="…ou cole aqui o texto do documento"></textarea>
+          <textarea id="doc-tx" aria-label="Texto do documento" rows="3" placeholder="…ou cole aqui o texto do documento"></textarea>
           <div><button class="btn small" type="button" id="doc-ler">Ler documento</button></div>
           <div id="doc-res"></div>
           <div class="hint" id="doc-msg" role="status"></div>
@@ -264,7 +264,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
         <form class="compose" id="compose">
           <button class="btn ghost small" type="button" id="doc-abre" title="Ler um documento recebido e conferir os dados">📄 Documento</button>
           <button class="btn ghost small" type="button" id="md-abre" title="Preencher um modelo com os dados deste cliente e enviar">📎 Modelo</button>
-          <input id="txt" autocomplete="off" placeholder="Digite a mensagem do cliente">
+          <input id="txt" autocomplete="off" placeholder="Digite a mensagem" aria-label="Mensagem">
           <button class="btn" type="submit">Enviar</button>
         </form>
       </div>
@@ -338,8 +338,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
         <span class="hint" id="mdl-msg" role="status"></span>
       </div>
       <div id="mdl-tx-box" hidden style="display:grid;gap:6px;margin-top:8px">
-        <input id="mdl-tx-nome" placeholder="Nome do modelo (ex.: Pedido de documentos)">
-        <textarea id="mdl-tx" rows="6" placeholder="Olá, {{NOME}}. Para darmos andamento ao protocolo {{PROTOCOLO}}, envie…"></textarea>
+        <input id="mdl-tx-nome" aria-label="Nome do modelo" placeholder="Nome do modelo (ex.: Pedido de documentos)">
+        <textarea id="mdl-tx" aria-label="Texto do modelo" rows="6" placeholder="Olá, {{NOME}}. Para darmos andamento ao protocolo {{PROTOCOLO}}, envie…"></textarea>
         <div><button class="btn small" type="button" id="mdl-tx-salva">Salvar modelo</button> <button class="btn ghost small" type="button" id="mdl-tx-cancela">Cancelar</button></div>
       </div>
       <div class="mdl-lista" id="mdl-lista"></div>
@@ -356,7 +356,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
           <div style="display:grid;gap:8px;margin-top:8px">
             <input id="cn-num" inputmode="numeric" placeholder="00.000.000/0000-00" autocomplete="off" aria-label="CNPJ">
             <div class="hint" id="cn-links">Digite o CNPJ para abrir a consulta.</div>
-            <textarea id="cn-cola" rows="3" placeholder="Na aba que abrir, selecione tudo (Ctrl+A), copie (Ctrl+C) e cole aqui"></textarea>
+            <textarea id="cn-cola" aria-label="Resultado da consulta do CNPJ" rows="3" placeholder="Na aba que abrir, selecione tudo (Ctrl+A), copie (Ctrl+C) e cole aqui"></textarea>
             <button class="btn ghost" type="button" id="cn-aplica">Preencher a ficha da pessoa jurídica</button>
             <button class="btn small" type="button" id="cn-auto">Buscar automaticamente</button>
             <div class="hint" id="cn-msg" role="status"></div>
@@ -399,8 +399,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
         <div class="paper blank" id="paper">A prévia do documento aparece aqui depois da conferência.</div>
         <div class="docbar" id="docacoes" hidden>
           <button class="btn ghost" type="button" id="copiar">Copiar texto</button>
-          <button class="btn ghost" type="button" id="enviar-ass">Enviar ao cliente para assinatura</button>
-          <button class="btn ghost" type="button" id="salvar-pasta">Salvar na pasta do cliente</button>
+          <button class="btn ghost" type="button" id="enviar-ass">Marcar como enviado para assinatura</button>
+          <button class="btn ghost" type="button" id="salvar-pasta">Marcar como salvo na pasta</button>
         </div>
         <div class="hint" id="rfb-aviso" hidden style="margin-top:8px">Para atuar no e-CAC, o cliente também precisa cadastrar a procuração eletrônica da Receita Federal. Esta procuração não substitui aquela.</div>
         <div class="hint" id="acao-msg" role="status" style="margin-top:8px"></div>
@@ -454,6 +454,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 
   <footer>
     <span>Protótipo · nomes e documentos fictícios · os dados ficam só neste navegador</span>
+    <button class="btn ghost small" id="exporta" type="button">Baixar cópia de segurança</button>
+    <label class="btn ghost small" style="cursor:pointer">Restaurar cópia<input type="file" id="importa" accept=".json" hidden></label>
     <button class="btn ghost small" id="reset" type="button">Restaurar exemplos</button>
   </footer>
 </div>
@@ -475,17 +477,19 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   // dias sem expediente próprios de cada justiça (conferir a portaria anual do tribunal)
   const TRIBUNAIS = {
     tjce: { nome: 'Justiça Estadual do Ceará (TJCE)', fonte: 'Portaria TJCE nº 2.924/2025 (calendário de 2026)', fixos: [[3, 19], [10, 28], [12, 8]], pascoa: [-3] },
-    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3] }
+    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3], natal: true }
   };
   function feriados(ano, extras, tribunal) {
     const t = TRIBUNAIS[tribunal] || { fixos: [], pascoa: [] };
     const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...t.fixos].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
     const p = pascoa(ano); [-48, -47, -2, 60, ...t.pascoa].forEach(n => f.push(iso(soma(p, n))));
+    if (t.natal) { for (let d = 20; d <= 31; d++) f.push(iso(new Date(ano, 11, d, 12))); for (let d = 1; d <= 6; d++) f.push(iso(new Date(ano, 0, d, 12))); }   // Lei 5.010/1966, art. 62, I
     return new Set(f.concat((extras || []).filter(x => String(x).startsWith(String(ano)))));
   }
   // art. 220: suspensão de 20/12 a 20/1, inclusive
   const recesso = d => (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 20);
-  function util(d, extras, tribunal) { return d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d)) && !recesso(d); }
+  const expediente = (d, extras, tribunal) => d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d));
+  function util(d, extras, tribunal) { return expediente(d, extras, tribunal) && !recesso(d); }
   let TRIB = '';
   const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras, TRIB)) x = soma(x, 1); return x; };
   /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), feriadosExtras: ['AAAA-MM-DD'] }
@@ -495,12 +499,14 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1); TRIB = o.tribunal || '';
     if (!(n > 0)) throw new Error('Informe o número de dias do prazo.');
     let publicacao = null, inicio;
-    if (o.disponibilizacao) { publicacao = proximoUtil(soma(dia(o.disponibilizacao), 1), ex); inicio = proximoUtil(soma(publicacao, 1), ex); }
+    // a publicação ocorre no 1º dia com expediente (a suspensão do art. 220 atinge a contagem, não a publicação):
+    // leitura conservadora, que antecipa o início da contagem
+    if (o.disponibilizacao) { let pb = soma(dia(o.disponibilizacao), 1); while (!expediente(pb, ex, TRIB)) pb = soma(pb, 1); publicacao = pb; inicio = proximoUtil(soma(publicacao, 1), ex); }
     else if (o.intimacao) inicio = proximoUtil(soma(dia(o.intimacao), 1), ex);
     else throw new Error('Informe a data de disponibilização ou de intimação.');
     let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
     return { publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
-      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + ')' : 'sem calendário de tribunal',
+      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + (TRIB === 'tjce' && d.getFullYear() > 2026 ? '; o calendário de ' + d.getFullYear() + ' ainda precisa ser conferido' : '') + ')' : 'sem calendário de tribunal',
       aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
   }
   const API = { TRIBUNAIS, calcular, util: (s, ex, t) => util(dia(s), ex, t), feriados, versao: '1.0' };
@@ -1172,7 +1178,7 @@ const EXEMPLOS=[
 let st;
 function inicial(){return {convs:JSON.parse(JSON.stringify(EXEMPLOS)),sel:"c1",seq:413,simN:0}}
 function carregar(){try{const s=localStorage.getItem(KEY);if(s){st=JSON.parse(s);return}}catch(e){} st=inicial()}
-function salvarLocal(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+function salvarLocal(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){const t=document.getElementById('base-info');if(t){t.textContent='ATENÇÃO: este navegador não conseguiu guardar a última alteração. Baixe a cópia de segurança agora.';t.style.color='var(--crit)'}}}
 let DBA=null; const HASH={}, FILA={}; const EX_IDS=new Set(EXEMPLOS.map(c=>c.id));
 function salvar(){ salvarLocal(); if(!DBA) return;
   st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
@@ -1223,7 +1229,7 @@ tabs.forEach(b=>b.addEventListener("click",()=>mostrar(b.dataset.view)));
 function contador(){const n=st.convs.filter(c=>c.ficha&&c.ficha.status!=="Concluída").length;document.getElementById("cnt").textContent=n?"("+n+")":""}
 
 // mesa
-let modo="cli";
+let modo="eq";
 function setModo(m){modo=m;document.getElementById("m-cli").setAttribute("aria-pressed",String(m==="cli"));document.getElementById("m-equipe").setAttribute("aria-pressed",String(m==="eq"));document.getElementById("txt").placeholder=m==="cli"?"Digite a mensagem do cliente":"Responda como a equipe";renderQuick()}
 document.getElementById("m-cli").addEventListener("click",()=>setModo("cli"));
 document.getElementById("m-equipe").addEventListener("click",()=>setModo("eq"));
@@ -1299,8 +1305,10 @@ function enviar(tx){
   const c=conv(); const agora=new Date().toISOString();
   if(modo==="eq"){
     c.msgs.push({de:"eq",por:"Equipe",tx,em:agora});
-    if(c.ficha){if(!c.ficha.primeiraResp)c.ficha.primeiraResp=new Date().toISOString();c.ficha.log.push("Equipe respondeu ao cliente");if(c.ficha.status==="Nova")c.ficha.status="Em andamento"}
-    salvar();renderMesa();return;
+    const vivo=typeof lvTimer!=="undefined"&&lvTimer, n=String(c.tel||"").replace(/\D/g,""), wa=n.length>=10?"https://wa.me/"+(n.startsWith("55")?n:"55"+n)+"?text="+encodeURIComponent(tx):"";
+    if(!vivo&&wa){ try{ window.open(wa,"_blank","noopener") }catch(e){} const t=document.getElementById("base-info"); if(t) t.innerHTML='Resposta registrada. Para chegar ao cliente, envie pelo WhatsApp do escritório: <a href="'+wa+'" target="_blank" rel="noopener">abrir conversa com o texto pronto</a>.'; }
+    if(c.ficha){if(!c.ficha.primeiraResp)c.ficha.primeiraResp=new Date().toISOString();c.ficha.log.push(vivo?"Equipe respondeu ao cliente":"Resposta preparada e aberta no WhatsApp do escritório");if(c.ficha.status==="Nova")c.ficha.status="Em andamento"}
+    salvar();renderMesa(); if(innerWidth<760){ const ch=document.getElementById("msgs"); if(ch) ch.scrollIntoView({block:"end"}) } return;
   }
   c.msgs.push({de:"cli",tx,em:agora});
   if(tx==="0"){c.msgs.push({de:"sys",tx:"Cliente pediu atendimento humano. A conversa foi marcada para a equipe.",em:agora});salvar();renderMesa();return}
@@ -1546,8 +1554,8 @@ function registrar(txt){
   if(c&&c.ficha){c.ficha.log.push(txt);salvar()}
   document.getElementById("acao-msg").textContent=(c&&c.ficha?txt+": registrado no histórico da ficha de "+c.nome+".":"Simulação: "+txt.toLowerCase()+". Nenhuma ficha vinculada: abra pela conversa do cliente para registrar.");
 }
-document.getElementById("enviar-ass").addEventListener("click",()=>registrar("Documento enviado ao cliente para assinatura"));
-document.getElementById("salvar-pasta").addEventListener("click",()=>registrar("Documento salvo na pasta do cliente"));
+document.getElementById("enviar-ass").addEventListener("click",()=>registrar("Marcado como enviado ao cliente para assinatura"));
+document.getElementById("salvar-pasta").addEventListener("click",()=>registrar("Marcado como salvo na pasta do cliente"));
 
 
 // ---------- modelos de documentos (30/10/2026) ----------
@@ -1762,6 +1770,14 @@ document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.c
   function toastPP(t){ const b=$("pp-copia"); if(b) b.textContent=t }
 })();
 
+// ---------- cópia de segurança (30/10/2026) ----------
+document.getElementById("exporta").addEventListener("click",async()=>{ const nome="atendimento-rd-"+new Date().toISOString().slice(0,10)+".json", blob=new Blob([JSON.stringify(st)],{type:"application/json"});
+  try{ if(window.claude&&window.claude.use){ const dl=await window.claude.use("downloads"); if(dl){ await dl.save({filename:nome,data:blob}); return } } }catch(e){}
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=nome; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500) });
+document.getElementById("importa").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; const info=document.getElementById("base-info");
+  try{ const o=JSON.parse(await f.text()); if(!o||!Array.isArray(o.convs)) throw new Error("arquivo não é uma cópia do Atendimento RD");
+    const ids=new Set(st.convs.map(c=>c.id)); let n=0; o.convs.forEach(c=>{ if(!ids.has(c.id)){ st.convs.push(c); n++ } }); st.seq=Math.max(st.seq||0,o.seq||0); salvar(); renderMesa();
+    info.textContent=n+" conversa(s) restaurada(s). As que já existiam foram mantidas como estão." }catch(err){ info.textContent="Não foi possível restaurar: "+err.message+"." } });
 // indicadores
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}
 function renderInd(){
@@ -1789,9 +1805,9 @@ function renderRegras(){
   document.getElementById("regras").innerHTML=MENU.map(([n,k])=>{const r=ROTAS[k];return '<tr><td><span class="mono">'+n+'.</span> '+r.nome+'</td><td>'+r.setor+'</td><td>'+r.resp+'</td><td><span class="pill '+r.nivel+'">'+r.sla+' h úteis</span></td><td>CPF/CNPJ; '+(k==="processo"||k==="urgencia"?"número do processo ou foto do documento; ":"")+'descrição com 30 caracteres ou mais</td></tr>'}).join("");
 }
 
-document.getElementById("reset").addEventListener("click",()=>{ const b=document.getElementById("reset"); if(b.dataset.ok!=="1"){ b.dataset.ok="1"; b.textContent="Confirmar: apagar conversas e voltar aos exemplos"; setTimeout(()=>{b.dataset.ok="";b.textContent="Restaurar exemplos"},5000); return } b.dataset.ok=""; b.textContent="Restaurar exemplos"; st=inicial();salvar();setModo("cli");escolherCaso("pj");const v=tabs.find(b=>b.getAttribute("aria-selected")==="true").dataset.view;mostrar(v)});
+document.getElementById("reset").addEventListener("click",()=>{ const b=document.getElementById("reset"); if(b.dataset.ok!=="1"){ b.dataset.ok="1"; b.textContent="Confirmar: apagar conversas e voltar aos exemplos"; setTimeout(()=>{b.dataset.ok="";b.textContent="Restaurar exemplos"},5000); return } b.dataset.ok=""; b.textContent="Restaurar exemplos"; st=inicial();salvar();setModo("eq");escolherCaso("pj");const v=tabs.find(b=>b.getAttribute("aria-selected")==="true").dataset.view;mostrar(v)});
 
-carregar(); setModo("cli"); renderMesa();
+carregar(); setModo("eq"); renderMesa();
 })();
 </script>
 

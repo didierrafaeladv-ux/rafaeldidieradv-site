@@ -92,6 +92,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
 @media (max-width:1100px){.board{grid-template-columns:repeat(3,minmax(0,1fr))}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:first-child{grid-column:1/-1}}
 @media (max-width:640px){.board{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr)}h1{font-size:23px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.metas{contain:inline-size;min-width:0;margin:0 0 14px;border:1px solid var(--linha,#d9d4c7);border-radius:10px;padding:8px 14px;background:var(--card,#fff)}.metas summary{cursor:pointer;font-weight:600}.metas table{width:100%;border-collapse:collapse;font-size:.88rem;margin:8px 0}.metas th,.metas td{text-align:left;padding:6px;border-top:1px solid var(--linha,#e5e0d4);vertical-align:top}.m-ok{color:#1e6b3a;font-weight:600}.m-nao{color:#9b2c1f;font-weight:600}#metas-c{overflow-x:auto}
 </style>
 </head><body>
 
@@ -115,6 +116,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
   <div class="demo" id="demo-faixa" hidden></div>
 
   <section class="kpis" aria-label="Indicadores" id="kpis"></section>
+  <details class="metas" id="metas"><summary>Metas do trimestre (Comercial)</summary><div id="metas-c"></div></details>
 
   <div class="filtros" role="search">
     <input id="f-busca" type="search" placeholder="Buscar por nome, empresa ou próxima ação" aria-label="Buscar">
@@ -294,7 +296,27 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
   // junta importação com a base: mesmo id substitui, id novo entra
   function mesclar(base, novos) { const m = new Map(base.map(l => [l.id, l])); novos.forEach(l => m.set(l.id, l)); return [...m.values()]; }
 
-  const API = { lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+  // metas trimestrais do Comercial (nenhuma ligada a honorários). Datas vêm do histórico.
+  function diasUteisEntre(a, b) { let n = 0; const d = new Date(a + 'T12:00:00'), f = new Date(b + 'T12:00:00'); while (d < f) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w && w < 6) n++; } return n; }
+  function inicioTrimestre(hoje) { const [y, m] = hoje.split('-').map(Number); return y + '-' + String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0') + '-01'; }
+  function metas(leads, hoje, desde) {
+    desde = desde || inicioTrimestre(hoje);
+    const doPeriodo = leads.filter(l => (l.criado || '') >= desde);
+    const pct = (a, b) => b ? a / b : null;
+    const contatos = doPeriodo.map(l => (l.hist || []).find(h => h.canal !== 'Funil')).filter(Boolean);
+    const comRetorno = doPeriodo.filter(l => { const h = (l.hist || []).find(x => x.canal !== 'Funil'); return h && diasUteisEntre(l.criado, h.data) <= 1; }).length;
+    const reun = doPeriodo.map(l => [l, (l.hist || []).find(h => h.canal === 'Funil' && /para “Primeira reunião”/.test(h.nota))]).filter(x => x[1]);
+    const perd = doPeriodo.filter(l => l.etapa === 'perdido');
+    return {
+      desde, total: doPeriodo.length,
+      retorno: { v: pct(comRetorno, doPeriodo.length), meta: 0.9, n: comRetorno, de: doPeriodo.length, semRegistro: doPeriodo.length - contatos.length },
+      frios: { v: leads.filter(l => semContato(l, hoje)).length, meta: 0 },
+      reuniao: { v: pct(reun.filter(([l, h]) => diasUteisEntre(l.criado, h.data) <= 3).length, reun.length), meta: 0.8, de: reun.length },
+      motivo: { v: pct(perd.filter(l => String(l.motivoPerda || '').trim()).length, perd.length), meta: 1, de: perd.length }
+    };
+  }
+
+  const API = { metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -427,7 +449,17 @@ function renderBoard(){
 }
 function renderDemo(){ const n=leads.filter(l=>ehDemo(l)).length, f=$("demo-faixa"); f.hidden=!n;
   if(n) f.innerHTML='<span>'+n+' lead(s) fictício(s) de demonstração. Pode testar à vontade: arrastar, editar e excluir.</span><button class="btn ghost sm" type="button" id="demo-limpa">Remover demonstração</button>'; }
-function render(){ renderKpis(); renderFiltros(); renderBoard(); renderDemo() }
+function renderMetas(){
+  const h=HOJE(), vis=CRM.filtrar(leads,filtro), m=CRM.metas(vis,h), p=v=>v==null?"—":Math.round(v*100)+"%";
+  const linha=(nome,val,meta,ok,obs)=>'<tr><th scope="row">'+nome+'</th><td>'+val+'</td><td>'+meta+'</td><td class="'+(ok==null?'':ok?'m-ok':'m-nao')+'">'+(ok==null?'sem dados':ok?'Atingida':'Abaixo')+'</td><td>'+obs+'</td></tr>';
+  $("metas-c").innerHTML='<p class="s">Leads criados desde '+m.desde.split("-").reverse().join("/")+' ('+m.total+'), respeitando os filtros acima. Para ver só a Ana, filtre o responsável.</p><table><thead><tr><th>Meta</th><th>Resultado</th><th>Alvo</th><th>Situação</th><th>Como é medido</th></tr></thead><tbody>'+
+   linha('Retorno rápido',p(m.retorno.v),'90%',m.retorno.v==null?null:m.retorno.v>=.9,'1º contato registrado até o dia útil seguinte ('+m.retorno.n+' de '+m.retorno.de+'). O prazo exato de 2 h úteis fica no Atendimento.')+
+   linha('Nenhum lead esquecido',String(m.frios.v),'0',m.frios.v===0,'leads em aberto sem contato há mais de 7 dias')+
+   linha('1ª reunião ágil',p(m.reuniao.v),'80%',m.reuniao.v==null?null:m.reuniao.v>=.8,'chegou à Primeira reunião em até 3 dias úteis ('+m.reuniao.de+' lead(s))')+
+   linha('Motivo de perda registrado',p(m.motivo.v),'100%',m.motivo.v==null?null:m.motivo.v>=1,m.motivo.de+' lead(s) em Não avançou')+
+   linha('Satisfação','—','9 ou mais',null,'pesquisa fora do CRM; anote a nota no histórico')+'</tbody></table><p class="s">Nenhuma meta depende do valor dos honorários (EAOAB, art. 34, III).</p>';
+}
+function render(){ renderKpis(); renderMetas(); renderFiltros(); renderBoard(); renderDemo() }
 
 // arrastar entre etapas
 $("board").addEventListener("dragstart",e=>{ const c=e.target.closest(".card"); if(!c) return; arrastando=c.dataset.id; c.classList.add("drag"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",arrastando) });

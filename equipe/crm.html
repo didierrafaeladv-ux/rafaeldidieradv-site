@@ -240,12 +240,17 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     return e;
   }
 
+  // valor em reais digitado: "1.500" e "1.500,00" = 1500; "1500.5" = 1500,5; vazio = ''
+  function lerValor(tx) { const t = String(tx == null ? '' : tx).replace(/[^\d,.-]/g, ''); if (t === '') return '';
+    if (/,/.test(t)) return +t.replace(/\./g, '').replace(',', '.');
+    if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) return +t.replace(/\./g, '');
+    return +t; }
   // ---------- CSV (separador ";", compatível com o Excel em português) ----------
   const COLS = [['id', 'id'], ['nome', 'Nome'], ['empresa', 'Empresa'], ['contato', 'Contato'], ['area', 'Área do Direito'], ['origem', 'Origem'],
     ['valor', 'Valor estimado (R$)'], ['resp', 'Responsável'], ['etapa', 'Etapa'], ['ultimo', 'Último contato'], ['proxAcao', 'Próxima ação'],
     ['proxData', 'Data da próxima ação'], ['motivoPerda', 'Motivo de perda'], ['lgpdStatus', 'Consentimento LGPD'], ['lgpdData', 'Data do consentimento'], ['lgpdForma', 'Forma do consentimento'],
     ['criado', 'Criado em'], ['hist', 'Histórico (JSON)']];
-  const cel = v => { const s = String(v == null ? '' : v); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const cel = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = "'" + s;   /* evita fórmula ao abrir no Excel */ return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   function paraCSV(leads) {
     const linhas = [COLS.map(c => c[1]).join(';')];
     leads.forEach(l => {
@@ -257,6 +262,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     return '﻿' + linhas.join('\r\n');
   }
   function lerCSV(txt) {
+    if (!String(txt || '').replace(/^\uFEFF/, '').trim()) throw new Error('O arquivo está vazio.');
     const s = String(txt).replace(/^﻿/, ''), sep = (s.split(/\r?\n/)[0].match(/;/g) || []).length >= (s.split(/\r?\n/)[0].match(/,/g) || []).length ? ';' : ',';
     const rows = []; let row = [], c = '', q = false;
     for (let i = 0; i < s.length; i++) { const ch = s[i];
@@ -275,11 +281,12 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
       const g = k => idx[k] >= 0 ? (r[idx[k]] || '').trim() : '';
       let hist = []; try { hist = g('hist') ? JSON.parse(g('hist')) : []; } catch (e) { erros.push('linha ' + (n + 2) + ': histórico ilegível, importado sem ele'); }
       const ls = norm(g('lgpdStatus'));
-      const valorTx = g('valor').replace(/[^\d,.-]/g, ''); const valor = valorTx === '' ? '' : +(/,/.test(valorTx) ? valorTx.replace(/\./g, '').replace(',', '.') : valorTx);
+      const valor = lerValor(g('valor'));
       const l = { id: g('id') || 'l' + Date.now().toString(36) + n, nome: g('nome'), empresa: g('empresa'), contato: g('contato'), area: g('area'), origem: g('origem'),
         valor: Number.isFinite(valor) ? valor : '', resp: g('resp'), etapa: etapaDe(g('etapa')), motivoPerda: g('motivoPerda'), ultimo: data(g('ultimo')), proxAcao: g('proxAcao'), proxData: data(g('proxData')),
         lgpd: { status: ls === 'sim' ? 'sim' : ls === 'nao' ? 'nao' : 'pendente', data: data(g('lgpdData')), forma: g('lgpdForma') }, criado: data(g('criado')) || hojeISO(), hist: Array.isArray(hist) ? hist : [] };
       if (!l.nome) { erros.push('linha ' + (n + 2) + ': sem nome, ignorada'); return; }
+      if (l.etapa === 'perdido' && !l.motivoPerda) erros.push('“' + l.nome + '” está em Não avançou sem motivo de perda: informe ao editar');
       leads.push(l);
     });
     return { leads, erros };
@@ -287,7 +294,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
   // junta importação com a base: mesmo id substitui, id novo entra
   function mesclar(base, novos) { const m = new Map(base.map(l => [l.id, l])); novos.forEach(l => m.set(l.id, l)); return [...m.values()]; }
 
-  const API = { ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+  const API = { lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -428,7 +435,7 @@ function moverPara(id,etapa){ const l=leads.find(x=>x.id===id);
   persistir(l); render(); toast("“"+l.nome+"” movido para "+CRM.ETAPAS.find(e=>e.k===etapa).n+".") }
 $("board").addEventListener("change",e=>{ const s=e.target.closest("select[data-mover]"); if(s) moverPara(s.dataset.mover,s.value) });
 $("board").addEventListener("click",e=>{ if(e.target.closest("select")) return; const c=e.target.closest(".card"); if(c) abrir(c.dataset.id) });
-$("board").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList.contains("card")) abrir(e.target.dataset.id) });
+$("board").addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target.classList.contains("card")){ e.preventDefault(); abrir(e.target.dataset.id) } });
 document.addEventListener("click",e=>{ if(e.target.id!=="demo-limpa") return; leads.filter(l=>ehDemo(l)).map(l=>l.id).forEach(apagar); render(); toast("Demonstração removida. O funil está pronto para os leads reais.") });
 
 // filtros
@@ -458,18 +465,18 @@ $("h-add").addEventListener("click",()=>{ const l=leads.find(x=>x.id===editando)
 $("d-del").addEventListener("click",()=>{ const b=$("d-del"); if(!b.classList.contains("arm")){ b.classList.add("arm"); b.textContent="Confirmar exclusão definitiva"; return }
   const l=leads.find(x=>x.id===editando); if(l){ apagar(l.id); toast("Lead “"+l.nome+"” excluído.") } fecha(); render() });
 $("form").addEventListener("submit",e=>{ e.preventDefault();
-  const vt=$("l-valor").value.replace(/[^\d,.-]/g,""), valor=vt===""?"":+(/,/.test(vt)?vt.replace(/\./g,"").replace(",","."):vt);
+  const valor=CRM.lerValor($("l-valor").value);
   const lg=(document.querySelector('input[name="lgpd"]:checked')||{}).value||"";
   const base=editando?leads.find(x=>x.id===editando):{id:"l"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),criado:HOJE(),hist:[]};
   const novo=Object.assign({},base,{nome:$("l-nome").value.trim(),empresa:$("l-empresa").value.trim(),contato:$("l-contato").value.trim(),area:$("l-area").value,origem:$("l-origem").value,
-    valor:Number.isFinite(valor)?valor:NaN,resp:$("l-resp").value.trim(),ultimo:$("l-ultimo").value,proxAcao:$("l-prox").value.trim(),proxData:$("l-proxdata").value,
+    valor:valor===""?"":(Number.isFinite(valor)?valor:NaN),resp:$("l-resp").value.trim(),ultimo:$("l-ultimo").value,proxAcao:$("l-prox").value.trim(),proxData:$("l-proxdata").value,
     lgpd:lg?{status:lg,data:$("lg-data").value,forma:$("lg-forma").value.trim()}:null, motivoPerda:$("l-etapa").value==="perdido"?$("l-motivo").value:""});
   const et=$("l-etapa").value; novo.etapa=base.etapa||et;
   const errs=CRM.validar(Object.assign({},novo,{etapa:et})); if(errs.length){ $("d-erro").textContent="Confira: "+errs.join(", ")+"."; return }
   if(editando&&et!==novo.etapa) CRM.mover(novo,et,HOJE()); else novo.etapa=et;
   if(!editando) novo.hist=[{data:HOJE(),canal:"Cadastro",nota:"Lead cadastrado",por:""}];
   if(editando) leads=leads.map(x=>x.id===novo.id?novo:x); else leads.push(novo);
-  persistir(novo); fecha(); render(); toast(editando?"Lead atualizado.":"Lead “"+novo.nome+"” cadastrado.") });
+  const eraEdicao=!!editando; persistir(novo); fecha(); render(); toast(eraEdicao?"Lead “"+novo.nome+"” atualizado.":"Lead “"+novo.nome+"” cadastrado.") });
 
 // CSV
 async function salvaArquivo(nome,txt){ const blob=new Blob([txt],{type:"text/csv;charset=utf-8"});

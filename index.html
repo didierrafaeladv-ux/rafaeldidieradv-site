@@ -110,7 +110,7 @@ textarea{min-height:110px;resize:vertical}
 .modal .x{justify-self:end;background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1}
 
 /* whatsapp float */
-.wa{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#1f8a4c;color:#fff;border-radius:999px;padding:.75rem 1.1rem;font-weight:600;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:8;font-size:.9rem}
+.wa{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#18733f;color:#fff;border-radius:999px;padding:.75rem 1.1rem;font-weight:600;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:8;font-size:.9rem}
 
 footer{padding-block:2.5rem;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
 footer .wrap{display:grid;gap:.5rem}
@@ -467,10 +467,11 @@ footer .wrap{display:grid;gap:.5rem}
     const notas=num('#kNotas'),mat=Math.min(num('#kMat'),100),meses=Math.min(Math.max(Math.round(num('#kMeses'))||0,1),60),devido=num('#kDevido');
     const out=$('#calcOut');
     if(!notas){out.innerHTML='<p class="muted">Informe o valor médio mensal das notas.</p>';return}
+    if(!(num('#kMeses')>=1)){out.innerHTML='<p class="muted">Informe em quantos meses houve retenção (de 1 a 60).</p>';return}
     const retMes=notas*(1-mat/100)*.11, saldoMes=Math.max(0,retMes-devido), total=saldoMes*meses;
     const txt='Simulação de INSS retido (site)\nNotas/mês: '+brl(notas)+'\nMateriais: '+mat+'%\nMeses: '+meses+'\nINSS devido/mês: '+brl(devido)+'\nRetido/mês: '+brl(retMes)+'\nSaldo estimado no período: '+brl(total);
     out.innerHTML=total>0
-      ? '<span class="eyebrow">Estimativa</span><h3>'+brl(total)+'</h3><p class="muted">Retenção estimada de '+brl(retMes)+' por mês, contra '+brl(devido)+' devidos sobre a folha: saldo de '+brl(saldoMes)+' por mês, em '+meses+' meses.</p>'+(devido===0?'<p class="note">Sem o INSS devido sobre a folha, o saldo fica superestimado. Peça o valor ao seu contador.</p>':'')+'<a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/'+WA+'?text='+enc(txt+'\n\nGostaria de uma análise.')+'">Enviar para análise pelo WhatsApp</a>'
+      ? '<span class="eyebrow">Estimativa</span><h3>'+brl(total)+'</h3><p class="muted">Retenção estimada de '+brl(retMes)+' por mês, contra '+brl(devido)+' devidos sobre a folha: saldo de '+brl(saldoMes)+' por mês, em '+meses+(meses===1?' mês':' meses').</p>'+(devido===0?'<p class="note">Sem o INSS devido sobre a folha, o saldo fica superestimado. Peça o valor ao seu contador.</p>':'')+'<a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/'+WA+'?text='+enc(txt+'\n\nGostaria de uma análise.')+'">Enviar para análise pelo WhatsApp</a>'
       : '<p class="muted">Pelos valores informados, o INSS devido sobre a folha absorve a retenção e não sobra saldo a restituir. Se as retenções variaram ao longo dos meses, vale conferir competência por competência.</p>';
   });
 

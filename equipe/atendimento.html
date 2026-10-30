@@ -378,7 +378,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
           <h3 style="margin-top:16px">3. Modelo e opções</h3>
           <div class="grid2" style="margin-top:6px">
             <div class="fld"><label for="modelo">Modelo</label><select id="modelo"><option value="proc">Procuração ad judicia et extra</option><option value="lgpd">Termo de ciência sobre tratamento de dados</option></select></div>
-            <div class="fld"><label for="cidade">Local e data</label><input id="cidade" value="Sobral/CE, 29 de outubro de 2026"></div>
+            <div class="fld"><label for="cidade">Local e data</label><input id="cidade" value=""></div>
+            <div class="fld"><label for="v-END_ESC">Endereço do escritório</label><input id="v-END_ESC" placeholder="Rua, número, bairro, Sobral/CE"></div>
           </div>
           <div id="op-proc">
             <div class="fld" style="margin-top:10px"><span style="font-weight:600;font-size:13.5px">Poderes especiais (art. 105 do CPC)</span><span class="hint">Nenhum vem marcado. Marque só os que o caso exige.</span></div>
@@ -946,7 +947,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     ['urgencia', /cita(ç|c)[aã]o|citad[oa]|penhora|bloque(io|aram|ado)|sisbajud|bacenjud|mandado|oficial de justi(ç|c)a|prazo (vence|termina|corre|de \d+ dias)|tenho \d+ dias|leil[aã]o/i],
     ['processo', RE_CNJ, /intima(ç|c)[aã]o|audi[eê]ncia|processo n|andamento do processo|senten(ç|c)a|recurso/i],
     ['fin', /boleto|honor[aá]rio|pagamento|pix|nota fiscal do escrit|parcela do contrato|fatura/i],
-    ['docs', /segue[m]? (o|a|os|as)? ?(documento|arquivo|contrato|certid)|estou enviando|enviei (os|o|a) (documento|arquivo)|em anexo/i]
+    ['docs', /segue[m]? (o|a|os|as)? ?(documento|arquivo|contrato|certid)|estou enviando|enviei (os|o|a) (documento|arquivo)|em anexo/i],
+    ['agenda', /\bagend(ar|amento|ad[oa])|marcar (uma )?(reuni[aã]o|hor[aá]rio|conversa)|remarcar|hor[aá]rio dispon[ií]vel/i]
   ];
 
   function triagem(r, contato) {
@@ -1127,7 +1129,7 @@ function prio(f){const s=score(f);return s>=9?"P1":s>=6?"P2":"P3"}
 const PCLS={P1:"crit",P2:"warn",P3:"info"};
 function novaFicha(c,rota,doc,resumo,origem){
   st.seq++; const r=ROTAS[rota];
-  const f={proto:"RD-2026-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:new Date().toISOString(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
+  const f={proto:"RD-2026-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:(()=>{const u=(c.msgs||[]).filter(m=>m.de==="cli").map(m=>m.em).filter(Boolean).sort().pop(); return u&&Date.parse(u)<=Date.now()?new Date(u).toISOString():new Date().toISOString()})(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
   if(rota==="nova"&&!c.cliente){f.status="Aguardando checagem de conflito";f.log.push("Checagem de conflito pedida à Administração")}
   if(rota==="urgencia")f.log.push("Alerta imediato enviado à Direção e à Controladoria");
   const fl=faltando(f); f.completoEntrada=fl.length===0;
@@ -1198,7 +1200,11 @@ function renderFicha(){
    '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
-  document.getElementById("ir-docs").addEventListener("click",()=>{escolherCaso(c.nome==="Fernanda Lopes"?"pf":"pj");mostrar("docs")});
+  document.getElementById("ir-docs").addEventListener("click",()=>{ const dg=String(c.doc||f.doc||"").replace(/\D/g,""); docsConvId=c.id;
+    if(c.nome==="Fernanda Lopes"||c.nome==="Comercial Serra Alta Ltda"){ escolherCaso(c.nome==="Fernanda Lopes"?"pf":"pj"); mostrar("docs"); return }
+    escolherCaso(dg.length===11?"pf":"pj"); mostrar("docs"); const n=document.getElementById("cn-num"), m=document.getElementById("cn-msg");
+    if(dg.length===14){ n.value=Modelos.fmtDoc(dg); n.dispatchEvent(new Event("input")); n.closest("details").open=true; m.textContent="Cliente "+c.nome+": consulte o CNPJ para preencher a ficha com os dados reais. Os campos abaixo são de demonstração até a consulta." }
+    else m.textContent="Cliente "+c.nome+": os campos abaixo são de demonstração. Para documentos com os dados deste cliente, use “📎 Modelo” na conversa."; });
 }
 function renderMesa(){renderInbox();renderMsgs();renderQuick();renderFicha();contador()}
 
@@ -1219,6 +1225,7 @@ function enviar(tx){
   } else if(c.etapa==="doc"){
     const dig=tx.replace(/\D/g,"");
     if(dig.length!==11&&dig.length!==14)bot(c,"Não reconheci o número. Envie o CPF (11 dígitos) ou o CNPJ (14 dígitos).");
+    else if(dig.length===11?!Leitura.cpfValido(dig):!CNPJ.valido(dig))bot(c,"Esse número é inválido: o dígito verificador não confere. Confira e envie de novo, por favor.");
     else{c.doc=tx;c.etapa="menu";bot(c,MENU_TXT)}
   } else if(c.etapa==="menu"){
     const op=MENU.find(([n])=>n===tx);
@@ -1288,7 +1295,7 @@ const sRota=document.getElementById("s-rota"); MENU.forEach(([n,k])=>sRota.inser
 document.getElementById("abrir-site").addEventListener("click",()=>{const p=document.getElementById("sitepanel");p.hidden=!p.hidden;if(!p.hidden)document.getElementById("s-nome").focus()});
 document.getElementById("s-ex").addEventListener("click",()=>{
   document.getElementById("s-nome").value="Auto Peças Cruzeiro Ltda";document.getElementById("s-tel").value="(88) 9 0000-8808";
-  document.getElementById("s-doc").value="22.333.444/0001-55";document.getElementById("s-cli").value="1";sRota.value="processo";
+  document.getElementById("s-doc").value="22.333.444/0001-81";document.getElementById("s-cli").value="1";sRota.value="processo";
   document.getElementById("s-proc").value="";document.getElementById("s-desc").value="Recebemos intimação para pagar débito de ICMS na execução fiscal e queremos saber o prazo para defesa.";
 });
 document.getElementById("fsite").addEventListener("submit",ev=>{
@@ -1297,7 +1304,7 @@ document.getElementById("fsite").addEventListener("submit",ev=>{
   const e={};
   if(!v.nome)e.nome="Informe o nome ou a razão social.";
   if(v.tel.replace(/\D/g,"").length<10)e.tel="Informe o WhatsApp com DDD.";
-  const dg=v.doc.replace(/\D/g,""); if(dg.length!==11&&dg.length!==14)e.doc="Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).";
+  const dg=v.doc.replace(/\D/g,""); if(dg.length!==11&&dg.length!==14)e.doc="Informe um CPF (11 dígitos) ou CNPJ (14 dígitos)."; else if(dg.length===11?!Leitura.cpfValido(dg):!CNPJ.valido(dg))e.doc="Número inválido: o dígito verificador não confere.";
   if(!v.rota)e.rota="Escolha o assunto.";
   if(v.desc.length<30)e.desc="Conte um pouco mais: pelo menos 30 caracteres.";
   const map={nome:"s-nome",tel:"s-tel",doc:"s-doc",rota:"s-rota",desc:"s-desc"};
@@ -1364,7 +1371,7 @@ function aplicaCNPJ(n){ document.getElementById("cn-cola").value=JSON.stringify(
 document.getElementById("cn-auto").addEventListener("click",async()=>{ const msg=document.getElementById("cn-msg"), c=CNPJ.limpar(document.getElementById("cn-num").value);
   if(!CNPJ.valido(c)){msg.textContent="Digite um CNPJ válido.";return}
   msg.textContent="Consultando a Receita…";
-  for(const f of CNPJ.fontes(c)){ try{ const r=await fetch(f.url); if(!r.ok) continue; document.getElementById("cn-cola").value=await r.text(); document.getElementById("cn-aplica").click(); return }catch(e){} }
+  for(const f of CNPJ.fontes(c)){ try{ const r=await fetch(f.url); if(!r.ok) continue; const tx=await r.text(); CNPJ.normalizar(tx); document.getElementById("cn-cola").value=tx; document.getElementById("cn-aplica").click(); return }catch(e){} }
   msg.textContent="A busca automática só funciona com o Atendimento hospedado no domínio do escritório. Aqui, use os links acima e cole o resultado."; });
 const LVK="rd-aovivo"; let lv={url:"",chave:"",desde:""}, lvTimer=null;
 try{ lv=Object.assign(lv,JSON.parse(localStorage.getItem(LVK)||"{}")) }catch(e){}
@@ -1407,6 +1414,10 @@ function pendencias(){
   });
   if(c.tipo==="PJ"&&!document.getElementById("chk-poderes").checked)out.push("Confirme os poderes do representante no contrato social.");
   if(!document.getElementById("cidade").value.trim())out.push("Informe local e data.");
+  if(!val("END_ESC"))out.push("Informe o endereço do escritório (fica guardado neste navegador).");
+  if(c.tipo==="PF"&&val("CPF")&&!Leitura.cpfValido(val("CPF")))out.push("O CPF tem dígito verificador inválido: confira a leitura.");
+  if(c.tipo==="PJ"&&val("CNPJ")&&!CNPJ.valido(val("CNPJ")))out.push("O CNPJ tem dígito verificador inválido: confira.");
+  if(c.tipo==="PJ"&&val("REP_CPF")&&!Leitura.cpfValido(val("REP_CPF")))out.push("O CPF do representante tem dígito verificador inválido: confira.");
   return out;
 }
 function qualificacao(){
@@ -1424,7 +1435,7 @@ document.getElementById("gerar").addEventListener("click",()=>{
     const pod=PODERES.filter((p,i)=>document.getElementById("pod-"+i).checked);
     html='<h4>PROCURAÇÃO AD JUDICIA ET EXTRA</h4>'+
       '<p><b>OUTORGANTE:</b> '+qualificacao()+'.</p>'+
-      '<p><b>OUTORGADO:</b> CARLOS RAFAEL AGUIAR DIDIER, advogado inscrito na OAB/CE sob o nº 24.502, com escritório profissional em <span class="var">{{ENDERECO_ESCRITORIO}}</span>.</p>'+
+      '<p><b>OUTORGADO:</b> CARLOS RAFAEL AGUIAR DIDIER, advogado inscrito na OAB/CE sob o nº 24.502, com escritório profissional em '+V("END_ESC")+'.</p>'+
       '<p><b>PODERES:</b> Pelo presente instrumento, o(a) outorgante nomeia e constitui seu bastante procurador o outorgado acima qualificado, a quem confere os poderes da cláusula ad judicia et extra para o foro em geral, em qualquer juízo, instância ou tribunal, podendo propor as ações cabíveis e defendê-lo(a) nas contrárias, seguindo umas e outras até decisão final, interpor recursos, bem como representá-lo(a) perante órgãos e repartições públicas federais, estaduais e municipais, inclusive administrações tributárias, podendo ainda substabelecer, com ou sem reserva de poderes'+(pod.length?', conferindo-lhe também os poderes especiais para <span class="var">'+esc(pod.join(", "))+'</span>':'')+'.</p>'+
       '<p>'+local+'.</p><div class="assin"><span></span>'+assinante()+'</div>';
   } else {
@@ -1444,10 +1455,11 @@ document.getElementById("copiar").addEventListener("click",()=>{
   const sel=()=>{const r=document.createRange();r.selectNodeContents(document.getElementById("paper"));const s=getSelection();s.removeAllRanges();s.addRange(r);msg.textContent="Texto selecionado. Use Ctrl+C para copiar."};
   try{navigator.clipboard.writeText(gerado).then(()=>msg.textContent="Texto copiado.",sel)}catch(e){sel()}
 });
+let docsConvId=null;
 function registrar(txt){
-  const nome=CASOS[caso].nome; const c=st.convs.find(x=>x.nome===nome);
+  const nome=CASOS[caso].nome; const c=st.convs.find(x=>x.id===docsConvId)||st.convs.find(x=>x.nome===nome);
   if(c&&c.ficha){c.ficha.log.push(txt);salvar()}
-  document.getElementById("acao-msg").textContent="Simulação: "+txt.toLowerCase()+". O registro aparece no histórico da ficha.";
+  document.getElementById("acao-msg").textContent=(c&&c.ficha?txt+": registrado no histórico da ficha de "+c.nome+".":"Simulação: "+txt.toLowerCase()+". Nenhuma ficha vinculada: abra pela conversa do cliente para registrar.");
 }
 document.getElementById("enviar-ass").addEventListener("click",()=>registrar("Documento enviado ao cliente para assinatura"));
 document.getElementById("salvar-pasta").addEventListener("click",()=>registrar("Documento salvo na pasta do cliente"));
@@ -1644,6 +1656,11 @@ document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.c
   docAtual={nome:m.arquivo||"arquivo do WhatsApp",origem:"whatsapp"}; document.getElementById("doc-box").hidden=false; document.getElementById("doc-nome").textContent=docAtual.nome;
   document.getElementById("doc-tx").value=m.extraido||""; if(m.extraido) lerDocumento(); else docMsg("O n8n não extraiu texto deste arquivo (foto sem OCR). Abra o arquivo, copie o texto e cole acima.") });
 
+// local, data e endereço do escritório (30/10/2026)
+(function(){ const M=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"], d=new Date();
+  document.getElementById("cidade").value="Sobral/CE, "+d.getDate()+" de "+M[d.getMonth()]+" de "+d.getFullYear();
+  const e=document.getElementById("v-END_ESC"); try{ e.value=localStorage.getItem("rd-end-escritorio")||"" }catch(x){}
+  e.addEventListener("change",()=>{ try{ localStorage.setItem("rd-end-escritorio",e.value.trim()) }catch(x){} }); })();
 // indicadores
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}
 function renderInd(){
@@ -1671,7 +1688,7 @@ function renderRegras(){
   document.getElementById("regras").innerHTML=MENU.map(([n,k])=>{const r=ROTAS[k];return '<tr><td><span class="mono">'+n+'.</span> '+r.nome+'</td><td>'+r.setor+'</td><td>'+r.resp+'</td><td><span class="pill '+r.nivel+'">'+r.sla+' h úteis</span></td><td>CPF/CNPJ; '+(k==="processo"||k==="urgencia"?"número do processo ou foto do documento; ":"")+'descrição com 30 caracteres ou mais</td></tr>'}).join("");
 }
 
-document.getElementById("reset").addEventListener("click",()=>{st=inicial();salvar();setModo("cli");escolherCaso("pj");const v=tabs.find(b=>b.getAttribute("aria-selected")==="true").dataset.view;mostrar(v)});
+document.getElementById("reset").addEventListener("click",()=>{ const b=document.getElementById("reset"); if(b.dataset.ok!=="1"){ b.dataset.ok="1"; b.textContent="Confirmar: apagar conversas e voltar aos exemplos"; setTimeout(()=>{b.dataset.ok="";b.textContent="Restaurar exemplos"},5000); return } b.dataset.ok=""; b.textContent="Restaurar exemplos"; st=inicial();salvar();setModo("cli");escolherCaso("pj");const v=tabs.find(b=>b.getAttribute("aria-selected")==="true").dataset.view;mostrar(v)});
 
 carregar(); setModo("cli"); renderMesa();
 })();

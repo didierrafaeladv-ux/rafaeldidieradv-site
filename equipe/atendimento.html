@@ -125,6 +125,11 @@ td select{width:auto;font-size:13px;padding:5px 8px}
 #md-box{border-top:1px solid var(--line);padding:10px;display:grid;gap:8px;max-height:60vh;overflow:auto}
 #md-prev{white-space:pre-wrap;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:220px;overflow:auto;background:var(--surface)}
 .m .anexo{display:block;font-weight:600;margin-bottom:2px}
+#doc-box{border-top:1px solid var(--line);padding:10px;display:grid;gap:8px;max-height:65vh;overflow:auto}
+.doc-tab{width:100%;border-collapse:collapse;font-size:13px}
+.doc-tab td,.doc-tab th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+.doc-tab input[type=text]{width:100%;min-width:0}
+.m .arq{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;font-size:12.5px}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
 .panel h3{margin:0 0 4px;font-size:15px}
 .cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
@@ -225,6 +230,20 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
         </div>
         <div class="msgs" id="msgs" aria-live="polite"></div>
         <div class="quick" id="quick"></div>
+        <div id="doc-box" hidden>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+            <b style="font-size:14px">Documento recebido</b><button class="btn ghost small" type="button" id="doc-fecha">Fechar</button>
+          </div>
+          <div class="hint">PDF com texto é lido aqui mesmo. Foto: na versão hospedada a leitura é automática; no Claude, copie o texto da foto no celular (opção “copiar texto” da câmera ou da galeria) e cole abaixo. O arquivo não fica guardado aqui: só os dados que você conferir.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label class="btn ghost small" style="cursor:pointer">Escolher arquivo (PDF ou foto)<input type="file" id="doc-arq" accept=".pdf,image/*,.txt" hidden></label>
+            <span class="hint" id="doc-nome"></span>
+          </div>
+          <textarea id="doc-tx" rows="3" placeholder="…ou cole aqui o texto do documento"></textarea>
+          <div><button class="btn small" type="button" id="doc-ler">Ler documento</button></div>
+          <div id="doc-res"></div>
+          <div class="hint" id="doc-msg" role="status"></div>
+        </div>
         <div id="md-box" hidden>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <label class="hint" for="md-sel" style="font-weight:600">Modelo</label>
@@ -232,6 +251,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
             <button class="btn ghost small" type="button" id="md-fecha">Fechar</button>
           </div>
           <div id="md-cnpj" hidden class="hint"></div>
+          <div id="md-blocos" hidden style="display:grid;gap:4px"></div>
           <div class="mdl-campos" id="md-campos"></div>
           <div id="md-prev" hidden></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -241,6 +261,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
           <div class="hint" id="md-msg" role="status"></div>
         </div>
         <form class="compose" id="compose">
+          <button class="btn ghost small" type="button" id="doc-abre" title="Ler um documento recebido e conferir os dados">📄 Documento</button>
           <button class="btn ghost small" type="button" id="md-abre" title="Preencher um modelo com os dados deste cliente e enviar">📎 Modelo</button>
           <input id="txt" autocomplete="off" placeholder="Digite a mensagem do cliente">
           <button class="btn" type="submit">Enviar</button>
@@ -305,9 +326,13 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       <details class="hint" style="margin:6px 0"><summary>Campos preenchidos automaticamente</summary>
         <span class="mono">NOME · CPF · CNPJ · DOCUMENTO (CPF/CNPJ) · TELEFONE · PROTOCOLO · ASSUNTO · RESUMO · DATA · DATA_EXTENSO</span><br>
         Depois de buscar o CNPJ na conversa: <span class="mono">RAZAO_SOCIAL · NOME_FANTASIA · ENDERECO · MUNICIPIO · UF · MUNICIPIO_UF · CEP · EMAIL · CNAE · REPRESENTANTE · CARGO · SITUACAO</span>.
-        Qualquer outro campo (honorários, OAB, número do processo…) é pedido na hora e fica guardado na conversa.</details>
+        Do escritório: <span class="mono">ADVOGADO · OAB · ESCRITORIO · CIDADE_ESCRITORIO</span>. Do processo: <span class="mono">PROCESSO</span> (número CNJ completo, só se o dígito conferir), e <span class="mono">QUALIFICACAO</span> da pessoa jurídica pronta.
+        Qualquer outro campo (honorários, vara, comarca, CDA, valor da causa…) é pedido na hora e fica guardado na conversa.<br>
+        <b>Blocos opcionais</b> (petições em série): escreva <span class="mono">{{#Prescrição}}</span> e <span class="mono">{{/Prescrição}}</span>, cada um sozinho no seu parágrafo; na hora de gerar, a equipe marca quais blocos entram.<br>
+        <b>Área pelo nome do arquivo:</b> “Execução fiscal - Exceção de pré-executividade.docx” já entra na área Execução fiscal.</details>
       <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <label class="btn ghost small" style="cursor:pointer">Enviar modelo (.docx ou .txt)<input type="file" id="mdl-arq" accept=".docx,.txt,.md" hidden></label>
+        <label class="hint" for="mdl-area" style="font-weight:600">Área</label><select id="mdl-area" style="max-width:220px"></select>
+        <label class="btn ghost small" style="cursor:pointer">Enviar modelos (.docx ou .txt)<input type="file" id="mdl-arq" accept=".docx,.txt,.md" multiple hidden></label>
         <button class="btn ghost small" type="button" id="mdl-novo-tx">Escrever modelo de texto</button>
         <span class="hint" id="mdl-msg" role="status"></span>
       </div>
@@ -414,6 +439,108 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 </div>
 
 <script>
+/* Atendimento RD — leitura de documentos recebidos (v1.0, 30/10/2026).
+ * Recebe o TEXTO do documento (PDF com texto, OCR feito no n8n ou texto colado pela equipe), identifica o tipo
+ * e extrai campos com validação (dígitos do CPF, CNPJ e número CNJ). Toda leitura passa por conferência humana:
+ * "alta" = número com dígito verificador conferido; "media" = padrão encontrado; "baixa" = trecho a confirmar.
+ * Navegador (window.Leitura) e node. */
+(function (root) {
+  'use strict';
+  const so = s => String(s || '').replace(/\D/g, '');
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+
+  function cpfValido(c) { const d = so(c); if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+    const dv = n => { let s = 0; for (let i = 0; i < n; i++) s += +d[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
+    return dv(9) === +d[9] && dv(10) === +d[10]; }
+  function cnpjValido(c) { const d = so(c); if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+    const dv = n => { const p = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]; let s = 0; for (let i = 0; i < n; i++) s += +d[i] * p[i]; const r = s % 11; return r < 2 ? 0 : 11 - r; };
+    return dv(12) === +d[12] && dv(13) === +d[13]; }
+  function cnjValido(s) { const d = so(s); if (d.length !== 20) return false; const n = BigInt(d.slice(0, 7) + d.slice(9) + '00'); return Number(98n - (n % 97n)) === +d.slice(7, 9); }
+  const fCPF = d => so(d).replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  const fCNPJ = d => so(d).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const fCNJ = d => so(d).replace(/^(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})$/, '$1-$2.$3.$4.$5.$6');
+  const todos = (t, re) => { const out = []; let m; const r = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'); while ((m = r.exec(t))) out.push(m); return out; };
+
+  const TIPOS = [
+    ['cartao_cnpj', 'Cartão CNPJ', /COMPROVANTE DE INSCRICAO E DE SITUACAO CADASTRAL|CADASTRO NACIONAL DA PESSOA JURIDICA/],
+    ['cda', 'Certidão de dívida ativa', /CERTIDAO DE DIVIDA ATIVA|TERMO DE INSCRICAO EM DIVIDA ATIVA/],
+    ['mandado', 'Citação, intimação ou mandado', /MANDADO DE (CITACAO|PENHORA|INTIMACAO)|CARTA DE CITACAO|\bINTIMACAO\b|\bCITACAO\b/],
+    ['contrato_social', 'Contrato social ou alteração', /CONTRATO SOCIAL|ALTERACAO CONTRATUAL|CONSOLIDACAO DO CONTRATO/],
+    ['cnh', 'CNH', /CARTEIRA NACIONAL DE HABILITACAO|PERMISSAO PARA DIRIGIR|\bCNH\b/],
+    ['rg', 'Documento de identidade', /REGISTRO GERAL|CARTEIRA DE IDENTIDADE|CARTEIRA DE IDENTIDADE NACIONAL/],
+    ['comprovante', 'Comprovante de endereço', /CONTA DE (ENERGIA|AGUA|LUZ)|FATURA|ENEL|CAGECE|SANEAMENTO|TELEFONIA|NOTA FISCAL DE ENERGIA/],
+    ['cda', 'Certidão de dívida ativa', /\bCDA\b.{0,40}(N[Oº°]|NUMERO)|INSCRICAO EM DIVIDA ATIVA/]   // menção fraca: só se nada mais casar
+  ];
+  function tipo(texto) { const t = norm(texto); const a = TIPOS.find(([, , re]) => re.test(t)); return a ? { k: a[0], nome: a[1] } : { k: 'outro', nome: 'Documento' }; }
+
+  const campo = (chave, rotulo, valor, conf, obs) => ({ chave, rotulo, valor: String(valor || '').trim(), conf, obs: obs || '' });
+  // linha seguinte (ou o resto da linha) depois de um rótulo
+  function apos(texto, rotuloRe) {
+    const linhas = String(texto).split(/\r?\n/).map(l => l.trim());
+    for (let i = 0; i < linhas.length; i++) { const n = norm(linhas[i]); const m = n.match(rotuloRe); if (!m) continue;
+      const resto = linhas[i].slice(m.index + m[0].length).replace(/^[\s:.\-–]+/, '').trim();
+      if (resto && !/^\W*$/.test(resto)) return resto;
+      const prox = linhas.slice(i + 1).find(l => l); if (prox) return prox; }
+    return '';
+  }
+  const datas = t => todos(t, /\b(\d{2})\/(\d{2})\/(\d{4})\b/).map(m => m[0]);
+  const cep = t => { const m = String(t).match(/\b(\d{2})\.?(\d{3})-(\d{3})\b/); return m ? m[1] + m[2] + '-' + m[3] : ''; };
+
+  function cpfs(t) { return [...new Set(todos(t, /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/).map(m => so(m[0])).filter(cpfValido))]; }
+  function cnpjs(t) { return [...new Set(todos(t, /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/).map(m => so(m[0])).filter(cnpjValido))]; }
+  function processos(t) { return [...new Set(todos(t, /\b\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}\b/).map(m => so(m[0])).filter(cnjValido))].map(fCNJ); }
+  function valores(t) { return todos(t, /R\$\s*([\d.]+,\d{2})/).map(m => m[1]); }
+
+  function extrair(texto) {
+    const t = String(texto || ''), tp = tipo(t), c = [];
+    const cp = cpfs(t), cn = cnpjs(t), pr = processos(t);
+    const add = x => { if (x.valor) c.push(x); };
+    if (tp.k === 'cartao_cnpj') {
+      add(campo('CNPJ', 'CNPJ', cn[0] ? fCNPJ(cn[0]) : '', 'alta', 'Use “Buscar dados do CNPJ” para trazer o cadastro completo da Receita.'));
+      add(campo('RAZAO_SOCIAL', 'Razão social', apos(t, /NOME EMPRESARIAL/), 'media'));
+    } else if (tp.k === 'rg' || tp.k === 'cnh') {
+      add(campo('NOME', 'Nome', apos(t, /\bNOME( E SOBRENOME| CIVIL)?\b/), 'baixa', 'Conferir grafia com o documento.'));
+      add(campo('CPF', 'CPF', cp[0] ? fCPF(cp[0]) : '', 'alta'));
+      if (tp.k === 'rg') { const rg = norm(t).match(/REGISTRO GERAL[^0-9]{0,20}([\d.\-X]{5,15})/); add(campo('RG', 'RG', rg ? rg[1] : '', 'media')); }
+      else { const r = norm(t).match(/N[º°O]?\s*REGISTRO[^0-9]{0,10}(\d{11})/); add(campo('CNH', 'Número da CNH', r ? r[1] : '', 'media')); }
+      const nasc = norm(t).match(/NASCIMENTO[^0-9]{0,20}(\d{2}\/\d{2}\/\d{4})/); add(campo('NASCIMENTO', 'Data de nascimento', nasc ? nasc[1] : '', 'media'));
+    } else if (tp.k === 'comprovante') {
+      const linha = String(t).split(/\r?\n/).map(l => l.trim()).find(l => /^(RUA|R\.|AV(ENIDA|\.)?|TRAVESSA|TV\.|ALAMEDA|RODOVIA|ESTRADA|PRA[CÇ]A|S[IÍ]TIO|FAZENDA)\b/i.test(l));
+      add(campo('ENDERECO', 'Endereço', linha || '', 'baixa', 'Conferir número e complemento.')); add(campo('CEP', 'CEP', cep(t), 'media'));
+      add(campo('TITULAR', 'Titular da conta', apos(t, /\b(TITULAR|CLIENTE|NOME)\b/), 'baixa', 'O comprovante pode estar em nome de terceiro.'));
+    } else if (tp.k === 'contrato_social') {
+      const raz = String(t).split(/\r?\n/).map(l => l.trim()).find(l => /\b(LTDA|EIRELI|S\.?\/?A\.?|SOCIEDADE UNIPESSOAL)\b/i.test(l) && l.length < 160);
+      add(campo('RAZAO_SOCIAL', 'Razão social', raz || '', 'media')); add(campo('CNPJ', 'CNPJ', cn[0] ? fCNPJ(cn[0]) : '', 'alta'));
+      const tn = norm(t), i = tn.search(/ADMINISTRACAO DA SOCIEDADE|A ADMINISTRACAO|ADMINISTRADA (POR|PELO|PELA)/);
+      add(campo('ADMINISTRACAO', 'Cláusula de administração (trecho)', i >= 0 ? t.slice(i, i + 500).replace(/\s+/g, ' ') : '', 'baixa',
+        'Confirmar se a assinatura é isolada ou conjunta antes de gerar procuração.'));
+    } else if (tp.k === 'cda') {
+      const nr = norm(t).match(/(CDA|CERTIDAO)[^0-9]{0,30}N[º°O.]*\s*([\d./\-]{4,30}\d)/); add(campo('CDA', 'Número da CDA', nr ? nr[2] : '', 'media'));
+      const v = valores(t); add(campo('VALOR_DO_DEBITO', 'Valor do débito', v.length ? 'R$ ' + v[v.length - 1] : '', 'baixa', 'Conferir se é o valor consolidado.'));
+      add(campo('CNPJ', 'CNPJ do devedor', cn[0] ? fCNPJ(cn[0]) : '', 'alta')); add(campo('CPF', 'CPF do devedor', cp[0] ? fCPF(cp[0]) : '', 'alta'));
+      add(campo('EXEQUENTE', 'Credor', (norm(t).match(/(MUNICIPIO DE [A-Z ]+|ESTADO DO [A-Z ]+|FAZENDA NACIONAL|UNIAO)/) || [])[0] || '', 'media'));
+    } else if (tp.k === 'mandado') {
+      add(campo('VARA', 'Vara', (String(t).match(/\b(\d+ª\s*)?Vara[^\n,;]{0,60}/i) || [])[0] || '', 'media'));
+      add(campo('COMARCA', 'Comarca', ((String(t).match(/Comarca de ([^\n,;/]+)/i) || [])[1] || ''), 'media'));
+      add(campo('EXEQUENTE', 'Exequente / autor', apos(t, /\b(EXEQUENTE|AUTOR|REQUERENTE)\b/), 'baixa'));
+      const cda = norm(t).match(/\bCDA[^0-9]{0,15}([\d./\-]{4,30}\d)/); add(campo('CDA', 'Número da CDA', cda ? cda[1] : '', 'media'));
+      const pz = norm(t).match(/PRAZO DE (\d{1,3}) ?\(?[A-Z ]*\)? ?DIAS/); add(campo('PRAZO', 'Prazo indicado', pz ? pz[1] + ' dias' : '', 'baixa', 'Contar o prazo pela intimação, não por esta leitura.'));
+    }
+    if (pr.length && !c.some(x => x.chave === 'PROCESSO')) add(campo('PROCESSO', 'Número do processo', pr[0], 'alta', pr.length > 1 ? 'Há outros números: ' + pr.slice(1).join(', ') : ''));
+    if (cp.length && !c.some(x => x.chave === 'CPF')) add(campo('CPF', 'CPF', fCPF(cp[0]), 'alta', cp.length > 1 ? 'Há outros CPFs no texto.' : ''));
+    if (cn.length && !c.some(x => x.chave === 'CNPJ')) add(campo('CNPJ', 'CNPJ', fCNPJ(cn[0]), 'alta', cn.length > 1 ? 'Há outros CNPJs no texto.' : ''));
+    if (!c.some(x => x.chave === 'CEP')) add(campo('CEP', 'CEP', cep(t), 'media'));
+    const invalidos = todos(t, /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/).map(m => m[0]).filter(x => !cpfValido(x));
+    return { tipo: tp, campos: c, alertas: invalidos.length ? ['Número com formato de CPF e dígito inválido: ' + invalidos.join(', ') + ' (erro de leitura ou de digitação).'] : [],
+      vazio: !t.trim() };
+  }
+
+  const API = { tipo, extrair, cpfValido, cnpjValido, cnjValido, processos, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Leitura = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* Atendimento RD → CRM de leads (v1.0, 30/10/2026). Monta o lead a partir da conversa e o "cartão" de transferência.
  * Navegador (window.LeadRD) e node. */
 (function (root) {
@@ -479,8 +606,24 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   }
   function campos(texto) {
     const vistos = new Map(); let m; RE.lastIndex = 0;
-    while ((m = RE.exec(String(texto || '')))) { const k = chave(m[1]); if (k && !vistos.has(k)) vistos.set(k, { chave: k, rotulo: m[1].trim() }); }
+    while ((m = RE.exec(String(texto || '')))) { if (/^[#\/]/.test(m[1])) continue; const k = chave(m[1]); if (k && !vistos.has(k)) vistos.set(k, { chave: k, rotulo: m[1].trim() }); }
     return [...vistos.values()];
+  }
+  // blocos opcionais: {{#NOME_DO_BLOCO}} … {{/NOME_DO_BLOCO}} (no Word, cada marcador sozinho no seu parágrafo)
+  function blocos(texto) {
+    const vistos = new Map(); let m; RE.lastIndex = 0;
+    while ((m = RE.exec(String(texto || '')))) { if (m[1][0] !== '#') continue; const r = m[1].slice(1).trim(), k = chave(r); if (k && !vistos.has(k)) vistos.set(k, { chave: k, rotulo: r.replace(/_/g, ' ') }); }
+    return [...vistos.values()];
+  }
+  const ehMarcador = r => /^[#\/]/.test(String(r).trim());
+  function aplicarBlocosTexto(texto, escolhidos) {
+    const sel = new Set(escolhidos || []), out = []; let pilha = 0, pos = 0, m; const s = String(texto); RE.lastIndex = 0;
+    while ((m = RE.exec(s))) { if (!ehMarcador(m[1])) continue; const abre = m[1].trim()[0] === '#', k = chave(m[1].trim().slice(1));
+      if (!pilha) out.push(s.slice(pos, m.index));
+      if (abre) { if (pilha || !sel.has(k)) pilha++; } else if (pilha) pilha--;
+      pos = m.index + m[0].length; if (!pilha && /^\r?\n/.test(s.slice(pos))) pos += s.slice(pos).match(/^\r?\n/)[0].length; }
+    if (!pilha) out.push(s.slice(pos));
+    return out.join('');
   }
 
   // sinônimos → chave canônica
@@ -498,6 +641,10 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     if (x.length === 11) return x.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
     return String(d || ''); };
 
+  // número do processo no padrão CNJ (Res. 65/2008): dígito verificador módulo 97
+  const fmtCNJ = s => { const d = String(s).replace(/\D/g, ''); return d.length === 20 ? d.replace(/^(\d{7})(\d{2})(\d{4})(\d)(\d{2})(\d{4})$/, '$1-$2.$3.$4.$5.$6') : String(s); };
+  function cnjValido(s) { const d = String(s).replace(/\D/g, ''); if (d.length !== 20) return false;
+    const n = BigInt(d.slice(0, 7) + d.slice(9) + '00'); return Number(98n - (n % 97n)) === +d.slice(7, 9); }
   // base de valores a partir da conversa; extra: { assunto, hoje: Date, escritorio:{...} }
   function dadosDaConversa(c, extra) {
     const x = extra || {}, f = c.ficha || {}, j = c.cnpj || {}, hoje = x.hoje || new Date(), dig = String(c.doc || (f.doc || '')).replace(/\D/g, '');
@@ -510,6 +657,12 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     if (j.razao) Object.assign(v, { RAZAO_SOCIAL: j.razao, NOME_FANTASIA: j.fantasia || '', ENDERECO: j.endereco || '', MUNICIPIO: j.municipio || '', UF: j.uf || '',
       MUNICIPIO_UF: j.municipio ? j.municipio + '/' + (j.uf || '') : '', CEP: j.cep || '', EMAIL: j.email || '', CNAE: j.cnae || '',
       REPRESENTANTE: j.representante || '', CARGO: j.cargo || '', SITUACAO: j.situacao || '' });
+    const txt = [f.resumo, ...(c.msgs || []).filter(m => m.de === 'cli').map(m => m.tx)].join('\n');
+    const proc = (txt.match(/\b\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}\b/g) || []).map(fmtCNJ).find(cnjValido);
+    if (proc) v.PROCESSO = proc;
+    if (j.razao) v.QUALIFICACAO = j.razao + ', pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ' + (v.CNPJ || fmtDoc(dig)) +
+      (j.endereco ? ', com sede em ' + j.endereco + (j.municipio ? ', ' + j.municipio + '/' + (j.uf || '') : '') + (j.cep ? ', CEP ' + j.cep : '') : '') +
+      (j.representante ? ', neste ato representada por ' + j.representante + (j.cargo ? ' (' + j.cargo + ')' : '') : '');
     Object.assign(v, x.escritorio || {});
     Object.entries(c.dados || {}).forEach(([k, val]) => { if (String(val).trim()) v[k] = val; });
     return v;
@@ -517,9 +670,9 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function valorDe(v, k) { if (v[k] != null && String(v[k]) !== '') return String(v[k]); const a = ALIAS[k]; return a && v[a] != null && String(v[a]) !== '' ? String(v[a]) : ''; }
   function faltando(lista, v) { return lista.filter(cp => !valorDe(v, cp.chave)); }
 
-  function preencherTexto(texto, v) {
+  function preencherTexto(texto, v, escolhidos) {
     const falta = new Set();
-    const out = String(texto).replace(RE, (m, r) => { const k = chave(r), val = valorDe(v, k); if (!val) { falta.add(k); return m; } return val; });
+    const out = aplicarBlocosTexto(texto, escolhidos).replace(RE, (m, r) => { const k = chave(r), val = valorDe(v, k); if (!val) { falta.add(k); return m; } return val; });
     return { texto: out, faltando: [...falta] };
   }
 
@@ -534,7 +687,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     if (!nos.length) return p;
     const todo = nos.map(n => n.tx).join(''); if (todo.indexOf('{{') < 0) return p;
     const mapa = []; nos.forEach((n, i) => { for (let o = 0; o < n.tx.length; o++) mapa.push([i, o]); });
-    const achados = []; RE.lastIndex = 0; while ((m = RE.exec(todo))) achados.push([m.index, m.index + m[0].length, chave(m[1])]);
+    const achados = []; RE.lastIndex = 0; while ((m = RE.exec(todo))) if (!ehMarcador(m[1])) achados.push([m.index, m.index + m[0].length, chave(m[1])]);
     let mudou = false;
     for (let a = achados.length - 1; a >= 0; a--) {
       const [s, e, k] = achados[a], val = valorDe(v, k); if (!val) { falta.add(k); continue; }
@@ -553,17 +706,25 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       out += p.slice(pos, n.ini) + abre + corpo + n.fecha; pos = n.ini + n.len; });
     return out + p.slice(pos);
   }
-  function preencherXml(x, v, falta) { const fl = falta || new Set(); return String(x).replace(RE_P, p => preencherParagrafo(p, v, fl)); }
+  const textoP = p => { const t = []; let m; RE_T.lastIndex = 0; while ((m = RE_T.exec(p))) t.push(desXml(m[2])); return t.join(''); };
+  // remove os parágrafos-marcadores e o conteúdo dos blocos não escolhidos
+  function aplicarBlocosXml(x, escolhidos) {
+    const sel = new Set(escolhidos || []); let pilha = 0;
+    return String(x).replace(RE_P, p => { const mm = textoP(p).trim().match(/^\{\{\s*([#\/])\s*([^{}]+?)\s*\}\}$/);
+      if (mm) { const k = chave(mm[2]); if (mm[1] === '#') { if (pilha || !sel.has(k)) pilha++; } else if (pilha) pilha--; return ''; }
+      return pilha ? '' : p; });
+  }
+  function preencherXml(x, v, falta, escolhidos) { const fl = falta || new Set(); return aplicarBlocosXml(x, escolhidos).replace(RE_P, p => preencherParagrafo(p, v, fl)); }
   function textoXml(x) { return (String(x).match(RE_P) || []).map(p => { const t = []; let m; RE_T.lastIndex = 0; while ((m = RE_T.exec(p))) t.push(desXml(m[2])); return t.join(''); }).join('\n'); }
   const PARTES = /^word\/(document|header\d*|footer\d*|footnotes|endnotes)\.xml$/;
 
   async function camposDocx(zip) {
     let t = ''; for (const n of Object.keys(zip.files).filter(n => PARTES.test(n))) t += textoXml(await zip.file(n).async('string')) + '\n';
-    return { campos: campos(t), texto: t };
+    return { campos: campos(t), blocos: blocos(t), texto: t };
   }
-  async function preencherDocx(zip, v) {
+  async function preencherDocx(zip, v, escolhidos) {
     const falta = new Set();
-    for (const n of Object.keys(zip.files).filter(n => PARTES.test(n))) zip.file(n, preencherXml(await zip.file(n).async('string'), v, falta));
+    for (const n of Object.keys(zip.files).filter(n => PARTES.test(n))) zip.file(n, preencherXml(await zip.file(n).async('string'), v, falta, escolhidos));
     return { zip, faltando: [...falta] };
   }
 
@@ -580,7 +741,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     return !!ult && ((agora || Date.now()) - ult) < 24 * 3600000;
   }
 
-  const API = { chave, campos, ALIAS, dadosDaConversa, valorDe, faltando, preencherTexto, preencherXml, textoXml, camposDocx, preencherDocx, nomeArquivo, fatiar, dentroDaJanela, fmtDoc, versao: '1.0' };
+  const API = { blocos, aplicarBlocosTexto, aplicarBlocosXml, cnjValido, fmtCNJ, chave, campos, ALIAS, dadosDaConversa, valorDe, faltando, preencherTexto, preencherXml, textoXml, camposDocx, preencherDocx, nomeArquivo, fatiar, dentroDaJanela, fmtDoc, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Modelos = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -793,7 +954,9 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     for (const e of ((payload && payload.entry) || [])) for (const ch of (e.changes || [])) {
       const v = ch.value || {}, esc = so(v.metadata && v.metadata.display_phone_number);
       const nomes = {}; (v.contacts || []).forEach(c => { nomes[so(c.wa_id)] = c.profile && c.profile.name; });
-      const linha = (m, tel, direcao) => out.push({ id: m.id, data: iso(m.timestamp), telefone: tel, nome: nomes[tel] || '', direcao, tipo: m.type || '', texto: textoDe(m) });
+      const linha = (m, tel, direcao) => { const md = (m.type === 'document' || m.type === 'image') ? (m[m.type] || {}) : null;
+        out.push({ id: m.id, data: iso(m.timestamp), telefone: tel, nome: nomes[tel] || '', direcao, tipo: m.type || '', texto: textoDe(m),
+          midiaId: md ? md.id || '' : '', mime: md ? md.mime_type || '' : '', arquivo: md ? md.filename || (m.type === 'image' ? 'foto-' + m.id.slice(-6) + '.jpg' : 'documento') : '' }); };
       if (ch.field === 'messages') (v.messages || []).forEach(m => linha(m, so(m.from), 'entrada'));
       else if (ch.field === 'smb_message_echoes') (v.message_echoes || []).forEach(m => linha(m, so(m.to), 'saida'));
       else if (ch.field === 'history') (v.history || []).forEach(h => (h.threads || []).forEach(th => (th.messages || []).forEach(m => {
@@ -813,13 +976,20 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function agrupar(linhas, convs) {
     const novas = []; let novasMsgs = 0;
     const porTel = new Map(); convs.forEach(c => { if (c.tel && c.aoVivo) porTel.set(so(c.tel), c); });
-    const vistos = new Set(); convs.forEach(c => (c.msgs || []).forEach(m => m.id && vistos.add(m.id)));
+    const vistos = new Set(); convs.forEach(c => (c.msgs || []).forEach(m => { if (m.id) vistos.add(m.id); if (m.arqId) vistos.add(m.arqId); }));
     for (const l of [...linhas].sort((a, b) => String(a.data).localeCompare(String(b.data)))) {
       if (!l || !l.id || vistos.has(l.id)) continue; vistos.add(l.id);
+      if (l.tipo === 'arquivo' && l.ref) {   // arquivo salvo pelo n8n: anexa link e texto extraído à mensagem original
+        const alvo = [...convs, ...novas].flatMap(c => c.msgs || []).find(m => m.id === l.ref);
+        if (alvo) { alvo.arqId = l.id; alvo.link = l.link || ''; alvo.extraido = l.extraido || ''; alvo.arquivo = l.arquivo || alvo.arquivo; alvo.midia = true; novasMsgs++; continue; }
+      }
       const tel = so(l.telefone); let c = porTel.get(tel);
       if (!c) { const site = l.tipo === 'site'; c = { id: 'lv' + (tel || l.id), canal: site ? 'Site' : 'WhatsApp', aoVivo: true, nome: l.nome || fmtTel(tel), tel, cliente: null, etapa: 'fim', msgs: [], ficha: null }; if (tel) porTel.set(tel, c); novas.push(c); }
       if (l.nome && /^\(\d/.test(c.nome)) c.nome = l.nome;
-      c.msgs.push(l.direcao === 'saida' ? { id: l.id, de: 'eq', por: 'Escritório', tx: l.texto, em: l.data } : { id: l.id, de: 'cli', tx: l.texto, em: l.data });
+      const msg = l.direcao === 'saida' ? { id: l.id, de: 'eq', por: 'Escritório', tx: l.texto, em: l.data } : { id: l.id, de: 'cli', tx: l.texto, em: l.data };
+      if (l.midiaId) { msg.midia = true; msg.arquivo = l.arquivo || ''; }
+      if (l.link) { msg.link = l.link; msg.extraido = l.extraido || ''; }
+      c.msgs.push(msg);
       c.msgs.sort((a, b) => String(a.em).localeCompare(String(b.em)));
       if (!novas.includes(c)) novasMsgs++;
     }
@@ -962,7 +1132,7 @@ function renderMsgs(){
     if(m.de==="sys")return '<div class="m note">'+esc(m.tx)+'</div>';
     const cls=m.de==="cli"?"in":"out";
     const by=m.de==="bot"?'<span class="by">Assistente virtual</span>':m.de==="eq"?'<span class="by">'+esc(m.por||"Equipe")+'</span>':'';
-    return '<div class="m '+cls+'">'+by+(m.anexo?'<span class="anexo">Documento</span>':m.modelo?'<span class="anexo">Modelo: '+esc(m.modelo)+'</span>':'')+esc(m.tx)+'<span class="t">'+hm(new Date(m.em))+'</span></div>';
+    return '<div class="m '+cls+'">'+by+(m.anexo?'<span class="anexo">Documento</span>':m.modelo?'<span class="anexo">Modelo: '+esc(m.modelo)+'</span>':'')+esc(m.tx)+(m.link||m.extraido!=null||m.midia?'<span class="arq">'+(m.link?'<a href="'+esc(m.link)+'" target="_blank" rel="noopener">Abrir arquivo</a>':'')+(m.id?'<button class="btn ghost small" type="button" data-ler="'+esc(m.id)+'">Ler documento</button>':'')+'</span>':'')+'<span class="t">'+hm(new Date(m.em))+'</span></div>';
   }).join("");
   box.scrollTop=box.scrollHeight;
 }
@@ -1265,30 +1435,46 @@ async function removeModelo(id){ const m=MODELOS.find(x=>x.id===id); if(!m) retu
   MODELOS=MODELOS.filter(x=>x.id!==id); salvaLocalModelos(); renderModelos() }
 function renderModelos(){
   const el=document.getElementById("mdl-lista"); if(!el) return;
-  el.innerHTML=MODELOS.length?MODELOS.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(m=>'<div class="mdl-item"><span><b>'+esc(m.nome)+'</b> <span class="pill line">'+(m.tipo==="docx"?"Word":"texto")+'</span><br><span class="hint">'+(m.campos.length?m.campos.map(c=>"{{"+esc(c.rotulo)+"}}").join(" "):"sem campos")+'</span></span><span><button class="btn ghost small" type="button" data-mdl-rm="'+m.id+'">Remover</button></span></div>').join(""):'<div class="hint">Nenhum modelo ainda.</div>';
-  const sel=document.getElementById("md-sel"); if(sel){ const v=sel.value; sel.innerHTML=MODELOS.length?MODELOS.map(m=>'<option value="'+m.id+'">'+esc(m.nome)+'</option>').join(""):'<option value="">Nenhum modelo: envie na aba Documentos</option>'; if(MODELOS.some(m=>m.id===v)) sel.value=v } }
+  const ord=MODELOS.slice().sort((a,b)=>(a.area||"~").localeCompare(b.area||"~")||a.nome.localeCompare(b.nome));
+  el.innerHTML=ord.length?ord.map(m=>'<div class="mdl-item"><span><b>'+esc(m.nome)+'</b> <span class="pill line">'+(m.tipo==="docx"?"Word":"texto")+'</span><br><span class="hint">'+(m.campos.length?m.campos.map(c=>"{{"+esc(c.rotulo)+"}}").join(" "):"sem campos")+((m.blocos||[]).length?' · blocos: '+m.blocos.map(b=>esc(b.rotulo)).join(", "):'')+'</span></span><span style="display:flex;gap:6px;align-items:center"><select data-mdl-area="'+m.id+'" aria-label="Área do modelo">'+opArea(m.area)+'</select><button class="btn ghost small" type="button" data-mdl-rm="'+m.id+'">Remover</button></span></div>').join(""):'<div class="hint">Nenhum modelo ainda.</div>';
+  const sel=document.getElementById("md-sel"); if(sel){ const v=sel.value, pref=areaDaConv(); const grupos=[...new Set(ord.map(m=>m.area||""))].sort((a,b)=>(b===pref)-(a===pref)||(a===""?1:b===""?-1:a.localeCompare(b)));
+    sel.innerHTML=ord.length?grupos.map(g=>'<optgroup label="'+esc((g||"Todas as áreas")+(g&&g===pref?" (área desta conversa)":""))+'">'+ord.filter(m=>(m.area||"")===g).map(m=>'<option value="'+m.id+'">'+esc(m.nome)+'</option>').join("")+'</optgroup>').join(""):'<option value="">Nenhum modelo: envie na aba Documentos</option>';
+    if(MODELOS.some(m=>m.id===v)) sel.value=v; else { const p1=ord.find(m=>m.area===pref); if(p1) sel.value=p1.id } } }
+const AREAS_RD=["Tributário","Execução fiscal","Previdenciário","Empresarial e societário","Administrativo e licitações","Cível","Trabalhista"];
+function opArea(a){ return '<option value="">Todas as áreas</option>'+AREAS_RD.map(x=>'<option'+(x===a?" selected":"")+'>'+x+'</option>').join("") }
+function areaDaConv(){ try{ const c=conv(); return c.area||LeadRD.area([c.ficha&&c.ficha.resumo,...c.msgs.filter(m=>m.de==="cli").map(m=>m.tx)].join("\n")) }catch(e){ return "" } }
+document.getElementById("mdl-area").innerHTML=opArea("");
+document.getElementById("mdl-lista").addEventListener("change",async e=>{ const s=e.target.closest("[data-mdl-area]"); if(!s) return; const m=MODELOS.find(x=>x.id===s.dataset.mdlArea); if(!m) return;
+  m.area=s.value; try{ if(MDB){ const meta=Object.assign({},m); delete meta.b64; await MDB.doc("modelos/"+m.id).set(meta) } else { salvaLocalModelos(); renderModelos() } mdlMsg("Área de “"+m.nome+"” atualizada.") }catch(err){ mdlMsg("Não foi possível mudar a área: "+err.message) } });
 document.getElementById("mdl-lista").addEventListener("click",async e=>{ const b=e.target.closest("[data-mdl-rm]"); if(!b) return;
   const m=MODELOS.find(x=>x.id===b.dataset.mdlRm); if(!m||!confirmaRemocao(b,m)) return;
   try{ await removeModelo(m.id); mdlMsg("Modelo removido.") }catch(err){ mdlMsg("Não foi possível remover: "+err.message) } });
 function confirmaRemocao(b,m){ if(b.dataset.ok==="1") return true; b.dataset.ok="1"; b.textContent="Confirmar remoção"; setTimeout(()=>{b.dataset.ok="";b.textContent="Remover"},4000); return false }
 const novoId=()=>"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-document.getElementById("mdl-arq").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
-  try{ const nome=f.name.replace(/\.(docx|txt|md)$/i,"");
+document.getElementById("mdl-arq").addEventListener("change",async e=>{ const fs=[...e.target.files]; e.target.value=""; const res=[];
+  for(const f of fs) res.push(await salvaArquivoModelo(f)); mdlMsg(res.join(" ")) });
+async function salvaArquivoModelo(f){
+  try{ let nome=f.name.replace(/\.(docx|txt|md)$/i,""), area=document.getElementById("mdl-area").value;
+    const pre=AREAS_RD.find(a=>Modelos.chave(nome).startsWith(Modelos.chave(a)+"_")); if(pre){ area=pre; nome=nome.slice(nome.indexOf("-")+1).trim() } else if(/^todas\s*-/i.test(nome)){ area=""; nome=nome.replace(/^todas\s*-\s*/i,"") }
     if(/\.docx$/i.test(f.name)){ if(f.size>3*1024*1024) throw new Error("arquivo acima de 3 MB; reduza imagens do modelo");
       const Z=await carregaJSZip(); const buf=await f.arrayBuffer(); const z=await Z.loadAsync(buf); if(!z.file("word/document.xml")) throw new Error("não parece um documento do Word (.docx)");
-      const {campos}=await Modelos.camposDocx(z); await gravaModelo({id:novoId(),nome,tipo:"docx",campos,criado:new Date().toISOString()},b64DeBuf(buf));
-      mdlMsg("Modelo “"+nome+"” salvo com "+campos.length+" campo(s)."+(campos.length?"":" Nenhum {{CAMPO}} encontrado: confira as chaves duplas.")) }
-    else { const tx=await f.text(); const campos=Modelos.campos(tx); await gravaModelo({id:novoId(),nome,tipo:"texto",texto:tx,campos,criado:new Date().toISOString()}); mdlMsg("Modelo “"+nome+"” salvo com "+campos.length+" campo(s).") }
-  }catch(err){ mdlMsg("Não foi possível salvar o modelo: "+err.message+".") } });
+      const {campos,blocos,texto}=await Modelos.camposDocx(z); await gravaModelo({id:novoId(),nome,area,tipo:"docx",campos,blocos,textoPlano:texto.slice(0,150000),criado:new Date().toISOString()},b64DeBuf(buf));
+      return "Modelo “"+nome+"” salvo com "+campos.length+" campo(s)."+(campos.length?"":" Nenhum {{CAMPO}} encontrado: confira as chaves duplas.") }
+    const tx=await f.text(); const campos=Modelos.campos(tx); await gravaModelo({id:novoId(),nome,area,tipo:"texto",texto:tx,campos,blocos:Modelos.blocos(tx),criado:new Date().toISOString()}); return "Modelo “"+nome+"” salvo com "+campos.length+" campo(s)."
+  }catch(err){ return "Não foi possível salvar “"+f.name+"”: "+err.message+"." } }
 document.getElementById("mdl-novo-tx").addEventListener("click",()=>{document.getElementById("mdl-tx-box").hidden=false;document.getElementById("mdl-tx-nome").focus()});
 document.getElementById("mdl-tx-cancela").addEventListener("click",()=>{document.getElementById("mdl-tx-box").hidden=true});
 document.getElementById("mdl-tx-salva").addEventListener("click",async()=>{ const nome=document.getElementById("mdl-tx-nome").value.trim(), tx=document.getElementById("mdl-tx").value;
   if(!nome||!tx.trim()){ mdlMsg("Dê um nome e escreva o texto do modelo."); return }
-  try{ await gravaModelo({id:novoId(),nome,tipo:"texto",texto:tx,campos:Modelos.campos(tx),criado:new Date().toISOString()}); document.getElementById("mdl-tx-box").hidden=true; document.getElementById("mdl-tx").value=""; document.getElementById("mdl-tx-nome").value=""; mdlMsg("Modelo “"+nome+"” salvo.") }catch(err){ mdlMsg("Não foi possível salvar: "+err.message) } });
+  try{ await gravaModelo({id:novoId(),nome,area:document.getElementById("mdl-area").value,tipo:"texto",texto:tx,campos:Modelos.campos(tx),blocos:Modelos.blocos(tx),criado:new Date().toISOString()}); document.getElementById("mdl-tx-box").hidden=true; document.getElementById("mdl-tx").value=""; document.getElementById("mdl-tx-nome").value=""; mdlMsg("Modelo “"+nome+"” salvo.") }catch(err){ mdlMsg("Não foi possível salvar: "+err.message) } });
 
 // na conversa
 const mdMsg=t=>{document.getElementById("md-msg").textContent=t};
-function mdValores(c){ return Modelos.dadosDaConversa(c,{assunto:c.ficha&&ROTAS[c.ficha.rota]?ROTAS[c.ficha.rota].nome:""}) }
+const ESCRITORIO={ADVOGADO:"Carlos Rafael Aguiar Didier",OAB:"OAB/CE 24.502",ESCRITORIO:"Rafael Didier Advocacia Tributária Especializada",CIDADE_ESCRITORIO:"Sobral/CE"};
+function mdValores(c){ return Modelos.dadosDaConversa(c,{assunto:c.ficha&&ROTAS[c.ficha.rota]?ROTAS[c.ficha.rota].nome:"",escritorio:ESCRITORIO}) }
+function mdCampos(m){ const base=m.tipo==="texto"?m.texto:m.textoPlano; return base?Modelos.campos(Modelos.aplicarBlocosTexto(base,mdBlocos())):m.campos }
+let mdDigitado={};
+function mdBlocos(){ return [...document.querySelectorAll("#md-blocos input[data-bl]:checked")].map(i=>i.dataset.bl) }
 function mdModelo(){ return MODELOS.find(m=>m.id===document.getElementById("md-sel").value) }
 function mdRender(){ const c=conv(), m=mdModelo(), box=document.getElementById("md-campos"), prev=document.getElementById("md-prev"), cn=document.getElementById("md-cnpj");
   if(!m){ box.innerHTML='<div class="hint">Cadastre um modelo na aba Documentos.</div>'; prev.hidden=true; cn.hidden=true; return }
@@ -1296,15 +1482,20 @@ function mdRender(){ const c=conv(), m=mdModelo(), box=document.getElementById("
   const precisaPJ=m.campos.some(x=>/^(RAZAO|NOME_FANTASIA|ENDERECO|MUNICIPIO|UF|CEP|EMAIL|CNAE|REPRESENTANTE|CARGO|SITUACAO|SEDE|EMPRESA)/.test(x.chave));
   cn.hidden=!(dig.length===14&&!c.cnpj);
   if(!cn.hidden) cn.innerHTML=(precisaPJ?"O modelo usa dados da empresa. ":"")+'<button class="btn ghost small" type="button" id="md-cnpj-auto">Buscar dados do CNPJ '+esc(Modelos.fmtDoc(dig))+'</button> <span id="md-cnpj-alt"></span>';
-  box.innerHTML=m.campos.map(x=>{ const val=Modelos.valorDe(v,x.chave); return '<label>'+esc(x.rotulo)+'<input data-md="'+x.chave+'" value="'+esc(val)+'" class="'+(val?"":"falta")+'"'+(val?"":' placeholder="preencher"')+'></label>' }).join("")||'<div class="hint">Este modelo não tem campos.</div>';
-  if(m.tipo==="texto"){ prev.hidden=false; prev.textContent=Modelos.preencherTexto(m.texto,mdValoresTela(c)).texto } else prev.hidden=true;
-  const f=m.campos.filter(x=>!Modelos.valorDe(v,x.chave)).length; mdMsg(f?f+" campo(s) a preencher, em vermelho.":"Todos os campos preenchidos. Confira antes de enviar."); }
+  const marc=new Set(mdBlocos());
+  const bl=document.getElementById("md-blocos"); bl.hidden=!(m.blocos||[]).length;
+  bl.innerHTML=(m.blocos||[]).length?'<span class="hint" style="font-weight:600">Blocos desta peça (marque os que entram)</span>'+m.blocos.map(b=>'<label style="display:flex;gap:6px;font-size:13px"><input type="checkbox" data-bl="'+b.chave+'"'+(marc.has(b.chave)?" checked":"")+'> '+esc(b.rotulo)+'</label>').join(""):"";
+  document.querySelectorAll("#md-campos input[data-md]").forEach(i=>{ mdDigitado[i.dataset.md]=i.value });
+  box.innerHTML=mdCampos(m).map(x=>{ const val=mdDigitado[x.chave]!=null&&mdDigitado[x.chave]!==''?mdDigitado[x.chave]:Modelos.valorDe(v,x.chave); return '<label>'+esc(x.rotulo)+'<input data-md="'+x.chave+'" value="'+esc(val)+'" class="'+(val?"":"falta")+'"'+(val?"":' placeholder="preencher"')+'></label>' }).join("")||'<div class="hint">Este modelo não tem campos.</div>';
+  if(m.tipo==="texto"){ prev.hidden=false; prev.textContent=Modelos.preencherTexto(m.texto,mdValoresTela(c),mdBlocos()).texto } else prev.hidden=true;
+  const f=[...box.querySelectorAll("input.falta")].length; mdMsg(f?f+" campo(s) a preencher, em vermelho.":"Todos os campos preenchidos. Confira antes de enviar."); }
 function mdValoresTela(c){ const v=mdValores(c); document.querySelectorAll("#md-campos input[data-md]").forEach(i=>{ v[i.dataset.md]=i.value }); return v }
 document.getElementById("md-campos").addEventListener("input",e=>{ const i=e.target.closest("input[data-md]"); if(!i) return; i.classList.toggle("falta",!i.value.trim());
-  const m=mdModelo(); if(m&&m.tipo==="texto") document.getElementById("md-prev").textContent=Modelos.preencherTexto(m.texto,mdValoresTela(conv())).texto });
-document.getElementById("md-sel").addEventListener("change",mdRender);
+  const m=mdModelo(); if(m&&m.tipo==="texto") document.getElementById("md-prev").textContent=Modelos.preencherTexto(m.texto,mdValoresTela(conv()),mdBlocos()).texto });
+document.getElementById("md-sel").addEventListener("change",()=>{ mdDigitado={}; document.getElementById("md-blocos").innerHTML=""; mdRender() });
+document.getElementById("md-blocos").addEventListener("change",mdRender);
 document.getElementById("md-fecha").addEventListener("click",()=>{document.getElementById("md-box").hidden=true});
-document.getElementById("md-abre").addEventListener("click",()=>{ const b=document.getElementById("md-box"); b.hidden=!b.hidden; if(!b.hidden){ renderModelos(); mdRender() } });
+document.getElementById("md-abre").addEventListener("click",()=>{ const b=document.getElementById("md-box"); b.hidden=!b.hidden; if(!b.hidden){ mdDigitado={}; document.getElementById("md-blocos").innerHTML=""; renderModelos(); mdRender() } });
 document.getElementById("md-cnpj").addEventListener("click",async e=>{ if(!e.target.closest("#md-cnpj-auto")) return; const c=conv(), dig=String(c.doc||c.ficha&&c.ficha.doc||"").replace(/\D/g,""), alt=document.getElementById("md-cnpj-alt");
   alt.textContent="Consultando…";
   for(const f of CNPJ.fontes(dig)){ try{ const r=await fetch(f.url); if(!r.ok) continue; aplicaCnpjConv(c,CNPJ.normalizar(await r.text())); return }catch(err){} }
@@ -1314,11 +1505,11 @@ function aplicaCnpjConv(c,n){ const adm=n.socios.find(s=>/administrador/i.test(s
   c.cnpj={razao:n.razao,fantasia:n.fantasia||"",endereco:n.endereco||"",municipio:n.municipio||"",uf:n.uf||"",cep:(n.cep||"").replace(/^(\d{5})(\d{3})$/,"$1-$2"),email:n.email||"",cnae:n.cnaePrincipal?n.cnaePrincipal.codigo+" "+(n.cnaePrincipal.descricao||""):"",representante:adm.nome||"",cargo:(adm.qualificacao||"").toLowerCase(),situacao:n.situacao||"",fonte:n.fonte};
   if(c.ficha) c.ficha.log.push("Dados do CNPJ consultados ("+n.fonte+")"); salvar(); mdRender(); mdMsg("Dados da Receita aplicados. Confira o representante no contrato social."+(/ATIVA/i.test(n.situacao||"")?"":" Situação cadastral: "+n.situacao+".")) }
 async function mdGera(){ const c=conv(), m=mdModelo(); if(!m) throw new Error("Escolha um modelo.");
-  const v=mdValoresTela(c), falta=m.campos.filter(x=>!Modelos.valorDe(v,x.chave));
+  const v=mdValoresTela(c), falta=mdCampos(m).filter(x=>!Modelos.valorDe(v,x.chave));
   if(falta.length) throw new Error("Preencha: "+falta.map(x=>x.rotulo).join(", ")+".");
   c.dados=c.dados||{}; const base=Modelos.dadosDaConversa(Object.assign({},c,{dados:{}}),{}); document.querySelectorAll("#md-campos input[data-md]").forEach(i=>{ if(i.value.trim()&&Modelos.valorDe(base,i.dataset.md)!==i.value) c.dados[i.dataset.md]=i.value });
-  if(m.tipo==="texto") return {texto:Modelos.preencherTexto(m.texto,v).texto,nome:Modelos.nomeArquivo(m.nome,v,"txt"),mime:"text/plain"};
-  const Z=await carregaJSZip(), z=await Z.loadAsync(bufDeB64(await conteudoModelo(m))); const r=await Modelos.preencherDocx(z,v);
+  if(m.tipo==="texto") return {texto:Modelos.preencherTexto(m.texto,v,mdBlocos()).texto,nome:Modelos.nomeArquivo(m.nome,v,"txt"),mime:"text/plain"};
+  const Z=await carregaJSZip(), z=await Z.loadAsync(bufDeB64(await conteudoModelo(m))); const r=await Modelos.preencherDocx(z,v,mdBlocos());
   if(r.faltando.length) throw new Error("O arquivo tem campos não reconhecidos: "+r.faltando.join(", ")+".");
   const blob=await r.zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
   return {blob,nome:Modelos.nomeArquivo(m.nome,v,"docx"),mime:blob.type} }
@@ -1363,6 +1554,57 @@ function viraLead(c){ const el=document.getElementById("crm-st"), lead=LeadRD.da
   const ok=()=>{ el.textContent=(local?local+" ":"")+"Cartão copiado. No CRM de leads, clique em “Colar do Atendimento” e cole (Ctrl+V)." };
   try{ navigator.clipboard.writeText(card).then(ok,()=>mostra((local?local+" ":"")+"Copie o cartão abaixo (Ctrl+C) e cole no CRM, em “Colar do Atendimento”.")) }
   catch(e){ mostra("Copie o cartão abaixo (Ctrl+C) e cole no CRM, em “Colar do Atendimento”.") } }
+
+
+// ---------- documentos recebidos: anexar, ler e conferir (30/10/2026) ----------
+const docMsg=t=>{document.getElementById("doc-msg").textContent=t};
+let docAtual={nome:"",origem:""};
+function carregaScript(src,global){ return window[global]?Promise.resolve(window[global]):new Promise((ok,err)=>{ const s=document.createElement("script"); s.src=src; s.onload=()=>ok(window[global]); s.onerror=()=>err(new Error("não foi possível carregar o leitor")); document.head.appendChild(s) }) }
+async function textoDoPDF(buf){ const pdfjs=await carregaScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","pdfjsLib");
+  pdfjs.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  const doc=await pdfjs.getDocument({data:new Uint8Array(buf)}).promise; const out=[];
+  for(let i=1;i<=Math.min(doc.numPages,30);i++){ const pg=await doc.getPage(i), tc=await pg.getTextContent(); let linha="", y=null;
+    tc.items.forEach(it=>{ const yy=Math.round(it.transform[5]); if(y!==null&&Math.abs(yy-y)>2){ out.push(linha); linha="" } linha+=(linha&&!/\s$/.test(linha)?" ":"")+it.str; y=yy }); out.push(linha) }
+  return out.join("\n") }
+async function textoDaImagem(file){ const T=await carregaScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js","Tesseract");
+  docMsg("Lendo a imagem (pode levar até 1 minuto)…"); const r=await T.recognize(file,"por"); return r.data.text }
+document.getElementById("doc-abre").addEventListener("click",()=>{ const b=document.getElementById("doc-box"); b.hidden=!b.hidden; if(!b.hidden){ document.getElementById("doc-res").innerHTML=""; docMsg("") } });
+document.getElementById("doc-fecha").addEventListener("click",()=>{document.getElementById("doc-box").hidden=true});
+document.getElementById("doc-arq").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; docAtual={nome:f.name,origem:"arquivo"};
+  document.getElementById("doc-nome").textContent=f.name; docMsg("Extraindo o texto…");
+  try{ let tx="";
+    if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){ tx=await textoDoPDF(await f.arrayBuffer()); if(tx.replace(/\s/g,"").length<30) throw new Error("o PDF parece ser uma digitalização (imagem), sem texto. Copie o texto da imagem e cole abaixo") }
+    else if(/^image\//.test(f.type)){ try{ tx=await textoDaImagem(f) }catch(err){ throw new Error("a leitura de foto não está disponível aqui. Copie o texto da foto no celular e cole abaixo") } }
+    else tx=await f.text();
+    document.getElementById("doc-tx").value=tx; lerDocumento() }catch(err){ docMsg("Não foi possível ler: "+err.message+".") } });
+document.getElementById("doc-ler").addEventListener("click",()=>{ if(!docAtual.nome) docAtual={nome:"texto colado",origem:"colado"}; lerDocumento() });
+const CONF={alta:["info","alta"],media:["warn","média"],baixa:["crit","baixa"]};
+function lerDocumento(){ const tx=document.getElementById("doc-tx").value, r=Leitura.extrair(tx), el=document.getElementById("doc-res");
+  if(r.vazio){ docMsg("Cole o texto ou escolha um arquivo."); el.innerHTML=""; return }
+  el.innerHTML='<div class="hint" style="margin-bottom:6px">Tipo identificado: <b>'+esc(r.tipo.nome)+'</b>'+(docAtual.nome?' · '+esc(docAtual.nome):'')+'</div>'+
+    (r.alertas.length?'<div class="falta">'+r.alertas.map(esc).join("<br>")+'</div>':'')+
+    (r.campos.length?'<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Campo</th><th>Valor lido</th><th>Confiança</th><th>Conferido</th></tr></thead><tbody>'+
+      r.campos.map((c,i)=>'<tr><td>'+esc(c.rotulo)+'</td><td><input type="text" data-dv="'+c.chave+'" value="'+esc(c.valor)+'">'+(c.obs?'<div class="hint">'+esc(c.obs)+'</div>':'')+'</td><td><span class="pill '+CONF[c.conf][0]+'">'+CONF[c.conf][1]+'</span></td><td><input type="checkbox" data-dk="'+c.chave+'" aria-label="Conferido: '+esc(c.rotulo)+'"></td></tr>').join("")+
+      '</tbody></table></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn ghost small" type="button" id="doc-altas">Marcar os de alta confiança</button><button class="btn small" type="button" id="doc-aplica">Aplicar os conferidos à conversa</button></div>'
+      :'<div class="hint">Nenhum campo reconhecido. Confira se o texto está legível.</div>');
+  docMsg(r.campos.length?"Confira cada valor com o documento antes de marcar.":""); docAtual.tipo=r.tipo.nome }
+document.getElementById("doc-res").addEventListener("click",e=>{
+  if(e.target.id==="doc-altas"){ document.querySelectorAll("#doc-res tr").forEach(tr=>{ const p=tr.querySelector(".pill.info"), cb=tr.querySelector("input[data-dk]"); if(p&&cb) cb.checked=true }); return }
+  if(e.target.id!=="doc-aplica") return; const c=conv(), ap=[];
+  document.querySelectorAll("#doc-res input[data-dk]:checked").forEach(cb=>{ const k=cb.dataset.dk, v=document.querySelector('#doc-res input[data-dv="'+k+'"]').value.trim(); if(!v) return;
+    if(k==="TITULAR"||k==="ADMINISTRACAO") { c.dados=c.dados||{}; c.dados[k]=v; ap.push(k); return }
+    c.dados=c.dados||{}; c.dados[k]=v; ap.push(k);
+    if(k==="CNPJ"&&!String(c.doc||"").replace(/\D/g,"")) c.doc=v; if(k==="CPF"&&!String(c.doc||"").replace(/\D/g,"")) c.doc=v; });
+  if(!ap.length){ docMsg("Marque os campos que você conferiu."); return }
+  c.docs=(c.docs||[]).concat([{nome:docAtual.nome||"documento",tipo:docAtual.tipo||"",em:new Date().toISOString(),campos:ap}]);
+  c.msgs.push({de:"sys",tx:"Documento conferido ("+(docAtual.tipo||"documento")+"): "+ap.join(", ")+" aplicados à conversa.",em:new Date().toISOString()});
+  if(c.ficha) c.ficha.log.push("Documento conferido: "+(docAtual.tipo||docAtual.nome));
+  salvar(); renderMesa(); document.getElementById("doc-box").hidden=true; document.getElementById("doc-tx").value=""; docAtual={nome:"",origem:""};
+  const t=document.getElementById("base-info"); if(t) t.textContent=ap.length+" dado(s) conferido(s) aplicados. Os modelos desta conversa já usam esses valores." });
+// arquivos que chegaram pelo WhatsApp ao vivo (texto extraído pelo n8n)
+document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.closest("[data-ler]"); if(!b) return; const c=conv(), m=c.msgs.find(x=>x.id===b.dataset.ler); if(!m) return;
+  docAtual={nome:m.arquivo||"arquivo do WhatsApp",origem:"whatsapp"}; document.getElementById("doc-box").hidden=false; document.getElementById("doc-nome").textContent=docAtual.nome;
+  document.getElementById("doc-tx").value=m.extraido||""; if(m.extraido) lerDocumento(); else docMsg("O n8n não extraiu texto deste arquivo (foto sem OCR). Abra o arquivo, copie o texto e cole acima.") });
 
 // indicadores
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}

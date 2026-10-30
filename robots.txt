@@ -1,2 +1,3 @@
 User-agent: *
 Disallow: /equipe/
+Sitemap: https://didierrafaeladv-ux.github.io/rafaeldidieradv-site/sitemap.xml

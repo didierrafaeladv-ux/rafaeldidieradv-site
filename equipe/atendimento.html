@@ -602,7 +602,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     for (const l of [...linhas].sort((a, b) => String(a.data).localeCompare(String(b.data)))) {
       if (!l || !l.id || vistos.has(l.id)) continue; vistos.add(l.id);
       const tel = so(l.telefone); let c = porTel.get(tel);
-      if (!c) { c = { id: 'lv' + tel, canal: 'WhatsApp', aoVivo: true, nome: l.nome || fmtTel(tel), tel, cliente: null, etapa: 'fim', msgs: [], ficha: null }; porTel.set(tel, c); novas.push(c); }
+      if (!c) { const site = l.tipo === 'site'; c = { id: 'lv' + (tel || l.id), canal: site ? 'Site' : 'WhatsApp', aoVivo: true, nome: l.nome || fmtTel(tel), tel, cliente: null, etapa: 'fim', msgs: [], ficha: null }; if (tel) porTel.set(tel, c); novas.push(c); }
       if (l.nome && /^\(\d/.test(c.nome)) c.nome = l.nome;
       c.msgs.push(l.direcao === 'saida' ? { id: l.id, de: 'eq', por: 'Escritório', tx: l.texto, em: l.data } : { id: l.id, de: 'cli', tx: l.texto, em: l.data });
       c.msgs.sort((a, b) => String(a.em).localeCompare(String(b.em)));

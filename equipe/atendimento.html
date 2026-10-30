@@ -197,7 +197,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 <div class="wrap">
   <header class="top">
     <div>
-      <div class="eyebrow">Rafael Didier Advocacia Tributária · Sobral/CE · versão 2</div>
+      <div class="eyebrow">Rafael Didier Sociedade Individual de Advocacia · Sobral/CE · versão 2</div>
       <h1>Atendimento pelo WhatsApp</h1>
     </div>
     <p class="note">Protótipo navegável. Clientes, documentos e mensagens são fictícios e nada aqui está ligado ao WhatsApp. Os dados ficam só neste navegador.</p>
@@ -412,12 +412,13 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 
   <section id="v-prazos" hidden>
     <h2 class="sec">Prazos processuais</h2>
-    <p class="sub">Contagem em dias úteis (CPC, art. 219), com a suspensão de 20/12 a 20/1 (art. 220) e os feriados nacionais, do Ceará e de Sobral. Este cálculo não substitui a conferência no calendário do tribunal: informe abaixo os feriados forenses e os dias de indisponibilidade do sistema (art. 224, § 1º).</p>
+    <p class="sub">Contagem em dias úteis (CPC, art. 219), com a suspensão de 20/12 a 20/1 (art. 220) e os feriados nacionais, do Ceará e de Sobral. Este cálculo não substitui a conferência no calendário do tribunal: os dias sem expediente do TJCE e da Justiça Federal já entram; informe abaixo os feriados extras do ano, os municipais da comarca e os dias de indisponibilidade do sistema (art. 224, § 1º).</p>
     <div class="panel" style="display:grid;gap:12px;max-width:760px">
       <div class="grid2">
         <div class="fld"><label for="pp-tipo">A data informada é</label><select id="pp-tipo"><option value="disponibilizacao">Disponibilização no DJe/DJEN</option><option value="intimacao">Intimação ou ciência (portal, oficial, carga)</option></select></div>
         <div class="fld"><label for="pp-data">Data</label><input id="pp-data" type="date"></div>
         <div class="fld"><label for="pp-dias">Prazo (dias)</label><input id="pp-dias" type="number" min="1" max="365" value="15"></div>
+        <div class="fld"><label for="pp-trib">Justiça</label><select id="pp-trib"><option value="tjce">Estadual do Ceará (TJCE)</option><option value="jf">Federal (JFCE/TRF5)</option><option value="">Outra (informe os feriados abaixo)</option></select></div>
         <div class="fld"><label for="pp-proc">Processo (opcional)</label><input id="pp-proc" placeholder="0000000-00.0000.0.00.0000"></div>
       </div>
       <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="pp-dobro"> Prazo em dobro (Fazenda Pública, art. 183; Defensoria, art. 186)</label>
@@ -471,20 +472,27 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function pascoa(a) { const b = a % 19, c = Math.floor(a / 100), d = a % 100, e = Math.floor(c / 4), f = c % 4, g = Math.floor((c + 8) / 25), h = Math.floor((c - g + 1) / 3),
       i = (19 * b + c - e - h + 15) % 30, k = Math.floor(d / 4), l = d % 4, m = (32 + 2 * f + 2 * k - i - l) % 7, n = Math.floor((b + 11 * i + 22 * m) / 451),
       mes = Math.floor((i + m - 7 * n + 114) / 31), dd = ((i + m - 7 * n + 114) % 31) + 1; return new Date(a, mes - 1, dd, 12); }
-  function feriados(ano, extras) {
-    const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25]].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
-    const p = pascoa(ano); [-48, -47, -2, 60].forEach(n => f.push(iso(soma(p, n))));
+  // dias sem expediente próprios de cada justiça (conferir a portaria anual do tribunal)
+  const TRIBUNAIS = {
+    tjce: { nome: 'Justiça Estadual do Ceará (TJCE)', fonte: 'Portaria TJCE nº 2.924/2025 (calendário de 2026)', fixos: [[3, 19], [10, 28], [12, 8]], pascoa: [-3] },
+    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3] }
+  };
+  function feriados(ano, extras, tribunal) {
+    const t = TRIBUNAIS[tribunal] || { fixos: [], pascoa: [] };
+    const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...t.fixos].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
+    const p = pascoa(ano); [-48, -47, -2, 60, ...t.pascoa].forEach(n => f.push(iso(soma(p, n))));
     return new Set(f.concat((extras || []).filter(x => String(x).startsWith(String(ano)))));
   }
   // art. 220: suspensão de 20/12 a 20/1, inclusive
   const recesso = d => (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 20);
-  function util(d, extras) { return d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras).has(iso(d)) && !recesso(d); }
-  const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras)) x = soma(x, 1); return x; };
+  function util(d, extras, tribunal) { return d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d)) && !recesso(d); }
+  let TRIB = '';
+  const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras, TRIB)) x = soma(x, 1); return x; };
   /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), feriadosExtras: ['AAAA-MM-DD'] }
    * - disponibilizacao no DJe/DJEN: publicação = 1º dia útil seguinte (art. 224, § 2º); início = 1º dia útil após a publicação (§ 3º)
    * - intimacao (data da ciência): início = 1º dia útil seguinte (art. 224, caput: exclui o dia do começo) */
   function calcular(o) {
-    const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1);
+    const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1); TRIB = o.tribunal || '';
     if (!(n > 0)) throw new Error('Informe o número de dias do prazo.');
     let publicacao = null, inicio;
     if (o.disponibilizacao) { publicacao = proximoUtil(soma(dia(o.disponibilizacao), 1), ex); inicio = proximoUtil(soma(publicacao, 1), ex); }
@@ -492,9 +500,10 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     else throw new Error('Informe a data de disponibilização ou de intimação.');
     let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
     return { publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
+      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + ')' : 'sem calendário de tribunal',
       aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
   }
-  const API = { calcular, util: (s, ex) => util(dia(s), ex), feriados, versao: '1.0' };
+  const API = { TRIBUNAIS, calcular, util: (s, ex, t) => util(dia(s), ex, t), feriados, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PrazoProcessual = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -627,13 +636,15 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     const resp = f.rota === 'urgencia' ? 'Rafael Didier' : f.rota === 'nova' ? 'Ana Maria Bezerra Silva' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
     const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
     return {
-      id: 'at-' + c.id, nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
+      id: docId(c) || 'at-' + c.id, /* mesmo CPF/CNPJ = mesmo lead, ainda que venha de outra conversa */ nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
       contato: c.tel || '', area: area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
       ultimo: cli ? dataLocal(new Date(cli)) : dataLocal(h), proxAcao: 'Agendar primeira reunião e confirmar consentimento LGPD', proxData: dataLocal(amanha),
       lgpd: { status: 'pendente', data: '', forma: '' }, criado: dataLocal(h),
       hist: [{ data: dataLocal(h), canal: 'Atendimento RD', nota, por: '' }]
     };
   }
+  // chave única do cliente entre os sistemas: CPF/CNPJ só com dígitos (válido pelo tamanho)
+  function docId(c) { const d = String(c.doc || (c.ficha && c.ficha.doc) || '').replace(/\D/g, ''); return d.length === 11 || d.length === 14 ? 'doc-' + d : ''; }
   const cartao = lead => PREFIXO + JSON.stringify(lead);
   // lê um ou mais cartões colados (CRM)
   function lerCartoes(texto) {
@@ -648,7 +659,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     if (!out.length) throw new Error('Nenhum lead encontrado. No Atendimento RD, use “Virar lead no CRM” e cole aqui o que foi copiado.');
     return out;
   }
-  const API = { PREFIXO, area, daConversa, cartao, lerCartoes, versao: '1.0' };
+  const API = { docId, PREFIXO, area, daConversa, cartao, lerCartoes, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.LeadRD = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -875,7 +886,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function lerJSON(entrada) {
     if (entrada && typeof entrada === 'object') return entrada;
     const s = String(entrada || ''), i = s.indexOf('{'), j = s.lastIndexOf('}');
-    if (i < 0 || j <= i) throw new Error('Cole o resultado da consulta (o texto começa com "{").');
+    if (i < 0 || j <= i) throw new Error('Texto não reconhecido: cole o resultado da consulta (o texto começa com "{").');
     try { return JSON.parse(s.slice(i, j + 1)); } catch (_) { throw new Error('Não foi possível ler o resultado da consulta: copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.'); }
   }
   const nn = v => (v === '' || v === undefined) ? null : v;
@@ -1124,7 +1135,7 @@ function hm(dt){return String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMi
 function esc(t){return String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 function minus(min){return new Date(AGORA.getTime()-min*60000).toISOString()}
 
-const BOAS="Olá! Sou o assistente virtual do escritório Rafael Didier Advocacia Tributária. Vou registrar seu pedido e encaminhar para a pessoa certa da equipe.\n\nSeus dados serão usados apenas para este atendimento, conforme nossa política de privacidade. A qualquer momento, digite 0 para falar com uma pessoa.\n\nVocê já é cliente do escritório?\n1. Sim\n2. Ainda não";
+const BOAS="Olá! Sou o assistente virtual do escritório Rafael Didier Sociedade Individual de Advocacia. Vou registrar seu pedido e encaminhar para a pessoa certa da equipe.\n\nSeus dados serão usados apenas para este atendimento, conforme nossa política de privacidade. A qualquer momento, digite 0 para falar com uma pessoa.\n\nVocê já é cliente do escritório?\n1. Sim\n2. Ainda não";
 const MENU_TXT="Qual é o assunto?\n1. Processo em andamento ou intimação\n2. Urgência: citação, penhora, bloqueio ou prazo correndo\n3. Nova demanda ou consulta\n4. Enviar documentos\n5. Financeiro, boleto ou honorários\n6. Agendar reunião";
 
 // completude
@@ -1514,7 +1525,7 @@ document.getElementById("gerar").addEventListener("click",()=>{
       '<p>'+local+'.</p><div class="assin"><span></span>'+assinante()+'</div>';
   } else {
     html='<h4>TERMO DE CIÊNCIA SOBRE TRATAMENTO DE DADOS PESSOAIS</h4>'+
-      '<p>'+qualificacao()+', declara estar ciente de que o escritório Rafael Didier Advocacia Tributária tratará os dados pessoais e os documentos fornecidos exclusivamente para a prestação dos serviços jurídicos contratados, o cumprimento de obrigações legais e o exercício regular de direitos em processos judiciais e administrativos, nos termos da Lei nº 13.709/2018.</p>'+
+      '<p>'+qualificacao()+', declara estar ciente de que o escritório Rafael Didier Sociedade Individual de Advocacia tratará os dados pessoais e os documentos fornecidos exclusivamente para a prestação dos serviços jurídicos contratados, o cumprimento de obrigações legais e o exercício regular de direitos em processos judiciais e administrativos, nos termos da Lei nº 13.709/2018.</p>'+
       '<p>Os documentos serão guardados em pasta de acesso restrito à equipe responsável pelo atendimento, pelo prazo necessário à prestação dos serviços e ao cumprimento de obrigações legais. O titular pode solicitar informações, correção ou eliminação de dados pelo canal oficial de atendimento do escritório.</p>'+
       '<p>'+local+'.</p><div class="assin"><span></span>'+assinante()+'</div>';
   }
@@ -1594,7 +1605,7 @@ document.getElementById("mdl-tx-salva").addEventListener("click",async()=>{ cons
 
 // na conversa
 const mdMsg=t=>{document.getElementById("md-msg").textContent=t};
-const ESCRITORIO={ADVOGADO:"Carlos Rafael Aguiar Didier",OAB:"OAB/CE 24.502",ESCRITORIO:"Rafael Didier Advocacia Tributária Especializada",CIDADE_ESCRITORIO:"Sobral/CE",ENDERECO_DO_ESCRITORIO:"Rua Padre Fialho, 117, Centro, Sobral/CE"};
+const ESCRITORIO={ADVOGADO:"Carlos Rafael Aguiar Didier",OAB:"OAB/CE 24.502",ESCRITORIO:"Rafael Didier Sociedade Individual de Advocacia",CIDADE_ESCRITORIO:"Sobral/CE",ENDERECO_DO_ESCRITORIO:"Rua Padre Fialho, 117, Centro, Sobral/CE"};
 function mdValores(c){ return Modelos.dadosDaConversa(c,{assunto:c.ficha&&ROTAS[c.ficha.rota]?ROTAS[c.ficha.rota].nome:"",escritorio:ESCRITORIO}) }
 function mdCampos(m){ const base=m.tipo==="texto"?m.texto:m.textoPlano; return base?Modelos.campos(Modelos.aplicarBlocosTexto(base,mdBlocos())):m.campos }
 let mdDigitado={};
@@ -1742,10 +1753,10 @@ document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.c
   $("pp-calc").addEventListener("click",()=>{ const el=$("pp-res"), proc=$("pp-proc").value.trim();
     try{ const extras=$("pp-extras").value.split(/\s+/).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)); try{ localStorage.setItem("rd-feriados-forenses",extras.join("\n")) }catch(e){}
       if(proc&&!Leitura.cnjValido(proc)) throw new Error("O número do processo não confere (dígito verificador). Use o número CNJ completo.");
-      const o={dias:+$("pp-dias").value,dobro:$("pp-dobro").checked,feriadosExtras:extras}; o[$("pp-tipo").value]=$("pp-data").value;
+      const o={dias:+$("pp-dias").value,dobro:$("pp-dobro").checked,feriadosExtras:extras,tribunal:$("pp-trib").value}; o[$("pp-tipo").value]=$("pp-data").value;
       const r=PrazoProcessual.calcular(o);
       const tx=(proc?"Processo "+Modelos.fmtCNJ(proc)+"\n":"")+(r.publicacao?"Publicação: "+br(r.publicacao)+"\n":"")+"Início da contagem: "+br(r.inicio)+"\nPrazo: "+r.diasUteis+" dias úteis"+(o.dobro?" (em dobro)":"")+"\nVencimento: "+br(r.vencimento);
-      el.innerHTML='<div style="font-size:15px;color:var(--fg)"><b>Vence em '+br(r.vencimento)+'</b></div><pre style="white-space:pre-wrap;margin:6px 0">'+esc(tx)+'</pre><div>'+esc(r.aviso)+'</div><button class="btn ghost small" type="button" id="pp-copia" style="margin-top:6px">Copiar para o Astrea</button>';
+      el.innerHTML='<div style="font-size:15px;color:var(--fg)"><b>Vence em '+br(r.vencimento)+'</b></div><pre style="white-space:pre-wrap;margin:6px 0">'+esc(tx)+'</pre><div>Calendário: '+esc(r.tribunal)+'. '+esc(r.aviso)+'</div><button class="btn ghost small" type="button" id="pp-copia" style="margin-top:6px">Copiar para o Astrea</button>';
       $("pp-copia").onclick=()=>{ try{ navigator.clipboard.writeText(tx).then(()=>toastPP("Copiado."),()=>toastPP("Selecione o texto e copie.")) }catch(e){ toastPP("Selecione o texto e copie.") } };
     }catch(err){ el.textContent=err.message } });
   function toastPP(t){ const b=$("pp-copia"); if(b) b.textContent=t }

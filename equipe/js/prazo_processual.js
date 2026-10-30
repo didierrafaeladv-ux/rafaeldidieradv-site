@@ -1,0 +1,47 @@
+/* Prazos processuais em dias úteis (CPC, arts. 219, 220 e 224) (v1.0, 30/10/2026).
+ * Separado do prazo de atendimento (horas úteis, 8h–17h), que não deve ser usado para prazo processual.
+ * Feriados: nacionais, Carnaval (seg/ter), Sexta-feira Santa, Corpus Christi, Data Magna do CE (25/3), Sobral (5/7)
+ * + feriadosExtras do calendário do tribunal [CONFIRMAR o calendário anual do TJCE/TRF5]. */
+(function (root) {
+  'use strict';
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dia = s => { const [a, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(a, m - 1, d, 12); };
+  const soma = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12);
+  function pascoa(a) { const b = a % 19, c = Math.floor(a / 100), d = a % 100, e = Math.floor(c / 4), f = c % 4, g = Math.floor((c + 8) / 25), h = Math.floor((c - g + 1) / 3),
+      i = (19 * b + c - e - h + 15) % 30, k = Math.floor(d / 4), l = d % 4, m = (32 + 2 * f + 2 * k - i - l) % 7, n = Math.floor((b + 11 * i + 22 * m) / 451),
+      mes = Math.floor((i + m - 7 * n + 114) / 31), dd = ((i + m - 7 * n + 114) % 31) + 1; return new Date(a, mes - 1, dd, 12); }
+  // dias sem expediente próprios de cada justiça (conferir a portaria anual do tribunal)
+  const TRIBUNAIS = {
+    tjce: { nome: 'Justiça Estadual do Ceará (TJCE)', fonte: 'Portaria TJCE nº 2.924/2025 (calendário de 2026)', fixos: [[3, 19], [10, 28], [12, 8]], pascoa: [-3] },
+    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3] }
+  };
+  function feriados(ano, extras, tribunal) {
+    const t = TRIBUNAIS[tribunal] || { fixos: [], pascoa: [] };
+    const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...t.fixos].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
+    const p = pascoa(ano); [-48, -47, -2, 60, ...t.pascoa].forEach(n => f.push(iso(soma(p, n))));
+    return new Set(f.concat((extras || []).filter(x => String(x).startsWith(String(ano)))));
+  }
+  // art. 220: suspensão de 20/12 a 20/1, inclusive
+  const recesso = d => (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 20);
+  function util(d, extras, tribunal) { return d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d)) && !recesso(d); }
+  let TRIB = '';
+  const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras, TRIB)) x = soma(x, 1); return x; };
+  /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), feriadosExtras: ['AAAA-MM-DD'] }
+   * - disponibilizacao no DJe/DJEN: publicação = 1º dia útil seguinte (art. 224, § 2º); início = 1º dia útil após a publicação (§ 3º)
+   * - intimacao (data da ciência): início = 1º dia útil seguinte (art. 224, caput: exclui o dia do começo) */
+  function calcular(o) {
+    const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1); TRIB = o.tribunal || '';
+    if (!(n > 0)) throw new Error('Informe o número de dias do prazo.');
+    let publicacao = null, inicio;
+    if (o.disponibilizacao) { publicacao = proximoUtil(soma(dia(o.disponibilizacao), 1), ex); inicio = proximoUtil(soma(publicacao, 1), ex); }
+    else if (o.intimacao) inicio = proximoUtil(soma(dia(o.intimacao), 1), ex);
+    else throw new Error('Informe a data de disponibilização ou de intimação.');
+    let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
+    return { publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
+      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + ')' : 'sem calendário de tribunal',
+      aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
+  }
+  const API = { TRIBUNAIS, calcular, util: (s, ex, t) => util(dia(s), ex, t), feriados, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PrazoProcessual = API;
+})(typeof window !== 'undefined' ? window : globalThis);

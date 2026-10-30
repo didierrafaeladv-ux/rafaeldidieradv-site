@@ -560,7 +560,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     const cli = (c.msgs || []).filter(m => m.de === 'cli').map(m => m.em).filter(Boolean).sort().pop();
     const amanha = new Date(h.getTime() + 86400000);
     const textoTodo = [f.resumo, ...(c.msgs || []).filter(m => m.de === 'cli').map(m => m.tx)].join('\n');
-    const resp = (f.rota === 'nova' || f.rota === 'urgencia') ? 'Rafael Didier' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
+    const resp = f.rota === 'urgencia' ? 'Rafael Didier' : f.rota === 'nova' ? 'Ana Maria Bezerra Silva' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
     const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
     return {
       id: 'at-' + c.id, nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
@@ -1008,12 +1008,12 @@ const AGORA=new Date(2026,9,29,16,20);
 const ROTAS={
   urgencia:{nome:"Urgência (citação, penhora, bloqueio, prazo correndo)",curto:"Urgência",setor:"Direção",resp:"Rafael + Mariana",sla:2,peso:3,pede:"Número do processo ou foto do documento recebido",nivel:"crit"},
   processo:{nome:"Processo em andamento / intimação",curto:"Processo / intimação",setor:"Controladoria",resp:"Mariana",sla:8,peso:3,pede:"Número do processo ou foto do documento",nivel:"warn"},
-  nova:{nome:"Nova demanda / consulta",curto:"Nova demanda",setor:"Direção",resp:"Rafael (após conflito: Lillian)",sla:24,peso:2,pede:"Descrição com pelo menos 30 caracteres",nivel:"info"},
+  nova:{nome:"Nova demanda / consulta",curto:"Nova demanda",setor:"Comercial",resp:"Ana Maria (após conflito: Lillian)",sla:24,peso:2,pede:"Descrição com pelo menos 30 caracteres",nivel:"info"},
   docs:{nome:"Envio de documentos",curto:"Documentos",setor:"Coordenação Jurídica",resp:"David",sla:48,peso:1,pede:"A que caso os documentos se referem",nivel:"info"},
   fin:{nome:"Financeiro / boleto / honorários",curto:"Financeiro",setor:"Financeiro",resp:"Victor",sla:24,peso:1,pede:"Nº do contrato ou mês de referência",nivel:"info"},
   agenda:{nome:"Agendamento",curto:"Agendamento",setor:"Administrativo",resp:"Lillian",sla:24,peso:1,pede:"Melhor dia e horário",nivel:"info"}
 };
-const SETORES=["Direção","Controladoria","Coordenação Jurídica","Financeiro","Administrativo"];
+const SETORES=["Direção","Comercial","Controladoria","Coordenação Jurídica","Financeiro","Administrativo"];
 const MENU=[["1","processo"],["2","urgencia"],["3","nova"],["4","docs"],["5","fin"],["6","agenda"]];
 const STATUS=["Nova","Aguardando checagem de conflito","Em andamento","Aguardando cliente","Concluída"];
 

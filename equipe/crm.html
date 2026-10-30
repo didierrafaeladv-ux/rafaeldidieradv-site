@@ -139,6 +139,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
       <div class="fld"><label for="l-valor">Valor estimado da proposta (R$)</label><input id="l-valor" inputmode="decimal" placeholder="0,00"></div>
       <div class="fld"><label for="l-resp">Responsável</label><input id="l-resp" list="dl-resp" autocomplete="off"><datalist id="dl-resp"></datalist></div>
       <div class="fld"><label for="l-etapa">Etapa</label><select id="l-etapa"></select></div>
+      <div class="fld" id="motivo-box" hidden><label for="l-motivo">Motivo de perda *</label><select id="l-motivo"></select></div>
       <div class="fld"><label for="l-ultimo">Último contato</label><input id="l-ultimo" type="date"></div>
       <div class="fld"><label for="l-proxdata">Data da próxima ação</label><input id="l-proxdata" type="date"></div>
       <div class="fld inteira"><label for="l-prox">Próxima ação</label><input id="l-prox" autocomplete="off" placeholder="Ex.: ligar para agendar a reunião"></div>
@@ -184,7 +185,8 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     { k: 'contratado', n: 'Contratado' }, { k: 'perdido', n: 'Não avançou' }];
   const ABERTAS = new Set(['novo', 'reuniao', 'proposta']);
   const AREAS = ['Tributário', 'Execução fiscal', 'Previdenciário', 'Empresarial e societário', 'Administrativo e licitações', 'Cível', 'Trabalhista', 'Outra'];
-  const ORIGENS = ['Indicação', 'Site', 'Redes sociais', 'Evento', 'WhatsApp', 'Outra'];
+  const ORIGENS = ['Indicação', 'Site', 'Redes sociais', 'Evento', 'WhatsApp', 'Cliente da carteira', 'Outra'];
+  const MOTIVOS = ['Preço', 'Prazo', 'Desistiu ou adiou', 'Escolheu outro escritório', 'Resolveu com o contador', 'Fora do perfil do escritório', 'Conflito de interesses', 'Sem retorno do contato', 'Outro'];
   const DIA = 86400000;
 
   const hojeISO = (d) => { const x = d || new Date(); return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
@@ -202,6 +204,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
       valorProposta: leads.filter(l => l.etapa === 'proposta').reduce((s, l) => s + (+l.valor || 0), 0),
       valorContratado: leads.filter(l => l.etapa === 'contratado').reduce((s, l) => s + (+l.valor || 0), 0),
       semContato: leads.filter(l => semContato(l, hoje)).length,
+      motivos: Object.entries(leads.filter(l => l.etapa === 'perdido').reduce((m, l) => { const k = l.motivoPerda || 'Sem motivo registrado'; m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]),
       vencidas: leads.filter(l => vencida(l, hoje)).length
     };
   }
@@ -233,13 +236,14 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     if (l.valor !== '' && l.valor != null && !(+l.valor >= 0)) e.push('valor estimado');
     if (!l.lgpd || !['sim', 'nao', 'pendente'].includes(l.lgpd.status)) e.push('consentimento LGPD');
     if (l.lgpd && l.lgpd.status === 'sim' && !l.lgpd.data) e.push('data do consentimento');
+    if (l.etapa === 'perdido' && !String(l.motivoPerda || '').trim()) e.push('motivo de perda');
     return e;
   }
 
   // ---------- CSV (separador ";", compatível com o Excel em português) ----------
   const COLS = [['id', 'id'], ['nome', 'Nome'], ['empresa', 'Empresa'], ['contato', 'Contato'], ['area', 'Área do Direito'], ['origem', 'Origem'],
     ['valor', 'Valor estimado (R$)'], ['resp', 'Responsável'], ['etapa', 'Etapa'], ['ultimo', 'Último contato'], ['proxAcao', 'Próxima ação'],
-    ['proxData', 'Data da próxima ação'], ['lgpdStatus', 'Consentimento LGPD'], ['lgpdData', 'Data do consentimento'], ['lgpdForma', 'Forma do consentimento'],
+    ['proxData', 'Data da próxima ação'], ['motivoPerda', 'Motivo de perda'], ['lgpdStatus', 'Consentimento LGPD'], ['lgpdData', 'Data do consentimento'], ['lgpdForma', 'Forma do consentimento'],
     ['criado', 'Criado em'], ['hist', 'Histórico (JSON)']];
   const cel = v => { const s = String(v == null ? '' : v); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   function paraCSV(leads) {
@@ -273,7 +277,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
       const ls = norm(g('lgpdStatus'));
       const valorTx = g('valor').replace(/[^\d,.-]/g, ''); const valor = valorTx === '' ? '' : +(/,/.test(valorTx) ? valorTx.replace(/\./g, '').replace(',', '.') : valorTx);
       const l = { id: g('id') || 'l' + Date.now().toString(36) + n, nome: g('nome'), empresa: g('empresa'), contato: g('contato'), area: g('area'), origem: g('origem'),
-        valor: Number.isFinite(valor) ? valor : '', resp: g('resp'), etapa: etapaDe(g('etapa')), ultimo: data(g('ultimo')), proxAcao: g('proxAcao'), proxData: data(g('proxData')),
+        valor: Number.isFinite(valor) ? valor : '', resp: g('resp'), etapa: etapaDe(g('etapa')), motivoPerda: g('motivoPerda'), ultimo: data(g('ultimo')), proxAcao: g('proxAcao'), proxData: data(g('proxData')),
         lgpd: { status: ls === 'sim' ? 'sim' : ls === 'nao' ? 'nao' : 'pendente', data: data(g('lgpdData')), forma: g('lgpdForma') }, criado: data(g('criado')) || hojeISO(), hist: Array.isArray(hist) ? hist : [] };
       if (!l.nome) { erros.push('linha ' + (n + 2) + ': sem nome, ignorada'); return; }
       leads.push(l);
@@ -283,7 +287,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
   // junta importação com a base: mesmo id substitui, id novo entra
   function mesclar(base, novos) { const m = new Map(base.map(l => [l.id, l])); novos.forEach(l => m.set(l.id, l)); return [...m.values()]; }
 
-  const API = { ETAPAS, AREAS, ORIGENS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+  const API = { ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -306,7 +310,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     const cli = (c.msgs || []).filter(m => m.de === 'cli').map(m => m.em).filter(Boolean).sort().pop();
     const amanha = new Date(h.getTime() + 86400000);
     const textoTodo = [f.resumo, ...(c.msgs || []).filter(m => m.de === 'cli').map(m => m.tx)].join('\n');
-    const resp = (f.rota === 'nova' || f.rota === 'urgencia') ? 'Rafael Didier' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
+    const resp = f.rota === 'urgencia' ? 'Rafael Didier' : f.rota === 'nova' ? 'Ana Maria Bezerra Silva' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
     const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
     return {
       id: 'at-' + c.id, nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
@@ -349,17 +353,18 @@ const KEY="crm-leads-rd-v1";
 // 10 leads fictícios, só para demonstração
 function demonstracao(){
   const L=(id,nome,empresa,area,origem,valor,resp,etapa,ult,prox,proxD,lg,hist)=>({id:"demo-"+id,demo:true,nome,empresa,contato:"",area,origem,valor,resp,etapa,ultimo:somaDias(ult),proxAcao:prox,proxData:proxD==null?"":somaDias(proxD),
+    motivoPerda:etapa==="perdido"?"Resolveu com o contador":"",
     lgpd:lg==="sim"?{status:"sim",data:somaDias(ult-2),forma:"Mensagem no WhatsApp"}:{status:lg,data:"",forma:""},criado:somaDias(ult-5),hist:hist.map(([d,c,n])=>({data:somaDias(d),canal:c,nota:n,por:""}))});
   return [
     L(1,"Helena Paiva (fictício)","Distribuidora Aurora Ltda","Tributário","Indicação",18000,"Rafael Didier","proposta",-3,"Retornar sobre a proposta de revisão do ICMS-ST",1,"sim",[[-10,"Reunião presencial","Primeira reunião; enviou SPED dos últimos 12 meses"],[-3,"E-mail","Proposta enviada"]]),
-    L(2,"Otávio Lemos (fictício)","Construtora Pedra Alta","Execução fiscal","Site",9500,"Coordenação Jurídica","reuniao",-9,"Pedir cópia integral da execução",-2,"sim",[[-9,"Telefone","Agendou reunião; citação recebida há 5 dias"]]),
-    L(3,"Marina Teixeira (fictício)","Clínica Bem Viver","Tributário","Redes sociais",6000,"Rafael Didier","novo",-1,"Agendar primeira reunião",2,"pendente",[[-1,"WhatsApp","Perguntou sobre ISS fixo de sociedade uniprofissional"]]),
-    L(4,"Caio Benevides (fictício)","Agro Benevides ME","Previdenciário","Evento",4500,"Controladoria","novo",-12,"Enviar lista de documentos",-5,"sim",[[-12,"Reunião presencial","Conversa no workshop de reforma tributária"]]),
+    L(2,"Otávio Lemos (fictício)","Construtora Pedra Alta","Execução fiscal","Site",9500,"Ana Maria Bezerra Silva","reuniao",-9,"Pedir cópia integral da execução",-2,"sim",[[-9,"Telefone","Agendou reunião; citação recebida há 5 dias"]]),
+    L(3,"Marina Teixeira (fictício)","Clínica Bem Viver","Tributário","Redes sociais",6000,"Ana Maria Bezerra Silva","novo",-1,"Agendar primeira reunião",2,"pendente",[[-1,"WhatsApp","Perguntou sobre ISS fixo de sociedade uniprofissional"]]),
+    L(4,"Caio Benevides (fictício)","Agro Benevides ME","Previdenciário","Evento",4500,"Ana Maria Bezerra Silva","novo",-12,"Enviar lista de documentos",-5,"sim",[[-12,"Reunião presencial","Conversa no workshop de reforma tributária"]]),
     L(5,"Rita Albuquerque (fictício)","Rede Farma Norte","Empresarial e societário","Indicação",25000,"Rafael Didier","proposta",-8,"Ligar para negociar honorários",-1,"sim",[[-20,"Videochamada","Reunião sobre holding familiar"],[-8,"E-mail","Proposta enviada com duas opções de escopo"]]),
     L(6,"Sérgio Moura (fictício)","Transportes Moura","Administrativo e licitações","WhatsApp",12000,"Coordenação Jurídica","contratado",-2,"Coletar procuração assinada",3,"sim",[[-15,"Reunião presencial","Reajuste de contrato com município"],[-2,"Telefone","Aceitou a proposta"]]),
-    L(7,"Lúcia Fontenele (fictício)","Padaria Fontenele","Tributário","Site",3000,"Controladoria","perdido",-25,"",null,"sim",[[-30,"Telefone","Pediu orçamento de recuperação de PIS/COFINS monofásico"],[-25,"Telefone","Optou por resolver com o contador"]]),
+    L(7,"Lúcia Fontenele (fictício)","Padaria Fontenele","Tributário","Site",3000,"Ana Maria Bezerra Silva","perdido",-25,"",null,"sim",[[-30,"Telefone","Pediu orçamento de recuperação de PIS/COFINS monofásico"],[-25,"Telefone","Optou por resolver com o contador"]]),
     L(8,"André Cavalcante (fictício)","Cerâmica Vale Verde","Execução fiscal","Indicação",15000,"Rafael Didier","reuniao",-4,"Reunião com os sócios",0,"sim",[[-4,"WhatsApp","Bloqueio via SISBAJUD; reunião marcada"]]),
-    L(9,"Beatriz Rocha (fictício)","Escola Pequeno Saber","Trabalhista","Redes sociais",5000,"Coordenação Jurídica","proposta",-15,"Confirmar se recebeu a proposta",-6,"pendente",[[-15,"E-mail","Proposta enviada"]]),
+    L(9,"Beatriz Rocha (fictício)","Escola Pequeno Saber","Trabalhista","Redes sociais",5000,"Ana Maria Bezerra Silva","proposta",-15,"Confirmar se recebeu a proposta",-6,"pendente",[[-15,"E-mail","Proposta enviada"]]),
     L(10,"Fábio Nogueira (fictício)","Nogueira Engenharia","Tributário","Evento",22000,"Rafael Didier","contratado",-6,"Kick-off do projeto de retenções do INSS",4,"sim",[[-18,"Reunião presencial","Diagnóstico de retenções previdenciárias"],[-6,"Reunião presencial","Contrato assinado"]])
   ];
 }
@@ -382,7 +387,7 @@ function responsaveis(){ return [...new Set(leads.map(l=>l.resp).filter(Boolean)
 function renderKpis(){
   const h=HOJE(), k=CRM.indicadores(leads,h), max=Math.max(1,...Object.values(k.porEtapa));
   $("kpis").innerHTML='<div class="kpi"><div class="r">Leads por etapa · '+k.total+' no total</div><div class="funil">'+CRM.ETAPAS.map(e=>'<div class="f-'+e.k+'"><b>'+k.porEtapa[e.k]+'</b><span title="'+e.n+'">'+e.n+'</span><i style="opacity:'+(.25+.75*k.porEtapa[e.k]/max).toFixed(2)+'"></i></div>').join("")+'</div></div>'+
-   '<div class="kpi"><div class="r">Taxa de conversão</div><div class="v">'+(k.conversao==null?"—":Math.round(k.conversao*100)+"%")+'</div><div class="s">contratados ÷ leads encerrados ('+(k.porEtapa.contratado+k.porEtapa.perdido)+')</div></div>'+
+   '<div class="kpi"><div class="r">Taxa de conversão</div><div class="v">'+(k.conversao==null?"—":Math.round(k.conversao*100)+"%")+'</div><div class="s">contratados ÷ leads encerrados ('+(k.porEtapa.contratado+k.porEtapa.perdido)+')'+(k.motivos.length?' · principal perda: '+esc(k.motivos[0][0])+' ('+k.motivos[0][1]+')':'')+'</div></div>'+
    '<div class="kpi"><div class="r">Valor em proposta</div><div class="v">'+brl(k.valorProposta)+'</div><div class="s">'+k.porEtapa.proposta+' proposta(s) aberta(s) · contratado '+brl(k.valorContratado)+'</div></div>'+
    '<button type="button" class="kpi '+(k.semContato?"alerta":"")+'" id="k-frios" aria-pressed="'+filtro.frios+'"><div class="r">Sem contato há mais de 7 dias</div><div class="v">'+k.semContato+'</div><div class="s">'+(filtro.frios?"Mostrando só estes · toque para ver todos":"Toque para filtrar")+'</div></button>'+
    '<div class="kpi '+(k.vencidas?"alerta":"")+'"><div class="r">Próximas ações vencidas</div><div class="v">'+k.vencidas+'</div><div class="s">marcadas em vermelho no funil</div></div>';
@@ -417,7 +422,9 @@ $("board").addEventListener("dragstart",e=>{ const c=e.target.closest(".card"); 
 $("board").addEventListener("dragend",e=>{ const c=e.target.closest(".card"); if(c) c.classList.remove("drag"); document.querySelectorAll(".col.over").forEach(x=>x.classList.remove("over")); arrastando=null });
 $("board").addEventListener("dragover",e=>{ const col=e.target.closest(".col"); if(!col||!arrastando) return; e.preventDefault(); document.querySelectorAll(".col.over").forEach(x=>x!==col&&x.classList.remove("over")); col.classList.add("over") });
 $("board").addEventListener("drop",e=>{ const col=e.target.closest(".col"); if(!col) return; e.preventDefault(); moverPara(e.dataTransfer.getData("text/plain")||arrastando,col.dataset.etapa) });
-function moverPara(id,etapa){ const l=leads.find(x=>x.id===id); if(!l||!CRM.mover(l,etapa,HOJE())) { render(); return }
+function moverPara(id,etapa){ const l=leads.find(x=>x.id===id);
+  if(l&&etapa==="perdido"&&!l.motivoPerda){ render(); abrir(id); $("l-etapa").value="perdido"; mostraMotivo(); $("d-erro").textContent="Informe o motivo de perda e salve para mover para “Não avançou”."; $("l-motivo").focus(); return }
+  if(!l||!CRM.mover(l,etapa,HOJE())) { render(); return }
   persistir(l); render(); toast("“"+l.nome+"” movido para "+CRM.ETAPAS.find(e=>e.k===etapa).n+".") }
 $("board").addEventListener("change",e=>{ const s=e.target.closest("select[data-mover]"); if(s) moverPara(s.dataset.mover,s.value) });
 $("board").addEventListener("click",e=>{ if(e.target.closest("select")) return; const c=e.target.closest(".card"); if(c) abrir(c.dataset.id) });
@@ -436,7 +443,7 @@ function abrir(id){
   const v=l||{nome:"",empresa:"",contato:"",area:"",origem:"",valor:"",resp:"",etapa:"novo",ultimo:HOJE(),proxAcao:"",proxData:"",lgpd:{status:"",data:"",forma:""},hist:[]};
   $("l-nome").value=v.nome; $("l-empresa").value=v.empresa||""; $("l-contato").value=v.contato||""; $("l-area").value=v.area||""; $("l-origem").value=v.origem||"";
   $("l-valor").value=v.valor===""||v.valor==null?"":String(v.valor).replace(".",","); $("l-resp").value=v.resp||""; $("l-etapa").value=v.etapa; $("l-ultimo").value=v.ultimo||"";
-  $("l-prox").value=v.proxAcao||""; $("l-proxdata").value=v.proxData||"";
+  $("l-prox").value=v.proxAcao||""; $("l-proxdata").value=v.proxData||""; $("l-motivo").value=v.motivoPerda||""; mostraMotivo();
   document.querySelectorAll('input[name="lgpd"]').forEach(r=>r.checked=r.value===(v.lgpd||{}).status); $("lg-data").value=(v.lgpd||{}).data||""; $("lg-forma").value=(v.lgpd||{}).forma||"";
   $("d-hist-box").hidden=!l; $("h-data").value=HOJE(); $("h-nota").value=""; renderHist(l);
   if(typeof dlg.showModal==="function") dlg.showModal(); else dlg.setAttribute("open",""); $("l-nome").focus();
@@ -456,9 +463,9 @@ $("form").addEventListener("submit",e=>{ e.preventDefault();
   const base=editando?leads.find(x=>x.id===editando):{id:"l"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),criado:HOJE(),hist:[]};
   const novo=Object.assign({},base,{nome:$("l-nome").value.trim(),empresa:$("l-empresa").value.trim(),contato:$("l-contato").value.trim(),area:$("l-area").value,origem:$("l-origem").value,
     valor:Number.isFinite(valor)?valor:NaN,resp:$("l-resp").value.trim(),ultimo:$("l-ultimo").value,proxAcao:$("l-prox").value.trim(),proxData:$("l-proxdata").value,
-    lgpd:lg?{status:lg,data:$("lg-data").value,forma:$("lg-forma").value.trim()}:null});
+    lgpd:lg?{status:lg,data:$("lg-data").value,forma:$("lg-forma").value.trim()}:null, motivoPerda:$("l-etapa").value==="perdido"?$("l-motivo").value:""});
   const et=$("l-etapa").value; novo.etapa=base.etapa||et;
-  const errs=CRM.validar(novo); if(errs.length){ $("d-erro").textContent="Confira: "+errs.join(", ")+"."; return }
+  const errs=CRM.validar(Object.assign({},novo,{etapa:et})); if(errs.length){ $("d-erro").textContent="Confira: "+errs.join(", ")+"."; return }
   if(editando&&et!==novo.etapa) CRM.mover(novo,et,HOJE()); else novo.etapa=et;
   if(!editando) novo.hist=[{data:HOJE(),canal:"Cadastro",nota:"Lead cadastrado",por:""}];
   if(editando) leads=leads.map(x=>x.id===novo.id?novo:x); else leads.push(novo);
@@ -487,7 +494,8 @@ $("colar-tx").addEventListener("paste",()=>setTimeout(incluiColados,0));
 
 // opções fixas
 opcoes($("f-area"),CRM.AREAS,"Todas as áreas"); opcoes($("f-origem"),CRM.ORIGENS,"Todas as origens");
-opcoes($("l-area"),CRM.AREAS,"—"); opcoes($("l-origem"),CRM.ORIGENS,"—");
+opcoes($("l-area"),CRM.AREAS,"—"); opcoes($("l-origem"),CRM.ORIGENS,"—"); opcoes($("l-motivo"),CRM.MOTIVOS,"Escolha o motivo");
+const mostraMotivo=()=>{ $("motivo-box").hidden=$("l-etapa").value!=="perdido" }; $("l-etapa").addEventListener("change",mostraMotivo);
 $("l-etapa").innerHTML=CRM.ETAPAS.map(e=>'<option value="'+e.k+'">'+e.n+'</option>').join("");
 
 carregaLocal(); render();

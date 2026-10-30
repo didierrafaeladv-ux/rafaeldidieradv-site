@@ -93,6 +93,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
 @media (max-width:640px){.board{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr)}h1{font-size:23px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .metas{contain:inline-size;min-width:0;margin:0 0 14px;border:1px solid var(--line);border-radius:10px;padding:8px 14px;background:var(--surface);color:var(--fg)}.metas summary{cursor:pointer;font-weight:600}.metas table{width:100%;border-collapse:collapse;font-size:.88rem;margin:8px 0}.metas th,.metas td{text-align:left;padding:6px;border-top:1px solid var(--line);vertical-align:top}.m-ok{color:var(--ok);font-weight:600}.m-nao{color:var(--crit);font-weight:600}#metas-c{overflow-x:auto}
+.chip.ok{background:var(--soft);color:var(--ok)}#travas-box label input[type=checkbox]{margin-right:6px}
 </style>
 </head><body>
 
@@ -149,15 +150,28 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     <fieldset>
       <legend>Tratamento de dados pessoais (LGPD) *</legend>
       <div class="radios" role="radiogroup" aria-label="Consentimento">
-        <label><input type="radio" name="lgpd" id="lg-sim" value="sim"> Consentiu</label>
+        <label><input type="radio" name="lgpd" id="lg-sim" value="sim"> Base legal registrada</label>
         <label><input type="radio" name="lgpd" id="lg-pend" value="pendente"> Pendente</label>
-        <label><input type="radio" name="lgpd" id="lg-nao" value="nao"> Recusou</label>
+        <label><input type="radio" name="lgpd" id="lg-nao" value="nao"> Recusou ou pediu exclusão</label>
       </div>
       <div class="grid">
-        <div class="fld"><label for="lg-data">Data do consentimento</label><input id="lg-data" type="date"></div>
-        <div class="fld"><label for="lg-forma">Como foi dado</label><input id="lg-forma" placeholder="Ex.: formulário do site, mensagem no WhatsApp" autocomplete="off"></div>
+        <div class="fld"><label for="lg-data">Data do registro</label><input id="lg-data" type="date"></div>
+        <div class="fld"><label for="lg-forma">Base e forma</label><input id="lg-forma" placeholder="Ex.: art. 7º, V (pedido de proposta) pelo WhatsApp" autocomplete="off"></div>
       </div>
       <div class="aviso">Guarde só os dados necessários para a proposta. Se o titular recusar ou pedir a exclusão, exclua o lead.</div>
+    </fieldset>
+    <fieldset id="travas-box">
+      <legend>Travas da Controladoria</legend>
+      <div class="grid">
+        <div class="fld"><label for="t-conf">G1 · Conflito de interesses</label><select id="t-conf"><option value="">Não consultado</option><option value="ok">Consultado: sem conflito</option><option value="impedido">Impedido: há conflito</option></select></div>
+        <div class="fld"><label for="t-confpor">Consultado por</label><input id="t-confpor" autocomplete="off" placeholder="Ex.: Ana Maria"></div>
+        <div class="fld"><label><input type="checkbox" id="t-contrato"> G3 · Contrato assinado</label><label><input type="checkbox" id="t-procur"> G3 · Procuração assinada</label></div>
+        <div class="fld"><label for="t-docs">Link dos documentos no Drive</label><input id="t-docs" autocomplete="off" placeholder="https://drive.google.com/..."></div>
+        <div class="fld"><label for="t-libpor">G4 · Liberado pela Controladoria</label><input id="t-libpor" autocomplete="off" placeholder="Nome de quem liberou"></div>
+        <div class="fld"><label for="t-libdata">Data da liberação</label><input id="t-libdata" type="date"></div>
+        <div class="fld inteira"><label for="t-cnj">Número do processo (só quando ajuizada)</label><input id="t-cnj" autocomplete="off" placeholder="0000000-00.0000.0.00.0000"></div>
+      </div>
+      <div class="aviso" id="t-status" role="status"></div>
     </fieldset>
     <div id="d-hist-box" class="fld" hidden>
       <span class="lb">Histórico de contatos</span>
@@ -225,8 +239,23 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     l.hist = (l.hist || []).concat([{ data: d, canal: canal || 'Outro', nota: nota.trim(), por: por || '' }]).sort((a, b) => a.data.localeCompare(b.data));
     if (!l.ultimo || d > l.ultimo) l.ultimo = d; return l;
   }
+  // ---------- travas da Controladoria (30/10/2026) ----------
+  // G1 conflito (Comercial marca), G3 contrato + procuração + pasta, G4 liberação (Controladoria), CNJ só quando ajuizada
+  function cnjValido(n) { const d = String(n || '').replace(/\D/g, ''); if (d.length !== 20) return false;
+    const r = (BigInt(d.slice(0, 7) + d.slice(9, 20)) * 100n) % 97n; return String(98n - r).padStart(2, '0') === d.slice(7, 9); }
+  const POS_REUNIAO = new Set(['reuniao', 'proposta', 'contratado']);
+  function travas(l) { const t = l.travas || {};
+    const g1 = (t.conflito || {}).status === 'ok', g3 = !!(t.contrato && t.procuracao && String(t.docsLink || '').trim()), g4 = !!(String((t.liberado || {}).por || '').trim() && (t.liberado || {}).data);
+    const cnj = cnjValido(t.cnj);
+    return { g1, g3, g4, cnj, impedido: (t.conflito || {}).status === 'impedido',
+      prontoDrive: l.etapa === 'contratado' && g1 && g3 && g4 && !t.pastaDrive,
+      prontoAstrea: l.etapa === 'contratado' && g1 && g3 && g4 && cnj && !t.astreaId };
+  }
+  function bloqueio(l, etapa) { const t = travas(l);
+    if (POS_REUNIAO.has(etapa) && !t.g1) return t.impedido ? 'Conflito de interesses impedido (G1): o lead não pode avançar.' : 'Registre a consulta de conflito de interesses (G1) antes de avançar para “' + ETAPAS.find(e => e.k === etapa).n + '”.';
+    return ''; }
   function mover(l, etapa, hoje) {
-    if (!ETAPAS.some(e => e.k === etapa) || l.etapa === etapa) return false;
+    if (!ETAPAS.some(e => e.k === etapa) || l.etapa === etapa || bloqueio(l, etapa)) return false;
     const de = (ETAPAS.find(e => e.k === l.etapa) || {}).n || l.etapa;
     l.etapa = etapa; l.hist = (l.hist || []).concat([{ data: hoje || hojeISO(), canal: 'Funil', nota: 'Movido de “' + de + '” para “' + ETAPAS.find(e => e.k === etapa).n + '”', por: '' }]);
     return true;
@@ -251,14 +280,14 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
   const COLS = [['id', 'id'], ['nome', 'Nome'], ['empresa', 'Empresa'], ['contato', 'Contato'], ['area', 'Área do Direito'], ['origem', 'Origem'],
     ['valor', 'Valor estimado (R$)'], ['resp', 'Responsável'], ['etapa', 'Etapa'], ['ultimo', 'Último contato'], ['proxAcao', 'Próxima ação'],
     ['proxData', 'Data da próxima ação'], ['motivoPerda', 'Motivo de perda'], ['lgpdStatus', 'Consentimento LGPD'], ['lgpdData', 'Data do consentimento'], ['lgpdForma', 'Forma do consentimento'],
-    ['criado', 'Criado em'], ['hist', 'Histórico (JSON)']];
+    ['criado', 'Criado em'], ['hist', 'Histórico (JSON)'], ['travas', 'Travas (JSON)']];
   const cel = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = "'" + s;   /* evita fórmula ao abrir no Excel */ return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   function paraCSV(leads) {
     const linhas = [COLS.map(c => c[1]).join(';')];
     leads.forEach(l => {
       const r = { ...l, valor: l.valor === '' || l.valor == null ? '' : String(+l.valor).replace('.', ','), etapa: (ETAPAS.find(e => e.k === l.etapa) || {}).n || l.etapa,
         lgpdStatus: ({ sim: 'Sim', nao: 'Não', pendente: 'Pendente' })[(l.lgpd || {}).status] || '', lgpdData: (l.lgpd || {}).data || '', lgpdForma: (l.lgpd || {}).forma || '',
-        hist: JSON.stringify(l.hist || []) };
+        hist: JSON.stringify(l.hist || []), travas: l.travas ? JSON.stringify(l.travas) : '' };
       linhas.push(COLS.map(c => cel(r[c[0]])).join(';'));
     });
     return '﻿' + linhas.join('\r\n');
@@ -281,12 +310,14 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     const erros = [], leads = [];
     rows.filter(r => r.some(x => String(x).trim())).forEach((r, n) => {
       const g = k => idx[k] >= 0 ? (r[idx[k]] || '').trim() : '';
+      let travas; try { travas = g('travas') ? JSON.parse(g('travas')) : undefined; } catch (e) { erros.push('linha ' + (n + 2) + ': travas ilegíveis, importado sem elas'); }
       let hist = []; try { hist = g('hist') ? JSON.parse(g('hist')) : []; } catch (e) { erros.push('linha ' + (n + 2) + ': histórico ilegível, importado sem ele'); }
       const ls = norm(g('lgpdStatus'));
       const valor = lerValor(g('valor'));
       const l = { id: g('id') || 'l' + Date.now().toString(36) + n, nome: g('nome'), empresa: g('empresa'), contato: g('contato'), area: g('area'), origem: g('origem'),
         valor: Number.isFinite(valor) ? valor : '', resp: g('resp'), etapa: etapaDe(g('etapa')), motivoPerda: g('motivoPerda'), ultimo: data(g('ultimo')), proxAcao: g('proxAcao'), proxData: data(g('proxData')),
         lgpd: { status: ls === 'sim' ? 'sim' : ls === 'nao' ? 'nao' : 'pendente', data: data(g('lgpdData')), forma: g('lgpdForma') }, criado: data(g('criado')) || hojeISO(), hist: Array.isArray(hist) ? hist : [] };
+      if (travas && typeof travas === 'object') l.travas = travas;
       if (!l.nome) { erros.push('linha ' + (n + 2) + ': sem nome, ignorada'); return; }
       if (l.etapa === 'perdido' && !l.motivoPerda) erros.push('“' + l.nome + '” está em Não avançou sem motivo de perda: informe ao editar');
       leads.push(l);
@@ -316,7 +347,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     };
   }
 
-  const API = { metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+  const API = { cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -388,7 +419,7 @@ const KEY="crm-leads-rd-v1";
 function demonstracao(){
   const L=(id,nome,empresa,area,origem,valor,resp,etapa,ult,prox,proxD,lg,hist)=>({id:"demo-"+id,demo:true,nome,empresa,contato:"",area,origem,valor,resp,etapa,ultimo:somaDias(ult),proxAcao:prox,proxData:proxD==null?"":somaDias(proxD),
     motivoPerda:etapa==="perdido"?"Resolveu com o contador":"",
-    lgpd:lg==="sim"?{status:"sim",data:somaDias(ult-2),forma:"Mensagem no WhatsApp"}:{status:lg,data:"",forma:""},criado:somaDias(ult-5),hist:hist.map(([d,c,n])=>({data:somaDias(d),canal:c,nota:n,por:""}))});
+    lgpd:lg==="sim"?{status:"sim",data:somaDias(ult-2),forma:"Mensagem no WhatsApp"}:{status:lg,data:"",forma:""},criado:somaDias(ult-5),travas:etapa!=="novo"?{conflito:{status:"ok",data:somaDias(ult-5),por:"Ana Maria Bezerra Silva"}}:undefined,hist:hist.map(([d,c,n])=>({data:somaDias(d),canal:c,nota:n,por:""}))});
   return [
     L(1,"Helena Paiva (fictício)","Distribuidora Aurora Ltda","Tributário","Indicação",18000,"Rafael Didier","proposta",-3,"Retornar sobre a proposta de revisão do ICMS-ST",1,"sim",[[-10,"Reunião presencial","Primeira reunião; enviou SPED dos últimos 12 meses"],[-3,"E-mail","Proposta enviada"]]),
     L(2,"Otávio Lemos (fictício)","Construtora Pedra Alta","Execução fiscal","Site",9500,"Ana Maria Bezerra Silva","reuniao",-9,"Pedir cópia integral da execução",-2,"sim",[[-9,"Telefone","Agendou reunião; citação recebida há 5 dias"]]),
@@ -431,12 +462,25 @@ function renderFiltros(){
   const r=$("f-resp").value; opcoes($("f-resp"),responsaveis(),"Todos os responsáveis"); $("f-resp").value=responsaveis().includes(r)?r:"";
   $("dl-resp").innerHTML=responsaveis().map(v=>'<option value="'+esc(v)+'">').join("");
 }
+function selosTravas(l){ const t=CRM.travas(l), tv=l.travas||{};
+  if(t.impedido) return '<span class="chip lgpd">conflito: impedido</span>';
+  if(l.etapa==="novo") return t.g1?'':'<span class="chip">G1 pendente</span>';
+  if(!t.g1) return '<span class="chip lgpd">G1 pendente</span>';
+  if(l.etapa!=="contratado") return '';
+  if(tv.astreaId) return '<span class="chip ok">no Astrea</span>';
+  if(t.prontoAstrea) return '<span class="chip ok">pronto para o Astrea</span>';
+  if(!(t.g3&&t.g4)) return '<span class="chip">aguarda '+(t.g3?'':'G3 ')+(t.g4?'':'G4')+'</span>';
+  return tv.pastaDrive?'<span class="chip ok">pasta no Drive</span>':'<span class="chip ok">pronto para a pasta</span>' }
+function travaStatus(v){ const t=CRM.travas(v), tv=v.travas||{};
+  const it=[["G1 conflito",t.g1],["G3 contrato, procuração e link",t.g3],["G4 liberação",t.g4]].map(([n,ok])=>(ok?"✓ ":"○ ")+n).join(" · ");
+  return esc(it)+(tv.pastaDrive?'<br>Pasta no Drive: <a href="'+esc(tv.pastaDrive)+'" target="_blank" rel="noopener">abrir</a>':'')+(tv.astreaId?'<br>Cadastrado no Astrea (id '+esc(tv.astreaId)+').':'')+
+    '<br>A Ponte RD cria a pasta no Drive após G1, G3 e G4, e o processo no Astrea só quando houver número CNJ.' }
 function card(l,h){
   const venc=CRM.vencida(l,h), frio=CRM.semContato(l,h), d=l.ultimo?CRM.dias(l.ultimo,h):null;
   return '<article class="card'+(venc?" venc":"")+'" draggable="true" tabindex="0" data-id="'+esc(l.id)+'" aria-label="'+esc(l.nome)+'">'+
    '<div class="n">'+esc(l.nome)+'</div>'+(l.empresa?'<div class="e">'+esc(l.empresa)+'</div>':'')+
    '<div class="chips">'+(l.area?'<span class="chip">'+esc(l.area)+'</span>':'')+(l.origem?'<span class="chip">'+esc(l.origem)+'</span>':'')+
-     (l.lgpd&&l.lgpd.status!=="sim"?'<span class="chip lgpd">LGPD '+(l.lgpd.status==="nao"?"recusado":"pendente")+'</span>':'')+(frio?'<span class="chip frio">sem contato '+(d==null?"":d+" d")+'</span>':'')+(ehDemo(l)?'<span class="chip demo">demonstração</span>':'')+'</div>'+
+     (l.lgpd&&l.lgpd.status!=="sim"?'<span class="chip lgpd">LGPD '+(l.lgpd.status==="nao"?"recusado":"pendente")+'</span>':'')+(frio?'<span class="chip frio">sem contato '+(d==null?"":d+" d")+'</span>':'')+selosTravas(l)+(ehDemo(l)?'<span class="chip demo">demonstração</span>':'')+'</div>'+
    '<div class="e">'+(l.valor!==""&&l.valor!=null?'<span class="val">'+brl(l.valor)+'</span> · ':'')+esc(l.resp||"sem responsável")+' · último contato '+dataBR(l.ultimo)+'</div>'+
    (l.proxAcao||l.proxData?'<div class="prox'+(venc?" venc":"")+'">'+(venc?"Vencida · ":"")+esc(l.proxAcao||"Próxima ação")+(l.proxData?" · "+dataBR(l.proxData):"")+'</div>':'')+
    '<select data-mover="'+esc(l.id)+'" aria-label="Mover '+esc(l.nome)+' para outra etapa">'+CRM.ETAPAS.map(e=>'<option value="'+e.k+'"'+(e.k===l.etapa?" selected":"")+'>'+(e.k===l.etapa?"Etapa: ":"Mover para: ")+e.n+'</option>').join("")+'</select></article>';
@@ -468,6 +512,7 @@ $("board").addEventListener("dragover",e=>{ const col=e.target.closest(".col"); 
 $("board").addEventListener("drop",e=>{ const col=e.target.closest(".col"); if(!col) return; e.preventDefault(); moverPara(e.dataTransfer.getData("text/plain")||arrastando,col.dataset.etapa) });
 function moverPara(id,etapa){ const l=leads.find(x=>x.id===id);
   if(l&&etapa==="perdido"&&!l.motivoPerda){ render(); abrir(id); $("l-etapa").value="perdido"; mostraMotivo(); $("d-erro").textContent="Informe o motivo de perda e salve para mover para “Não avançou”."; $("l-motivo").focus(); return }
+  const bq=l&&CRM.bloqueio(l,etapa); if(bq){ render(); toast(bq); abrir(id); $("d-erro").textContent=bq; $("t-conf").focus(); return }
   if(!l||!CRM.mover(l,etapa,HOJE())) { render(); return }
   persistir(l); render(); toast("“"+l.nome+"” movido para "+CRM.ETAPAS.find(e=>e.k===etapa).n+".") }
 $("board").addEventListener("change",e=>{ const s=e.target.closest("select[data-mover]"); if(s) moverPara(s.dataset.mover,s.value) });
@@ -489,6 +534,9 @@ function abrir(id){
   $("l-valor").value=v.valor===""||v.valor==null?"":String(v.valor).replace(".",","); $("l-resp").value=v.resp||""; $("l-etapa").value=v.etapa; $("l-ultimo").value=v.ultimo||"";
   $("l-prox").value=v.proxAcao||""; $("l-proxdata").value=v.proxData||""; $("l-motivo").value=v.motivoPerda||""; mostraMotivo();
   document.querySelectorAll('input[name="lgpd"]').forEach(r=>r.checked=r.value===(v.lgpd||{}).status); $("lg-data").value=(v.lgpd||{}).data||""; $("lg-forma").value=(v.lgpd||{}).forma||"";
+  const tv=v.travas||{}; $("t-conf").value=(tv.conflito||{}).status||""; $("t-confpor").value=(tv.conflito||{}).por||""; $("t-contrato").checked=!!tv.contrato; $("t-procur").checked=!!tv.procuracao;
+  $("t-docs").value=tv.docsLink||""; $("t-libpor").value=(tv.liberado||{}).por||""; $("t-libdata").value=(tv.liberado||{}).data||""; $("t-cnj").value=tv.cnj||"";
+  $("t-status").innerHTML=travaStatus(v);
   $("d-hist-box").hidden=!l; $("h-data").value=HOJE(); $("h-nota").value=""; renderHist(l);
   if(typeof dlg.showModal==="function") dlg.showModal(); else dlg.setAttribute("open",""); $("l-nome").focus();
 }
@@ -508,7 +556,13 @@ $("form").addEventListener("submit",e=>{ e.preventDefault();
   const novo=Object.assign({},base,{nome:$("l-nome").value.trim(),empresa:$("l-empresa").value.trim(),contato:$("l-contato").value.trim(),area:$("l-area").value,origem:$("l-origem").value,
     valor:valor===""?"":(Number.isFinite(valor)?valor:NaN),resp:$("l-resp").value.trim(),ultimo:$("l-ultimo").value,proxAcao:$("l-prox").value.trim(),proxData:$("l-proxdata").value,
     lgpd:lg?{status:lg,data:$("lg-data").value,forma:$("lg-forma").value.trim()}:null, motivoPerda:$("l-etapa").value==="perdido"?$("l-motivo").value:""});
+  const tv0=base.travas||{}, conf=$("t-conf").value, cnj=$("t-cnj").value.trim();
+  if(cnj&&!CRM.cnjValido(cnj)){ $("d-erro").textContent="Número do processo com dígito verificador inválido: confira."; $("t-cnj").focus(); return }
+  novo.travas=Object.assign({},tv0,{conflito:conf?{status:conf,por:$("t-confpor").value.trim(),data:(tv0.conflito||{}).status===conf?(tv0.conflito||{}).data:HOJE()}:undefined,
+    contrato:$("t-contrato").checked,procuracao:$("t-procur").checked,docsLink:$("t-docs").value.trim(),
+    liberado:$("t-libpor").value.trim()?{por:$("t-libpor").value.trim(),data:$("t-libdata").value||HOJE()}:undefined,cnj});
   const et=$("l-etapa").value; novo.etapa=base.etapa||et;
+  if(et!==novo.etapa||!editando){ const bq=CRM.bloqueio(novo,et); if(bq){ $("d-erro").textContent=bq; $("t-conf").focus(); return } }
   const errs=CRM.validar(Object.assign({},novo,{etapa:et})); if(errs.length){ $("d-erro").textContent="Confira: "+errs.join(", ")+"."; return }
   if(editando&&et!==novo.etapa) CRM.mover(novo,et,HOJE()); else novo.etapa=et;
   if(!editando) novo.hist=[{data:HOJE(),canal:"Cadastro",nota:"Lead cadastrado",por:""}];

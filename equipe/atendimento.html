@@ -1,0 +1,1048 @@
+<!doctype html><html><head><meta name="robots" content="noindex,nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Atendimento RD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&family=JetBrains+Mono:wght@400;500&family=Libre+Caslon+Text:wght@400;700&display=swap">
+<style>
+/* Layout: barra do escritório + cinco abas; "Atendimento" é uma mesa de três colunas, "Fila única" é uma tabela priorizada, "Documentos" é conferência + prévia em papel, "Indicadores" e "Regras" são painéis de leitura */
+:root{
+  --bg:#f3f2ee; --surface:#ffffff; --ink:#1f2422; --muted:#62695f; --line:#dcdad2;
+  --petrol:#164e4a; --petrol-soft:#e0ecea; --ochre:#9a6a12; --ochre-soft:#f6ecd8;
+  --crit:#a12d25; --crit-soft:#f7e1de; --ok:#2e6a3a; --ok-soft:#e1efe3;
+  --bubble-in:#ffffff; --bubble-out:#dbeae6; --chat-bg:#ebe8df; --paper:#fffdf8; --paper-ink:#1b1b18;
+  --f-display:"Fraunces", Georgia, serif;
+  --f-body:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  --f-doc:"Libre Caslon Text", "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141817; --surface:#1c2120; --ink:#e4e7e3; --muted:#9ca39b; --line:#2f3533;
+  --petrol:#79c1b8; --petrol-soft:#1b3431; --ochre:#e0ae55; --ochre-soft:#3a2e18;
+  --crit:#ec8178; --crit-soft:#3d201d; --ok:#83c890; --ok-soft:#1d3322;
+  --bubble-in:#252b2a; --bubble-out:#1f3a36; --chat-bg:#171c1b; --paper:#23282a; --paper-ink:#e6e4dc; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141817; --surface:#1c2120; --ink:#e4e7e3; --muted:#9ca39b; --line:#2f3533;
+  --petrol:#79c1b8; --petrol-soft:#1b3431; --ochre:#e0ae55; --ochre-soft:#3a2e18;
+  --crit:#ec8178; --crit-soft:#3d201d; --ok:#83c890; --ok-soft:#1d3322;
+  --bubble-in:#252b2a; --bubble-out:#1f3a36; --chat-bg:#171c1b; --paper:#23282a; --paper-ink:#e6e4dc; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14.5px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px))}
+header.top{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:flex-end;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--f-display);font-weight:600;font-size:28px;line-height:1.15;margin:0}
+.eyebrow{font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.note{font-size:13px;color:var(--muted);max-width:56ch;margin:0}
+nav.tabs{display:flex;gap:4px;margin:16px 0;flex-wrap:wrap}
+nav.tabs button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:7px 14px;border-radius:6px;cursor:pointer}
+nav.tabs button[aria-selected="true"]{background:var(--petrol);border-color:var(--petrol);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
+.btn{font:inherit;font-weight:600;border-radius:6px;padding:7px 12px;cursor:pointer;border:1px solid var(--petrol);background:var(--petrol);color:var(--bg)}
+.btn.ghost{background:transparent;color:var(--petrol)}
+.btn.small{padding:4px 9px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--ochre-soft);color:var(--ochre)}
+.pill.info{background:var(--petrol-soft);color:var(--petrol)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.line{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.hint{font-size:12.5px;color:var(--muted)}
+h2.sec{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0 0 4px}
+p.sub{color:var(--muted);margin:0 0 14px;max-width:72ch}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%}
+textarea{min-height:80px;resize:vertical}
+.invalid{border-color:var(--crit)!important}
+
+/* mesa */
+.desk{display:grid;grid-template-columns:270px minmax(0,1fr) 310px;gap:12px;align-items:start}
+.col{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0;overflow:hidden}
+.col h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.inbox{list-style:none;margin:0;padding:0;max-height:560px;overflow-y:auto}
+.inbox li button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;width:100%;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.inbox li button:hover{background:var(--bg)}
+.inbox li button[aria-current="true"]{background:var(--petrol-soft)}
+.inbox li button:focus-visible{outline:2px solid var(--petrol);outline-offset:-2px}
+.inbox .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inbox .pv{grid-column:1/-1;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inbox .tg{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.chat{display:flex;flex-direction:column;height:600px}
+.chat-h{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.chat-h .who{font-weight:700}
+.msgs{flex:1;overflow-y:auto;background:var(--chat-bg);padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+.m{max-width:78%;padding:8px 11px;border-radius:8px;white-space:pre-wrap;word-wrap:break-word;font-size:14px;box-shadow:0 1px 0 var(--line)}
+.m.in{align-self:flex-start;background:var(--bubble-in)}
+.m.out{align-self:flex-end;background:var(--bubble-out)}
+.m.note{align-self:center;background:var(--ochre-soft);color:var(--ochre);font-size:12.5px;font-weight:600;box-shadow:none;max-width:92%;text-align:center}
+.m .t{display:block;font-size:11px;color:var(--muted);margin-top:3px;text-align:right}
+.m .by{display:block;font-size:11px;font-weight:700;color:var(--petrol);margin-bottom:2px}
+.compose{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);align-items:center}
+.compose input{flex:1;min-width:0}
+.mode{display:flex;gap:4px;font-size:12.5px;flex-wrap:wrap}
+.mode button{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:4px 9px;border-radius:999px;cursor:pointer}
+.mode button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.quick{display:flex;gap:6px;flex-wrap:wrap;padding:0 10px 10px}
+.quick:empty{display:none}
+.quick button{font:inherit;font-size:12.5px;border:1px solid var(--petrol);color:var(--petrol);background:transparent;border-radius:999px;padding:3px 10px;cursor:pointer}
+.ficha{padding:14px;display:flex;flex-direction:column;gap:10px}
+.ficha dl{margin:0;display:grid;grid-template-columns:92px minmax(0,1fr);gap:6px 10px;font-size:13.5px}
+.ficha dt{color:var(--muted);font-size:12.5px}
+.ficha dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.ficha .resumo{background:var(--bg);border-radius:6px;padding:10px;font-size:13.5px;white-space:pre-wrap}
+.ficha select{font-size:13px;padding:5px 8px}
+.falta{border:1px solid var(--ochre);background:var(--ochre-soft);color:var(--ochre);border-radius:6px;padding:8px 10px;font-size:12.5px;font-weight:600}
+.log{border-top:1px solid var(--line);padding-top:8px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.empty{padding:20px 14px;color:var(--muted);font-size:13.5px}
+
+/* fila */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar select{width:auto}
+.toolbar .spacer{flex:1}
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:900px;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td select{width:auto;font-size:13px;padding:5px 8px}
+.linkbtn{all:unset;color:var(--petrol);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.linkbtn:focus-visible{outline:2px solid var(--petrol)}
+.sitepanel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
+.sitepanel h3{margin:0 0 2px;font-size:15px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld.full{grid-column:1/-1}
+.fld label{font-weight:600;font-size:13.5px}
+.err{color:var(--crit);font-size:12.5px;min-height:1em}
+.toast{font-size:13.5px;font-weight:600;color:var(--ok)}
+
+/* documentos */
+.docs{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:14px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.panel h3{margin:0 0 4px;font-size:15px}
+.cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.case{all:unset;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;background:var(--bg)}
+.case[aria-pressed="true"]{border-color:var(--petrol);box-shadow:inset 0 0 0 1px var(--petrol)}
+.case:focus-visible{outline:2px solid var(--petrol)}
+.case b{font-size:14px}
+.files{display:flex;gap:6px;flex-wrap:wrap}
+.ext{width:100%;border-collapse:collapse;font-size:13.5px;min-width:0}
+.ext th,.ext td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ext td input{padding:6px 8px;font-size:13.5px}
+.ext tr.low td{background:var(--crit-soft)}
+.ext tr.mid td{background:var(--ochre-soft)}
+.ext .src{font-size:11.5px;color:var(--muted)}
+.ext .chk{white-space:nowrap;font-size:12.5px}
+.ext .chk input{width:auto;vertical-align:middle}
+.opts{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.opts label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;font-weight:500}
+.opts input{width:auto;margin-top:3px}
+.trava{border:1px solid var(--crit);background:var(--crit-soft);border-radius:6px;padding:10px;margin-top:12px}
+.trava label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;font-weight:600;color:var(--crit)}
+.trava input{width:auto;margin-top:3px}
+.pend{margin:10px 0 0;padding-left:18px;color:var(--crit);font-size:13px}
+.paper{background:var(--paper);color:var(--paper-ink);border:1px solid var(--line);border-radius:4px;padding:36px 34px;font-family:var(--f-doc);font-size:14px;line-height:1.75;box-shadow:0 1px 0 var(--line),0 8px 24px -18px rgba(0,0,0,.35);min-height:420px}
+.paper h4{text-align:center;font-size:15px;letter-spacing:.06em;margin:0 0 20px}
+.paper p{margin:0 0 12px;text-align:justify}
+.paper .var{background:var(--petrol-soft);color:var(--paper-ink);border-radius:2px;padding:0 2px}
+.paper .assin{margin-top:46px;text-align:center}
+.paper .assin span{display:block;border-top:1px solid var(--paper-ink);width:min(320px,100%);margin:0 auto 4px}
+.paper.blank{display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--f-body);text-align:center}
+.docbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.scan{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:8px}
+.scan span{display:block;height:100%;width:0;background:var(--petrol);transition:width .9s ease}
+
+/* indicadores */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.kpi .v{font-family:var(--f-display);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .l{font-size:13px;font-weight:600}
+.kpi .m{font-size:12.5px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rowbar{display:grid;grid-template-columns:150px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:13.5px;margin-bottom:8px}
+.rowbar .track{height:10px;background:var(--bg);border-radius:3px;overflow:hidden}
+.rowbar .track span{display:block;height:100%;background:var(--petrol)}
+.rowbar .track span.crit{background:var(--crit)}
+
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.rule{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px}
+.rule h3{margin:0 0 6px;font-size:14.5px}
+.rule p{margin:0;font-size:13.5px;color:var(--muted)}
+footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+
+@media (max-width:1020px){.desk{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} .desk .c-ficha{grid-column:1/-1} .docs{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:700px){
+  .desk{grid-template-columns:minmax(0,1fr)} .chat{height:520px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cols,.rules,.grid2,.cases{grid-template-columns:minmax(0,1fr)}
+  .rowbar{grid-template-columns:110px minmax(0,1fr) 30px}
+  .paper{padding:24px 18px}
+  h1{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){.scan span{transition:none}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Rafael Didier Advocacia Tributária · Sobral/CE · versão 2</div>
+      <h1>Atendimento pelo WhatsApp</h1>
+    </div>
+    <p class="note">Protótipo navegável. Clientes, documentos e mensagens são fictícios e nada aqui está ligado ao WhatsApp. Os dados ficam só neste navegador.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="mesa" id="tab-mesa">Atendimento</button>
+    <button role="tab" aria-selected="false" data-view="fila" id="tab-fila">Fila única <span id="cnt"></span></button>
+    <button role="tab" aria-selected="false" data-view="docs" id="tab-docs">Documentos</button>
+    <button role="tab" aria-selected="false" data-view="ind" id="tab-ind">Indicadores</button>
+    <button role="tab" aria-selected="false" data-view="regras" id="tab-regras">Regras de triagem</button>
+  </nav>
+
+  <!-- MESA -->
+  <section id="v-mesa">
+    <div class="desk">
+      <div class="col">
+        <h2>Conversas <button class="btn small" id="nova-conv" type="button">Simular novo contato</button></h2>
+        <p class="hint" id="wa-msg" role="status" style="margin:4px 0 8px"><label class="btn small ghost" for="wa-arq" style="margin-right:6px">Importar do WhatsApp</label>Exporte em: conversa → Mais → Exportar conversa → Sem mídia.</p><input type="file" id="wa-arq" accept=".txt,.zip,text/plain,application/zip" multiple hidden>
+        <details id="lv-box" style="margin:0 0 8px"><summary class="hint">Conexão ao vivo com o WhatsApp</summary><div style="display:grid;gap:6px;margin-top:6px"><input id="lv-url" placeholder="Endereço do n8n (…/webhook/atendimento-rd/mensagens)" autocomplete="off"><input id="lv-chave" type="password" placeholder="Chave da equipe" autocomplete="off"><button class="btn small" type="button" id="lv-ok">Conectar</button><div class="hint" id="lv-st" role="status">Desconectado.</div></div></details>
+        <ul class="inbox" id="inbox"></ul>
+      </div>
+      <div class="col chat" aria-label="Conversa">
+        <div class="chat-h">
+          <div><div class="who" id="c-nome">—</div><div class="hint mono" id="c-tel"></div></div>
+          <div class="mode" role="group" aria-label="Quem está escrevendo">
+            <button type="button" id="m-cli" aria-pressed="true">Escrever como cliente</button>
+            <button type="button" id="m-equipe" aria-pressed="false">Responder como equipe</button>
+          </div>
+        </div>
+        <div class="msgs" id="msgs" aria-live="polite"></div>
+        <div class="quick" id="quick"></div>
+        <form class="compose" id="compose">
+          <input id="txt" autocomplete="off" placeholder="Digite a mensagem do cliente">
+          <button class="btn" type="submit">Enviar</button>
+        </form>
+      </div>
+      <div class="col c-ficha">
+        <h2>Ficha da demanda</h2>
+        <div id="ficha"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FILA -->
+  <section id="v-fila" hidden>
+    <h2 class="sec">Fila única</h2>
+    <p class="sub">Todas as demandas abertas, do WhatsApp e do site, numa fila só. A prioridade combina a gravidade do assunto com o tempo que resta para responder.</p>
+    <div class="toolbar">
+      <label for="flt-setor">Setor</label>
+      <select id="flt-setor"><option value="">Todos</option></select>
+      <label for="flt-canal">Canal</label>
+      <select id="flt-canal"><option value="">Todos</option><option>WhatsApp</option><option>Site</option></select>
+      <label for="flt-st">Mostrar</label>
+      <select id="flt-st"><option value="abertas">Abertas</option><option value="todas">Todas</option></select>
+      <span class="spacer"></span>
+      <button class="btn ghost" type="button" id="abrir-site">Simular pedido pelo site</button>
+    </div>
+    <div class="sitepanel" id="sitepanel" hidden>
+      <h3>Formulário "Fale com o escritório" do site</h3>
+      <div class="hint">É o mesmo formulário de entrada do caso Aurora, adaptado para clientes. O pedido cai na fila igual a uma conversa do WhatsApp, e a resposta sai pelo telefone informado.</div>
+      <form id="fsite" novalidate>
+        <div class="grid2">
+          <div class="fld"><label for="s-nome">Nome ou razão social</label><input id="s-nome"><div class="err" id="es-nome"></div></div>
+          <div class="fld"><label for="s-tel">WhatsApp para retorno</label><input id="s-tel" placeholder="(88) 9 0000-0000"><div class="err" id="es-tel"></div></div>
+          <div class="fld"><label for="s-doc">CPF ou CNPJ</label><input id="s-doc"><div class="err" id="es-doc"></div></div>
+          <div class="fld"><label for="s-cli">Já é cliente?</label><select id="s-cli"><option value="1">Sim</option><option value="0">Ainda não</option></select></div>
+          <div class="fld"><label for="s-rota">Assunto</label><select id="s-rota"><option value="">Selecione</option></select><div class="err" id="es-rota"></div></div>
+          <div class="fld"><label for="s-proc">Número do processo (se houver)</label><input id="s-proc" placeholder="0000000-00.0000.0.00.0000"></div>
+          <div class="fld full"><label for="s-desc">O que você precisa?</label><textarea id="s-desc" placeholder="Conte em poucas linhas a situação e o prazo, se houver."></textarea><div class="hint">Mínimo de 30 caracteres.</div><div class="err" id="es-desc"></div></div>
+        </div>
+        <div class="toolbar" style="margin:4px 0 0">
+          <button class="btn" type="submit">Enviar pedido</button>
+          <button class="btn ghost" type="button" id="s-ex">Preencher exemplo</button>
+          <span class="toast" id="s-toast" role="status"></span>
+        </div>
+      </form>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Prior.</th><th>Protocolo</th><th>Cliente · canal</th><th>Assunto · setor</th><th>Pedido</th><th>Prazo</th><th>Status</th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- DOCUMENTOS -->
+  <section id="v-docs" hidden>
+    <h2 class="sec">Gerador de documentos</h2>
+    <p class="sub">Os documentos que o cliente envia pelo WhatsApp são lidos, os campos são extraídos e alguém da equipe confere antes de gerar. Leitura simulada: em produção, a extração é feita por IA no n8n e os dados de CNPJ vêm de consulta pública pelo número.</p>
+    <div class="docs">
+      <div class="panel">
+        <h3>1. Documentos recebidos</h3>
+        <div class="cases" role="group" aria-label="Escolha o caso">
+          <button type="button" class="case" data-case="pj" aria-pressed="true"><b>Comercial Serra Alta Ltda</b><span class="hint">Pessoa jurídica · protocolo RD-2026-0412</span><span class="files"><span class="pill line">cartao_cnpj.pdf</span><span class="pill line">contrato_social.pdf</span><span class="pill line">cnh_socio.jpg</span></span></button>
+          <button type="button" class="case" data-case="pf" aria-pressed="false"><b>Fernanda Lopes</b><span class="hint">Pessoa física · protocolo RD-2026-0411</span><span class="files"><span class="pill line">rg_frente.jpg</span><span class="pill line">rg_verso.jpg</span><span class="pill line">conta_luz.pdf</span></span></button>
+        </div>
+        <details class="cnpjbox" style="margin:10px 0">
+          <summary>Consultar CNPJ na Receita (dados reais)</summary>
+          <div style="display:grid;gap:8px;margin-top:8px">
+            <input id="cn-num" inputmode="numeric" placeholder="00.000.000/0000-00" autocomplete="off" aria-label="CNPJ">
+            <div class="hint" id="cn-links">Digite o CNPJ para abrir a consulta.</div>
+            <textarea id="cn-cola" rows="3" placeholder="Na aba que abrir, selecione tudo (Ctrl+A), copie (Ctrl+C) e cole aqui"></textarea>
+            <button class="btn ghost" type="button" id="cn-aplica">Preencher a ficha da pessoa jurídica</button>
+            <button class="btn small" type="button" id="cn-auto">Buscar automaticamente</button>
+            <div class="hint" id="cn-msg" role="status"></div>
+          </div>
+        </details>
+        <button class="btn" type="button" id="ler">Ler documentos</button>
+        <div class="scan" aria-hidden="true"><span id="scanbar"></span></div>
+
+        <div id="extracao" hidden>
+          <h3 style="margin-top:16px">2. Conferência dos campos</h3>
+          <div class="hint">Campos em vermelho tiveram leitura de baixa confiança e os amarelos, média. Corrija se preciso e marque como conferido.</div>
+          <div style="overflow-x:auto;margin-top:8px">
+            <table class="ext"><thead><tr><th>Campo</th><th>Valor extraído</th><th>Confiança</th><th>Conferido</th></tr></thead><tbody id="ext"></tbody></table>
+          </div>
+          <div class="trava" id="trava-pj" hidden>
+            <label><input type="checkbox" id="chk-poderes"> Conferi na última alteração do contrato social que o representante indicado tem poderes para outorgar procuração sozinho.</label>
+            <div class="hint" style="margin-top:4px;color:var(--crit)">A leitura encontrou a cláusula de administração, mas não determinou se a assinatura é isolada ou conjunta.</div>
+          </div>
+
+          <h3 style="margin-top:16px">3. Modelo e opções</h3>
+          <div class="grid2" style="margin-top:6px">
+            <div class="fld"><label for="modelo">Modelo</label><select id="modelo"><option value="proc">Procuração ad judicia et extra</option><option value="lgpd">Termo de ciência sobre tratamento de dados</option></select></div>
+            <div class="fld"><label for="cidade">Local e data</label><input id="cidade" value="Sobral/CE, 29 de outubro de 2026"></div>
+          </div>
+          <div id="op-proc">
+            <div class="fld" style="margin-top:10px"><span style="font-weight:600;font-size:13.5px">Poderes especiais (art. 105 do CPC)</span><span class="hint">Nenhum vem marcado. Marque só os que o caso exige.</span></div>
+            <div class="opts" id="poderes"></div>
+            <div class="opts" style="margin-top:10px"><label><input type="checkbox" id="chk-rfb"> O caso envolve atuação perante a Receita Federal</label></div>
+          </div>
+          <ul class="pend" id="pend"></ul>
+          <div class="docbar">
+            <button class="btn" type="button" id="gerar">Gerar documento</button>
+            <span class="toast" id="g-toast" role="status"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="background:transparent;border:0;padding:0">
+        <div class="paper blank" id="paper">A prévia do documento aparece aqui depois da conferência.</div>
+        <div class="docbar" id="docacoes" hidden>
+          <button class="btn ghost" type="button" id="copiar">Copiar texto</button>
+          <button class="btn ghost" type="button" id="enviar-ass">Enviar ao cliente para assinatura</button>
+          <button class="btn ghost" type="button" id="salvar-pasta">Salvar na pasta do cliente</button>
+        </div>
+        <div class="hint" id="rfb-aviso" hidden style="margin-top:8px">Para atuar no e-CAC, o cliente também precisa cadastrar a procuração eletrônica da Receita Federal. Esta procuração não substitui aquela.</div>
+        <div class="hint" id="acao-msg" role="status" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INDICADORES -->
+  <section id="v-ind" hidden>
+    <h2 class="sec">Indicadores do atendimento</h2>
+    <p class="sub">Calculados a partir das fichas desta página. Servem para ajustar os prazos de cada setor depois de algumas semanas de uso.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="cols">
+      <div class="panel"><h3>Demandas por setor</h3><div id="b-setor" style="margin-top:10px"></div></div>
+      <div class="panel"><h3>Demandas por canal e pedidos incompletos</h3><div id="b-canal" style="margin-top:10px"></div></div>
+    </div>
+  </section>
+
+  <!-- REGRAS -->
+  <section id="v-regras" hidden>
+    <h2 class="sec">Matriz de triagem</h2>
+    <p class="sub">O assistente só coleta e encaminha. Toda análise e toda resposta de mérito são feitas por um advogado da equipe.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Assunto escolhido pelo cliente</th><th>Setor</th><th>Responsável</th><th>Prazo</th><th>Para o pedido estar completo</th></tr></thead>
+      <tbody id="regras"></tbody>
+    </table></div>
+    <div class="rules">
+      <div class="rule"><h3>Sem opinião jurídica</h3><p>O assistente não responde perguntas de mérito, não estima resultado e não fala de honorários. Pedidos assim viram demanda para um advogado.</p></div>
+      <div class="rule"><h3>Privacidade (LGPD)</h3><p>A primeira mensagem identifica o assistente e a finalidade. Documentos de identidade ficam só na pasta do cliente, com acesso restrito e prazo de guarda definido.</p></div>
+      <div class="rule"><h3>Documentos conferidos</h3><p>Nenhum documento é gerado sem conferência humana dos campos. Procuração de empresa exige confirmar os poderes do representante no contrato social.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Protótipo · nomes e documentos fictícios · os dados ficam só neste navegador</span>
+    <button class="btn ghost small" id="reset" type="button">Restaurar exemplos</button>
+  </footer>
+</div>
+
+<script>
+/* RD Integra — consulta assistida de CNPJ (v1.0, 30/10/2026).
+ * As páginas publicadas no Claude não podem chamar APIs externas; por isso a ferramenta abre a consulta
+ * numa nova aba, o usuário cola o resultado e este módulo o reconhece e normaliza.
+ * Formatos aceitos: BrasilAPI e Minha Receita (mesmo leiaute), CNPJá aberta e CNPJ.ws pública.
+ * Fonte dos dados: base pública do CNPJ da Receita Federal. Navegador (window.CNPJ) e node. */
+(function (root) {
+  'use strict';
+  const limpar = s => String(s || '').replace(/\D/g, '');
+  function valido(s) {
+    const c = limpar(s); if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
+    const dv = n => { let soma = 0, p = n - 7; for (let i = 0; i < n; i++) { soma += +c[i] * p--; if (p < 2) p = 9; } const r = soma % 11; return r < 2 ? 0 : 11 - r; };
+    return dv(12) === +c[12] && dv(13) === +c[13];
+  }
+  const fmtCNPJ = s => limpar(s).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const fmtCNAE = v => { const d = limpar(v).padStart(7, '0'); return `${d.slice(0, 4)}-${d[4]}/${d.slice(5)}`; };
+  const fmtFone = (ddd, num) => { let d = limpar(ddd), n = limpar(num); if (!n) return null; if (!d && n.length > 9) { d = n.slice(0, 2); n = n.slice(2); }
+    return `(${d}) ${n.length === 9 ? n.slice(0, 5) + '-' + n.slice(5) : n.slice(0, 4) + '-' + n.slice(4)}`; };
+  const fontes = s => { const c = limpar(s); return [
+    { nome: 'BrasilAPI', url: 'https://brasilapi.com.br/api/cnpj/v1/' + c, traz: 'cadastro, sócios, Simples e regime por ano' },
+    { nome: 'Minha Receita', url: 'https://minhareceita.org/' + c, traz: 'o mesmo da BrasilAPI (reserva)' },
+    { nome: 'CNPJ.ws', url: 'https://publica.cnpj.ws/cnpj/' + c, traz: 'inscrição estadual' },
+    { nome: 'CNPJá', url: 'https://open.cnpja.com/office/' + c, traz: 'e-mail e motivo de exclusão do Simples' }]; };
+
+  function lerJSON(entrada) {
+    if (entrada && typeof entrada === 'object') return entrada;
+    const s = String(entrada || ''), i = s.indexOf('{'), j = s.lastIndexOf('}');
+    if (i < 0 || j <= i) throw new Error('Cole o resultado da consulta (o texto começa com "{").');
+    try { return JSON.parse(s.slice(i, j + 1)); } catch (_) { throw new Error('Não foi possível ler o resultado da consulta: copie a página inteira (Ctrl+A, Ctrl+C) e cole de novo.'); }
+  }
+  const nn = v => (v === '' || v === undefined) ? null : v;
+
+  function normalizar(entrada) {
+    const j = lerJSON(entrada); let n;
+    if (j.razao_social && j.cnae_fiscal !== undefined) { // BrasilAPI / Minha Receita
+      n = { fonte: 'brasilapi', cnpj: limpar(j.cnpj), razao: j.razao_social, fantasia: nn(j.nome_fantasia),
+        situacao: j.descricao_situacao_cadastral, dataSituacao: j.data_situacao_cadastral, abertura: j.data_inicio_atividade,
+        matriz: j.identificador_matriz_filial === 1, natureza: j.natureza_juridica, porte: j.porte, capital: +j.capital_social || 0,
+        cnaePrincipal: { codigo: fmtCNAE(j.cnae_fiscal), descricao: j.cnae_fiscal_descricao },
+        cnaesSecundarios: (j.cnaes_secundarios || []).filter(x => +x.codigo).map(x => ({ codigo: fmtCNAE(x.codigo), descricao: x.descricao })),
+        endereco: [j.descricao_tipo_de_logradouro, j.logradouro, j.numero, j.complemento, j.bairro].filter(Boolean).join(', '),
+        municipio: j.municipio, uf: j.uf, cep: j.cep, telefones: [fmtFone('', j.ddd_telefone_1), fmtFone('', j.ddd_telefone_2)].filter(Boolean),
+        email: nn(j.email), simples: { optante: !!j.opcao_pelo_simples, desde: j.data_opcao_pelo_simples, exclusao: j.data_exclusao_do_simples, motivo: null },
+        mei: { optante: !!j.opcao_pelo_mei, desde: j.data_opcao_pelo_mei, exclusao: j.data_exclusao_do_mei },
+        regimes: (j.regime_tributario || []).map(r => ({ ano: r.ano, forma: r.forma_de_tributacao })).sort((a, b) => a.ano - b.ano),
+        socios: (j.qsa || []).map(s => ({ nome: s.nome_socio, qualificacao: s.qualificacao_socio, desde: s.data_entrada_sociedade })), ie: [] };
+    } else if (j.taxId && j.company) { // CNPJá aberta
+      const h = (j.company.simples && j.company.simples.history || []).slice(-1)[0] || {};
+      n = { fonte: 'cnpja', cnpj: limpar(j.taxId), razao: j.company.name, fantasia: nn(j.alias), situacao: j.status && j.status.text,
+        dataSituacao: j.statusDate, abertura: j.founded, matriz: !!j.head, natureza: j.company.nature && j.company.nature.text,
+        porte: j.company.size && j.company.size.text, capital: +j.company.equity || 0,
+        cnaePrincipal: { codigo: fmtCNAE(j.mainActivity.id), descricao: j.mainActivity.text },
+        cnaesSecundarios: (j.sideActivities || []).map(x => ({ codigo: fmtCNAE(x.id), descricao: x.text })),
+        endereco: [j.address.street, j.address.number, j.address.details, j.address.district].filter(Boolean).join(', '),
+        municipio: j.address.city, uf: j.address.state, cep: j.address.zip, telefones: (j.phones || []).map(p => fmtFone(p.area, p.number)).filter(Boolean),
+        email: (j.emails && j.emails[0] && j.emails[0].address) || null,
+        simples: { optante: !!j.company.simples.optant, desde: j.company.simples.since || h.from || null, exclusao: j.company.simples.optant ? null : (h.until || null), motivo: h.text || null },
+        mei: { optante: !!(j.company.simei && j.company.simei.optant), desde: j.company.simei && j.company.simei.since, exclusao: null },
+        regimes: [], socios: (j.company.members || []).map(m => ({ nome: m.person.name, qualificacao: m.role.text, desde: m.since })), ie: [] };
+    } else if (j.razao_social && j.estabelecimento) { // CNPJ.ws pública
+      const e = j.estabelecimento, s = j.simples || {};
+      n = { fonte: 'cnpjws', cnpj: limpar(e.cnpj), razao: j.razao_social, fantasia: nn(e.nome_fantasia), situacao: e.situacao_cadastral,
+        dataSituacao: e.data_situacao_cadastral, abertura: e.data_inicio_atividade, matriz: e.tipo === 'Matriz',
+        natureza: j.natureza_juridica && j.natureza_juridica.descricao, porte: j.porte && j.porte.descricao, capital: +j.capital_social || 0,
+        cnaePrincipal: { codigo: fmtCNAE(e.atividade_principal.id), descricao: e.atividade_principal.descricao },
+        cnaesSecundarios: (e.atividades_secundarias || []).map(x => ({ codigo: fmtCNAE(x.id), descricao: x.descricao })),
+        endereco: [e.tipo_logradouro, e.logradouro, e.numero, e.complemento, e.bairro].filter(Boolean).join(', '),
+        municipio: e.cidade && e.cidade.nome, uf: e.estado && e.estado.sigla, cep: e.cep,
+        telefones: [fmtFone(e.ddd1, e.telefone1), fmtFone(e.ddd2, e.telefone2)].filter(Boolean), email: nn(e.email),
+        simples: { optante: s.simples === 'Sim', desde: s.data_opcao_simples, exclusao: s.data_exclusao_simples, motivo: null },
+        mei: { optante: s.mei === 'Sim', desde: s.data_opcao_mei, exclusao: s.data_exclusao_mei },
+        regimes: [], socios: (j.socios || []).map(x => ({ nome: x.nome, qualificacao: (x.qualificacao_socio && x.qualificacao_socio.descricao || '').trim(), desde: x.data_entrada })),
+        ie: (e.inscricoes_estaduais || []).map(i => ({ numero: i.inscricao_estadual, uf: i.estado && i.estado.sigla, ativa: !!i.ativo })) };
+    } else {
+      const msg = j.message || j.erro || j.error || '';
+      throw new Error('Formato não reconhecido' + (msg ? ': ' + msg : '') + '. Verifique se o CNPJ é válido e se a página da consulta carregou por completo.');
+    }
+    return n;
+  }
+
+  function mesclar(...lista) { // a primeira fonte manda; as demais só preenchem lacunas
+    const [base, ...resto] = lista.filter(Boolean); if (!base) return null; const m = JSON.parse(JSON.stringify(base));
+    for (const o of resto) for (const k of Object.keys(o)) {
+      const v = m[k], w = o[k];
+      if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) m[k] = JSON.parse(JSON.stringify(w));
+      else if (k === 'simples' && !v.motivo && w && w.motivo) m.simples.motivo = w.motivo;
+    }
+    m.fonte = lista.filter(Boolean).map(o => o.fonte).join(' + ');
+    return m;
+  }
+
+  // Regime para o simulador: Simples vigente prevalece; senão, a forma de tributação mais recente declarada na ECF
+  function regimeAtual(n) {
+    if (n.mei && n.mei.optante) return 'sn';
+    if (n.simples && n.simples.optante) return 'sn';
+    const r = (n.regimes || []).slice(-1)[0]; if (!r) return null;
+    return /REAL/i.test(r.forma) ? 'lr' : /PRESUMIDO/i.test(r.forma) ? 'lp' : null;
+  }
+
+  const API = { limpar, valido, fmtCNPJ, fmtCNAE, fontes, normalizar, mesclar, regimeAtual, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CNPJ = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Atendimento RD — leitor de conversas exportadas do WhatsApp (v1.0, 30/10/2026).
+ * Lê o .txt de "Exportar conversa" (Android e iPhone, em português), converte para o formato
+ * de conversa do Atendimento RD e sugere a triagem. Tudo roda no navegador; nada é enviado.
+ * Navegador (window.WAImport) e node (module.exports). */
+(function (root) {
+  'use strict';
+  const INVIS = /[‎‏‪-‮⁦-⁩﻿]/g;
+  // Android: 28/10/2026 09:02 - Autor: texto   |   iPhone: [29/10/2026, 14:05:11] Autor: texto
+  const LINHA = /^\[?(\d{1,2})\/(\d{1,2})\/(\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\]?\s*(?:-\s+)?(.*)$/;
+  const MIDIA = /^(<Mídia oculta>|<Media omitted>|(imagem|vídeo|video|áudio|audio|figurinha|documento|GIF) (ocultad[oa]|omitid[oa])|.*\(arquivo anexado\))$/i;
+  const SISTEMA = /criptografia de ponta a ponta|end-to-end encrypted|mudou o código de segurança|apagou esta mensagem|Esta mensagem foi apagada|mensagens temporárias/i;
+  const p2 = n => String(n).padStart(2, '0');
+
+  function ler(texto) {
+    const linhas = String(texto || '').replace(INVIS, '').replace(/\r\n?/g, '\n').split('\n');
+    const msgs = []; let atual = null, reconhecidas = 0;
+    for (const bruta of linhas) {
+      const m = bruta.match(LINHA);
+      if (m) {
+        reconhecidas++;
+        const [, d, mo, a, h, mi, s, resto] = m, ano = a.length === 2 ? '20' + a : a;
+        const em = `${ano}-${p2(mo)}-${p2(d)}T${p2(h)}:${mi}:${s || '00'}`;
+        const i = resto.indexOf(': ');
+        if (i < 1) { atual = null; continue; } // aviso do sistema (sem autor)
+        const autor = resto.slice(0, i).trim(); let tx = resto.slice(i + 2).trim();
+        if (SISTEMA.test(tx)) { atual = null; continue; }
+        if (MIDIA.test(tx)) tx = '[mídia não exportada]';
+        atual = { autor, tx, em }; msgs.push(atual);
+      } else if (atual && bruta.trim() !== '') atual.tx += '\n' + bruta;
+    }
+    if (!reconhecidas) throw new Error('Este arquivo não parece uma conversa exportada do WhatsApp (use "Exportar conversa", sem mídia).');
+    return { msgs, participantes: [...new Set(msgs.map(m => m.autor))] };
+  }
+
+  function contatoDoArquivo(nome) {
+    const n = String(nome || '').replace(/\.(txt|zip)$/i, '');
+    const m = n.match(/^(?:Conversa do WhatsApp com|WhatsApp Chat (?:with|-)|Chat de WhatsApp con)\s+(.+)$/i);
+    return m ? m[1].trim() : null;
+  }
+
+  function escritorio(r, contato) {
+    const outros = r.participantes.filter(p => p !== contato);
+    if (outros.length === 1) return outros[0];
+    const marca = outros.find(p => /advoc|didier|escrit/i.test(p));
+    return marca || outros[0] || null;
+  }
+
+  function conversa(r, contato, escr) {
+    return { id: 'wa' + Date.now() + Math.floor(Math.random() * 1000), canal: 'WhatsApp', nome: contato, tel: '', cliente: null, etapa: 'fim', importada: true,
+      msgs: r.msgs.map(m => m.autor === escr ? { de: 'eq', por: m.autor, tx: m.tx, em: m.em } : { de: 'cli', tx: m.tx, em: m.em }), ficha: null };
+  }
+
+  const RE_CNJ = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/, RE_CNPJ = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/, RE_CPF = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/;
+  const REGRAS = [
+    ['urgencia', /cita(ç|c)[aã]o|citad[oa]|penhora|bloque(io|aram|ado)|sisbajud|bacenjud|mandado|oficial de justi(ç|c)a|prazo (vence|termina|corre|de \d+ dias)|tenho \d+ dias|leil[aã]o/i],
+    ['processo', RE_CNJ, /intima(ç|c)[aã]o|audi[eê]ncia|processo n|andamento do processo|senten(ç|c)a|recurso/i],
+    ['fin', /boleto|honor[aá]rio|pagamento|pix|nota fiscal do escrit|parcela do contrato|fatura/i],
+    ['docs', /segue[m]? (o|a|os|as)? ?(documento|arquivo|contrato|certid)|estou enviando|enviei (os|o|a) (documento|arquivo)|em anexo/i]
+  ];
+
+  function triagem(r, contato) {
+    const doCliente = r.msgs.filter(m => m.autor === contato).map(m => m.tx).filter(tx => tx !== '[mídia não exportada]');
+    const tudo = doCliente.join('\n');
+    let rota = 'nova';
+    for (const [k, ...res] of REGRAS) if (res.some(re => re.test(tudo))) { rota = k; break; }
+    const proc = tudo.match(RE_CNJ), cnpj = tudo.match(RE_CNPJ), cpf = tudo.replace(RE_CNPJ, '').match(RE_CPF);
+    let resumo = doCliente.slice(-6).join(' · ').replace(/\s+/g, ' ').trim();
+    if (resumo.length > 400) resumo = '…' + resumo.slice(-400);
+    return { rota, processo: proc ? proc[0] : null, doc: cnpj ? cnpj[0] : (cpf ? cpf[0] : ''), resumo: resumo + (proc ? '\nProcesso: ' + proc[0] : '') };
+  }
+
+  const API = { ler, contatoDoArquivo, escritorio, conversa, triagem, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.WAImport = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Atendimento RD — conexão ao vivo com o WhatsApp Business (coexistência com a Cloud API), v1.0, 30/10/2026.
+ * extrair(): lê o aviso (webhook) da Meta — mensagens recebidas ("messages"), enviadas pelo app do escritório
+ *   ("smb_message_echoes") e histórico sincronizado ("history") — e devolve linhas para a planilha.
+ * agrupar(): junta as linhas em conversas do Atendimento RD, sem duplicar (chave: id da mensagem).
+ * Os formatos de eco e histórico seguem a documentação da coexistência; conferir no primeiro aviso real.
+ * Navegador (window.AoVivo), node (module.exports) e nó "Code" do n8n (mesma função extrair). */
+(function (root) {
+  'use strict';
+  const so = s => String(s || '').replace(/\D/g, '');
+  function textoDe(m) {
+    if (!m) return '';
+    if (m.type === 'text') return (m.text && m.text.body) || '';
+    const rotulo = { image: 'imagem', video: 'vídeo', audio: 'áudio', document: 'documento', sticker: 'figurinha', location: 'localização', contacts: 'contato' }[m.type] || m.type || 'mensagem';
+    const corpo = m[m.type] || {};
+    const extra = corpo.caption || corpo.filename || (m.type === 'location' ? [corpo.latitude, corpo.longitude].filter(Boolean).join(',') : '');
+    if (m.type === 'button') return (m.button && m.button.text) || '[botão]';
+    if (m.type === 'interactive') { const i = m.interactive || {}; return ((i.button_reply || i.list_reply || {}).title) || '[resposta interativa]'; }
+    return `[${rotulo}]` + (extra ? ' ' + extra : '');
+  }
+  const iso = ts => new Date((+ts || 0) * 1000).toISOString();
+
+  function extrair(payload) {
+    const out = [];
+    for (const e of ((payload && payload.entry) || [])) for (const ch of (e.changes || [])) {
+      const v = ch.value || {}, esc = so(v.metadata && v.metadata.display_phone_number);
+      const nomes = {}; (v.contacts || []).forEach(c => { nomes[so(c.wa_id)] = c.profile && c.profile.name; });
+      const linha = (m, tel, direcao) => out.push({ id: m.id, data: iso(m.timestamp), telefone: tel, nome: nomes[tel] || '', direcao, tipo: m.type || '', texto: textoDe(m) });
+      if (ch.field === 'messages') (v.messages || []).forEach(m => linha(m, so(m.from), 'entrada'));
+      else if (ch.field === 'smb_message_echoes') (v.message_echoes || []).forEach(m => linha(m, so(m.to), 'saida'));
+      else if (ch.field === 'history') (v.history || []).forEach(h => (h.threads || []).forEach(th => (th.messages || []).forEach(m => {
+        const de = so(m.from), saida = esc ? de === esc : de !== so(th.id); linha(m, so(th.id), saida ? 'saida' : 'entrada'); })));
+    }
+    return out;
+  }
+
+  function deTabela(tab) { // [[cabeçalho...], [valores...]] → objetos
+    if (!Array.isArray(tab) || !tab.length) return [];
+    if (!Array.isArray(tab[0])) return tab;
+    const [cab, ...linhas] = tab; return linhas.map(l => Object.fromEntries(cab.map((c, i) => [c, l[i]])));
+  }
+
+  const fmtTel = t => { const d = so(t).replace(/^55/, ''); return d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, -4)}-${d.slice(-4)}` : t; };
+
+  function agrupar(linhas, convs) {
+    const novas = []; let novasMsgs = 0;
+    const porTel = new Map(); convs.forEach(c => { if (c.tel && c.aoVivo) porTel.set(so(c.tel), c); });
+    const vistos = new Set(); convs.forEach(c => (c.msgs || []).forEach(m => m.id && vistos.add(m.id)));
+    for (const l of [...linhas].sort((a, b) => String(a.data).localeCompare(String(b.data)))) {
+      if (!l || !l.id || vistos.has(l.id)) continue; vistos.add(l.id);
+      const tel = so(l.telefone); let c = porTel.get(tel);
+      if (!c) { c = { id: 'lv' + tel, canal: 'WhatsApp', aoVivo: true, nome: l.nome || fmtTel(tel), tel, cliente: null, etapa: 'fim', msgs: [], ficha: null }; porTel.set(tel, c); novas.push(c); }
+      if (l.nome && /^\(\d/.test(c.nome)) c.nome = l.nome;
+      c.msgs.push(l.direcao === 'saida' ? { id: l.id, de: 'eq', por: 'Escritório', tx: l.texto, em: l.data } : { id: l.id, de: 'cli', tx: l.texto, em: l.data });
+      c.msgs.sort((a, b) => String(a.em).localeCompare(String(b.em)));
+      if (!novas.includes(c)) novasMsgs++;
+    }
+    return { novas, novasMsgs };
+  }
+
+  const API = { extrair, deTabela, agrupar, fmtTel, textoDe, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.AoVivo = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function(){
+const KEY="atendimento-rd-v2";
+const AGORA=new Date(2026,9,29,16,20);
+const ROTAS={
+  urgencia:{nome:"Urgência (citação, penhora, bloqueio, prazo correndo)",curto:"Urgência",setor:"Direção",resp:"Rafael + Mariana",sla:2,peso:3,pede:"Número do processo ou foto do documento recebido",nivel:"crit"},
+  processo:{nome:"Processo em andamento / intimação",curto:"Processo / intimação",setor:"Controladoria",resp:"Mariana",sla:8,peso:3,pede:"Número do processo ou foto do documento",nivel:"warn"},
+  nova:{nome:"Nova demanda / consulta",curto:"Nova demanda",setor:"Direção",resp:"Rafael (após conflito: Lillian)",sla:24,peso:2,pede:"Descrição com pelo menos 30 caracteres",nivel:"info"},
+  docs:{nome:"Envio de documentos",curto:"Documentos",setor:"Coordenação Jurídica",resp:"David",sla:48,peso:1,pede:"A que caso os documentos se referem",nivel:"info"},
+  fin:{nome:"Financeiro / boleto / honorários",curto:"Financeiro",setor:"Financeiro",resp:"Victor",sla:24,peso:1,pede:"Nº do contrato ou mês de referência",nivel:"info"},
+  agenda:{nome:"Agendamento",curto:"Agendamento",setor:"Administrativo",resp:"Lillian",sla:24,peso:1,pede:"Melhor dia e horário",nivel:"info"}
+};
+const SETORES=["Direção","Controladoria","Coordenação Jurídica","Financeiro","Administrativo"];
+const MENU=[["1","processo"],["2","urgencia"],["3","nova"],["4","docs"],["5","fin"],["6","agenda"]];
+const STATUS=["Nova","Aguardando checagem de conflito","Em andamento","Aguardando cliente","Concluída"];
+
+function hm(dt){return String(dt.getHours()).padStart(2,"0")+":"+String(dt.getMinutes()).padStart(2,"0")}
+function esc(t){return String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function minus(min){return new Date(AGORA.getTime()-min*60000).toISOString()}
+
+const BOAS="Olá! Sou o assistente virtual do escritório Rafael Didier Advocacia Tributária. Vou registrar seu pedido e encaminhar para a pessoa certa da equipe.\n\nSeus dados serão usados apenas para este atendimento, conforme nossa política de privacidade. A qualquer momento, digite 0 para falar com uma pessoa.\n\nVocê já é cliente do escritório?\n1. Sim\n2. Ainda não";
+const MENU_TXT="Qual é o assunto?\n1. Processo em andamento ou intimação\n2. Urgência: citação, penhora, bloqueio ou prazo correndo\n3. Nova demanda ou consulta\n4. Enviar documentos\n5. Financeiro, boleto ou honorários\n6. Agendar reunião";
+
+// completude
+const RE_CNJ=/\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}/;
+function faltando(f){
+  const out=[];
+  if(!f.doc)out.push("CPF ou CNPJ");
+  if((f.resumo||"").trim().length<30)out.push("descrição com mais detalhes");
+  if((f.rota==="processo"||f.rota==="urgencia") && !RE_CNJ.test(f.resumo||"") && !/foto|anexo|mandei|enviei|segue/i.test(f.resumo||""))out.push("número do processo ou foto do documento");
+  return out;
+}
+
+const EXEMPLOS=[
+ {id:"c1",canal:"WhatsApp",nome:"Comercial Serra Alta Ltda",tel:"(88) 9 0000-1101",cliente:true,etapa:"fim",msgs:[
+   {de:"bot",tx:BOAS,em:minus(95)},{de:"cli",tx:"1",em:minus(94)},{de:"bot",tx:"Informe o CPF ou CNPJ, por favor.",em:minus(94)},{de:"cli",tx:"12.345.678/0001-90",em:minus(93)},{de:"bot",tx:MENU_TXT,em:minus(93)},{de:"cli",tx:"2",em:minus(92)},{de:"bot",tx:"Descreva em poucas palavras o que aconteceu e, se puder, envie foto do documento recebido.",em:minus(92)},{de:"cli",tx:"Chegou um oficial de justiça hoje com mandado de penhora da execução fiscal do município. Mandei a foto.",em:minus(90)},{de:"bot",tx:"Registrado. Protocolo RD-2026-0412. Como é uma urgência, a equipe foi avisada agora e retorna em até 2 horas.",em:minus(90)},{de:"eq",por:"Mariana",tx:"Boa tarde! Recebemos o mandado. Já estamos verificando o processo e o Dr. Rafael retorna ainda hoje.",em:minus(70)}],
+   ficha:{proto:"RD-2026-0412",rota:"urgencia",doc:"12.345.678/0001-90",resumo:"Mandado de penhora em execução fiscal municipal entregue hoje por oficial de justiça; foto do documento enviada.",status:"Em andamento",em:minus(90),primeiraResp:minus(70),completoEntrada:true,log:["Ficha aberta pelo assistente","Alerta enviado à Direção e à Controladoria","Mariana respondeu ao cliente"]}},
+ {id:"c2",canal:"WhatsApp",nome:"Fernanda Lopes",tel:"(88) 9 0000-2202",cliente:false,etapa:"fim",msgs:[
+   {de:"bot",tx:BOAS,em:minus(240)},{de:"cli",tx:"2",em:minus(239)},{de:"bot",tx:"Informe o CPF ou CNPJ, por favor.",em:minus(239)},{de:"cli",tx:"123.456.789-09",em:minus(238)},{de:"bot",tx:MENU_TXT,em:minus(238)},{de:"cli",tx:"3",em:minus(237)},{de:"bot",tx:"Conte em poucas linhas o que você precisa.",em:minus(237)},{de:"cli",tx:"Tenho uma clínica e quero saber se estou pagando ISS a mais. Gostaria de uma reunião.",em:minus(235)},{de:"bot",tx:"Registrado. Protocolo RD-2026-0411. Um advogado da equipe retorna em até 24 horas.",em:minus(235)}],
+   ficha:{proto:"RD-2026-0411",rota:"nova",doc:"123.456.789-09",resumo:"Tenho uma clínica e quero saber se estou pagando ISS a mais. Gostaria de uma reunião.",status:"Aguardando checagem de conflito",em:minus(235),primeiraResp:null,completoEntrada:true,log:["Ficha aberta pelo assistente","Encaminhada à Administração para checagem de conflito"]}},
+ {id:"c3",canal:"WhatsApp",nome:"Construtora Vale Verde",tel:"(88) 9 0000-3303",cliente:true,etapa:"fim",msgs:[
+   {de:"bot",tx:BOAS,em:minus(1500)},{de:"cli",tx:"1",em:minus(1499)},{de:"bot",tx:"Informe o CPF ou CNPJ, por favor.",em:minus(1499)},{de:"cli",tx:"98.765.432/0001-10",em:minus(1498)},{de:"bot",tx:MENU_TXT,em:minus(1498)},{de:"cli",tx:"4",em:minus(1497)},{de:"bot",tx:"Conte em poucas linhas o que você precisa. A que caso os documentos se referem ajuda a agilizar.",em:minus(1497)},{de:"cli",tx:"São as notas fiscais de 2024 para o pedido de restituição do INSS.",em:minus(1495)},{de:"bot",tx:"Registrado. Protocolo RD-2026-0405. Os arquivos foram salvos na pasta do cliente.",em:minus(1495)}],
+   ficha:{proto:"RD-2026-0405",rota:"docs",doc:"98.765.432/0001-10",resumo:"São as notas fiscais de 2024 para o pedido de restituição do INSS.",status:"Nova",em:minus(1495),primeiraResp:null,completoEntrada:true,log:["Ficha aberta pelo assistente","Anexos salvos na pasta do cliente"]}},
+ {id:"c4",canal:"WhatsApp",nome:"Distribuidora Boa Safra",tel:"(88) 9 0000-4404",cliente:true,etapa:"fim",msgs:[
+   {de:"bot",tx:BOAS,em:minus(600)},{de:"cli",tx:"1",em:minus(599)},{de:"bot",tx:"Informe o CPF ou CNPJ, por favor.",em:minus(599)},{de:"cli",tx:"11.222.333/0001-44",em:minus(598)},{de:"bot",tx:MENU_TXT,em:minus(598)},{de:"cli",tx:"5",em:minus(597)},{de:"bot",tx:"Conte em poucas linhas o que você precisa. Nº do contrato ou mês de referência ajuda a agilizar.",em:minus(597)},{de:"cli",tx:"Preciso da segunda via do boleto de outubro.",em:minus(596)},{de:"bot",tx:"Registrado. Protocolo RD-2026-0409. O financeiro retorna em até 24 horas.",em:minus(596)},{de:"eq",por:"Victor",tx:"Segunda via enviada por e-mail. Qualquer coisa, estou à disposição.",em:minus(560)}],
+   ficha:{proto:"RD-2026-0409",rota:"fin",doc:"11.222.333/0001-44",resumo:"Preciso da segunda via do boleto de outubro.",status:"Concluída",em:minus(596),primeiraResp:minus(560),completoEntrada:true,log:["Ficha aberta pelo assistente","Victor enviou a segunda via","Concluída"]}},
+ {id:"c5",canal:"WhatsApp",nome:"Padaria Pão da Serra",tel:"(88) 9 0000-6606",cliente:true,etapa:"fim",msgs:[
+   {de:"bot",tx:BOAS,em:minus(400)},{de:"cli",tx:"1",em:minus(399)},{de:"bot",tx:"Informe o CPF ou CNPJ, por favor.",em:minus(399)},{de:"cli",tx:"55.666.777/0001-88",em:minus(398)},{de:"bot",tx:MENU_TXT,em:minus(398)},{de:"cli",tx:"1",em:minus(397)},{de:"bot",tx:"Conte em poucas linhas o que você precisa. Número do processo ou foto do documento ajuda a agilizar.",em:minus(397)},{de:"cli",tx:"Recebi uma intimação, o que faço?",em:minus(396)},{de:"bot",tx:"Registrado. Protocolo RD-2026-0410. A equipe retorna em até 8 horas.\n\nPara agilizar, envie também: descrição com mais detalhes; número do processo ou foto do documento.",em:minus(396)}],
+   ficha:{proto:"RD-2026-0410",rota:"processo",doc:"55.666.777/0001-88",resumo:"Recebi uma intimação, o que faço?",status:"Aguardando cliente",em:minus(396),primeiraResp:null,completoEntrada:false,log:["Ficha aberta pelo assistente","Pedido incompleto: assistente pediu complemento"]}},
+ {id:"c6",canal:"Site",nome:"Ótica Visão Norte",tel:"(88) 9 0000-7707",cliente:false,etapa:"fim",msgs:[
+   {de:"sys",tx:"Pedido recebido pelo formulário do site. A resposta sai pelo WhatsApp informado.",em:minus(180)},{de:"cli",tx:"Assunto: Nova demanda / consulta\nCNPJ: 33.444.555/0001-66\n\nFomos excluídos do Simples Nacional por débitos e queremos avaliar a regularização e o retorno ao regime.",em:minus(180)}],
+   ficha:{proto:"RD-2026-0413",rota:"nova",doc:"33.444.555/0001-66",resumo:"Fomos excluídos do Simples Nacional por débitos e queremos avaliar a regularização e o retorno ao regime.",status:"Aguardando checagem de conflito",em:minus(180),primeiraResp:null,completoEntrada:true,log:["Ficha aberta pelo formulário do site","Encaminhada à Administração para checagem de conflito"]}}
+];
+
+let st;
+function inicial(){return {convs:JSON.parse(JSON.stringify(EXEMPLOS)),sel:"c1",seq:413,simN:0}}
+function carregar(){try{const s=localStorage.getItem(KEY);if(s){st=JSON.parse(s);return}}catch(e){} st=inicial()}
+function salvar(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+const conv=()=>st.convs.find(c=>c.id===st.sel)||st.convs[0];
+
+function restante(f){const r=ROTAS[f.rota];return (new Date(f.em).getTime()+r.sla*3600000-AGORA.getTime())/3600000}
+function prazoTxt(f){
+  if(f.status==="Concluída")return '<span class="pill ok">Concluída</span>';
+  const h=restante(f);
+  if(h<0)return '<span class="pill crit">Atrasada '+Math.ceil(-h)+' h</span>';
+  const cls=h<=2?"crit":h<=8?"warn":"info";
+  return '<span class="pill '+cls+'">Resta '+(h<1?Math.max(1,Math.round(h*60))+" min":Math.floor(h)+" h")+'</span>';
+}
+function score(f){const h=restante(f);const prox=h<0?4:h<=2?3:h<=8?2:1;return ROTAS[f.rota].peso*2+prox}
+function prio(f){const s=score(f);return s>=9?"P1":s>=6?"P2":"P3"}
+const PCLS={P1:"crit",P2:"warn",P3:"info"};
+function novaFicha(c,rota,doc,resumo,origem){
+  st.seq++; const r=ROTAS[rota];
+  const f={proto:"RD-2026-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:AGORA.toISOString(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
+  if(rota==="nova"&&!c.cliente){f.status="Aguardando checagem de conflito";f.log.push("Checagem de conflito pedida à Administração")}
+  if(rota==="urgencia")f.log.push("Alerta imediato enviado à Direção e à Controladoria");
+  const fl=faltando(f); f.completoEntrada=fl.length===0;
+  if(fl.length){f.status="Aguardando cliente";f.log.push("Pedido incompleto: falta "+fl.join("; "))}
+  c.ficha=f; return f;
+}
+
+// abas
+const tabs=[...document.querySelectorAll("nav.tabs button")];
+const RENDER={mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
+function mostrar(v){
+  tabs.forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===v)));
+  Object.keys(RENDER).forEach(k=>document.getElementById("v-"+k).hidden=(k!==v));
+  RENDER[v]();
+}
+tabs.forEach(b=>b.addEventListener("click",()=>mostrar(b.dataset.view)));
+function contador(){const n=st.convs.filter(c=>c.ficha&&c.ficha.status!=="Concluída").length;document.getElementById("cnt").textContent=n?"("+n+")":""}
+
+// mesa
+let modo="cli";
+function setModo(m){modo=m;document.getElementById("m-cli").setAttribute("aria-pressed",String(m==="cli"));document.getElementById("m-equipe").setAttribute("aria-pressed",String(m==="eq"));document.getElementById("txt").placeholder=m==="cli"?"Digite a mensagem do cliente":"Responda como a equipe";renderQuick()}
+document.getElementById("m-cli").addEventListener("click",()=>setModo("cli"));
+document.getElementById("m-equipe").addEventListener("click",()=>setModo("eq"));
+
+function renderInbox(){
+  const ord=[...st.convs].sort((a,b)=>new Date(b.msgs[b.msgs.length-1].em)-new Date(a.msgs[a.msgs.length-1].em));
+  document.getElementById("inbox").innerHTML=ord.map(c=>{
+    const ult=c.msgs[c.msgs.length-1]; const f=c.ficha;
+    let tag=(c.canal==="Site"?'<span class="pill line">Site</span>':'');
+    tag+=f?'<span class="pill '+ROTAS[f.rota].nivel+'">'+ROTAS[f.rota].setor+'</span>'+prazoTxt(f)+(faltando(f).length&&f.status!=="Concluída"?'<span class="pill warn">Incompleto</span>':''):'<span class="pill warn">Em triagem</span>';
+    return '<li><button type="button" data-c="'+c.id+'" aria-current="'+(c.id===st.sel)+'"><span class="nm">'+esc(c.nome)+'</span><span class="hint mono">'+hm(new Date(ult.em))+'</span><span class="pv">'+esc(ult.tx.split("\n")[0])+'</span><span class="tg">'+tag+'</span></button></li>';
+  }).join("");
+}
+document.getElementById("inbox").addEventListener("click",ev=>{const b=ev.target.closest("button[data-c]");if(!b)return;st.sel=b.dataset.c;salvar();renderMesa()});
+
+function renderMsgs(){
+  const c=conv(); const box=document.getElementById("msgs");
+  document.getElementById("c-nome").textContent=c.nome; document.getElementById("c-tel").textContent=c.tel+(c.canal==="Site"?" · entrou pelo site":"");
+  box.innerHTML=c.msgs.map(m=>{
+    if(m.de==="sys")return '<div class="m note">'+esc(m.tx)+'</div>';
+    const cls=m.de==="cli"?"in":"out";
+    const by=m.de==="bot"?'<span class="by">Assistente virtual</span>':m.de==="eq"?'<span class="by">'+esc(m.por||"Equipe")+'</span>':'';
+    return '<div class="m '+cls+'">'+by+esc(m.tx)+'<span class="t">'+hm(new Date(m.em))+'</span></div>';
+  }).join("");
+  box.scrollTop=box.scrollHeight;
+}
+function renderQuick(){
+  const c=conv(); const q=document.getElementById("quick"); let ops=[];
+  if(modo==="cli"){
+    if(c.etapa==="cliente")ops=[["1","1. Sim"],["2","2. Ainda não"]];
+    else if(c.etapa==="menu")ops=MENU.map(([n,k])=>[n,n+". "+ROTAS[k].curto]);
+  } else ops=[["Recebemos sua mensagem e já estamos verificando.","Confirmar recebimento"],["Pode nos enviar uma foto do documento?","Pedir documento"]];
+  q.innerHTML=ops.map(([v,l])=>'<button type="button" data-v="'+esc(v)+'">'+esc(l)+'</button>').join("");
+}
+document.getElementById("quick").addEventListener("click",ev=>{const b=ev.target.closest("button[data-v]");if(!b)return;enviar(b.dataset.v)});
+
+function renderFicha(){
+  const c=conv(); const f=c.ficha; const el=document.getElementById("ficha");
+  if(!f){el.innerHTML='<div class="empty">A ficha é criada quando o assistente termina a triagem. Responda às perguntas na conversa como se fosse o cliente.<div class="hint" style="margin-top:8px">Etapa atual: '+({cliente:"identificação",doc:"CPF/CNPJ",menu:"escolha do assunto",desc:"descrição do pedido"}[c.etapa]||"—")+'</div></div>';return}
+  const r=ROTAS[f.rota]; const fl=faltando(f); const p=prio(f);
+  el.innerHTML='<div class="ficha"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span><span class="pill '+PCLS[p]+'">'+p+'</span> <span class="mono" style="font-weight:600">'+f.proto+'</span></span>'+prazoTxt(f)+'</div>'+
+   (fl.length&&f.status!=="Concluída"?'<div class="falta">Pedido incompleto. Falta: '+esc(fl.join("; "))+'.</div>':'')+
+   '<dl><dt>Cliente</dt><dd>'+esc(c.nome)+(c.cliente?"":' <span class="pill warn">novo</span>')+'</dd><dt>CPF/CNPJ</dt><dd class="mono">'+esc(f.doc)+'</dd><dt>Canal</dt><dd>'+c.canal+'</dd><dt>Assunto</dt><dd>'+r.nome+'</dd><dt>Setor</dt><dd>'+r.setor+'</dd><dt>Responsável</dt><dd>'+r.resp+'</dd><dt>Prazo</dt><dd>'+r.sla+' horas desde a entrada</dd></dl>'+
+   '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
+   '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
+   '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
+   '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
+  document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
+  document.getElementById("ir-docs").addEventListener("click",()=>{escolherCaso(c.nome==="Fernanda Lopes"?"pf":"pj");mostrar("docs")});
+}
+function renderMesa(){renderInbox();renderMsgs();renderQuick();renderFicha();contador()}
+
+function bot(c,tx){c.msgs.push({de:"bot",tx,em:new Date().toISOString()})}
+function enviar(tx){
+  tx=tx.trim(); if(!tx)return;
+  const c=conv(); const agora=new Date().toISOString();
+  if(modo==="eq"){
+    c.msgs.push({de:"eq",por:"Equipe",tx,em:agora});
+    if(c.ficha){if(!c.ficha.primeiraResp)c.ficha.primeiraResp=AGORA.toISOString();c.ficha.log.push("Equipe respondeu ao cliente");if(c.ficha.status==="Nova")c.ficha.status="Em andamento"}
+    salvar();renderMesa();return;
+  }
+  c.msgs.push({de:"cli",tx,em:agora});
+  if(tx==="0"){c.msgs.push({de:"sys",tx:"Cliente pediu atendimento humano. A conversa foi marcada para a equipe.",em:agora});salvar();renderMesa();return}
+  if(c.etapa==="cliente"){
+    if(tx==="1"||/^sim/i.test(tx))c.cliente=true; else if(tx==="2"||/^n/i.test(tx))c.cliente=false; else{bot(c,"Responda 1 para sim ou 2 para ainda não.");salvar();renderMesa();return}
+    c.etapa="doc"; bot(c,"Informe o CPF ou CNPJ, por favor.");
+  } else if(c.etapa==="doc"){
+    const dig=tx.replace(/\D/g,"");
+    if(dig.length!==11&&dig.length!==14)bot(c,"Não reconheci o número. Envie o CPF (11 dígitos) ou o CNPJ (14 dígitos).");
+    else{c.doc=tx;c.etapa="menu";bot(c,MENU_TXT)}
+  } else if(c.etapa==="menu"){
+    const op=MENU.find(([n])=>n===tx);
+    if(!op)bot(c,"Responda com o número do assunto, de 1 a 6.");
+    else{c.rota=op[1];c.etapa="desc";bot(c,c.rota==="urgencia"?"Descreva em poucas palavras o que aconteceu e, se puder, envie foto do documento recebido.":"Conte em poucas linhas o que você precisa. "+ROTAS[c.rota].pede+" ajuda a agilizar.")}
+  } else if(c.etapa==="desc"){
+    const f=novaFicha(c,c.rota,c.doc,tx,"assistente"); const r=ROTAS[c.rota]; const fl=faltando(f);
+    let m="Registrado. Protocolo "+f.proto+". "+(c.rota==="urgencia"?"Como é uma urgência, a equipe foi avisada agora e retorna em até 2 horas.":"A equipe retorna em até "+r.sla+" horas.");
+    if(fl.length){m+="\n\nPara agilizar, envie também: "+fl.join("; ")+".";c.etapa="complemento"}else c.etapa="fim";
+    bot(c,m);
+  } else if(c.etapa==="complemento"){
+    const f=c.ficha; f.resumo+="\n+ "+tx; const fl=faltando(f);
+    if(!fl.length){f.log.push("Pedido completado pelo cliente");if(f.status==="Aguardando cliente")f.status="Nova";bot(c,"Obrigado, recebemos a informação. Seu pedido está completo e já está com a equipe.")}
+    else{f.log.push("Cliente complementou, ainda falta: "+fl.join("; "));bot(c,"Obrigado. Ainda falta: "+fl.join("; ")+". Se não tiver agora, a equipe vai ajudar você.")}
+    c.etapa="fim";
+  } else if(c.ficha){
+    const f=c.ficha; f.resumo+="\n+ "+tx; f.log.push("Nova mensagem do cliente anexada ao pedido");
+    if(f.status==="Aguardando cliente"&&!faltando(f).length){f.status="Nova";f.log.push("Pedido completado pelo cliente")}
+  }
+  salvar();renderMesa();
+}
+document.getElementById("compose").addEventListener("submit",e=>{e.preventDefault();const i=document.getElementById("txt");enviar(i.value);i.value="";i.focus()});
+function carregaJSZip(){return window.JSZip?Promise.resolve(window.JSZip):new Promise((ok,err)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';sc.onload=()=>ok(window.JSZip);sc.onerror=()=>err(new Error('Não foi possível abrir o .zip; extraia o .txt e importe-o.'));document.head.appendChild(sc)})}
+async function textoDoArquivo(f){ if(/\.zip$/i.test(f.name)){const Z=await carregaJSZip(); const z=await Z.loadAsync(f); const t=Object.values(z.files).find(x=>/\.txt$/i.test(x.name)); if(!t) throw new Error(f.name+': nenhum .txt dentro do .zip'); return t.async('string')} return f.text() }
+document.getElementById("wa-arq").addEventListener("change",async e=>{
+  const msg=document.getElementById("wa-msg"), arqs=[...e.target.files], feitos=[], erros=[]; e.target.value="";
+  for(const f of arqs){ try{
+    const r=WAImport.ler(await textoDoArquivo(f));
+    let contato=WAImport.contatoDoArquivo(f.name);
+    if(!contato||!r.participantes.includes(contato)){ const escr=r.participantes.find(p=>/advoc|didier|escrit/i.test(p)); contato=r.participantes.find(p=>p!==escr)||r.participantes[0]; }
+    const escr=WAImport.escritorio(r,contato), nova=WAImport.conversa(r,contato,escr), tr=WAImport.triagem(r,contato);
+    const ja=st.convs.find(c=>c.importada&&c.nome===contato);
+    if(ja){ ja.msgs=nova.msgs; ja.ficha&&ja.ficha.log.push("Conversa reimportada do WhatsApp ("+nova.msgs.length+" mensagens)"); st.sel=ja.id; feitos.push(contato+" (atualizada)"); }
+    else{ st.convs.push(nova); novaFicha(nova,tr.rota,tr.doc,tr.resumo,"importador do WhatsApp"); st.sel=nova.id; feitos.push(contato+" → "+ROTAS[tr.rota].curto); }
+  }catch(err){ erros.push(f.name+": "+err.message) } }
+  salvar(); renderMesa(); renderFila&&renderFila();
+  msg.lastChild.textContent=(feitos.length?"Importadas: "+feitos.join("; ")+". Confira a triagem sugerida na ficha. ":"")+(erros.length?"Não importadas: "+erros.join("; "):"");
+});
+document.getElementById("nova-conv").addEventListener("click",()=>{
+  st.simN++; const id="s"+Date.now();
+  st.convs.push({id,canal:"WhatsApp",nome:"Contato simulado "+st.simN,tel:"(88) 9 0000-"+String(5500+st.simN),cliente:null,etapa:"cliente",msgs:[{de:"cli",tx:"Boa tarde, preciso de ajuda.",em:new Date().toISOString()},{de:"bot",tx:BOAS,em:new Date().toISOString()}],ficha:null});
+  st.sel=id; setModo("cli"); salvar(); renderMesa(); document.getElementById("txt").focus();
+});
+
+// fila
+const fSetor=document.getElementById("flt-setor"); SETORES.forEach(s=>fSetor.insertAdjacentHTML("beforeend","<option>"+s+"</option>"));
+["flt-setor","flt-canal","flt-st"].forEach(id=>document.getElementById(id).addEventListener("change",renderFila));
+function renderFila(){
+  const se=fSetor.value, ca=document.getElementById("flt-canal").value, ab=document.getElementById("flt-st").value==="abertas";
+  const lista=st.convs.filter(c=>c.ficha).filter(c=>(!se||ROTAS[c.ficha.rota].setor===se)&&(!ca||c.canal===ca)&&(!ab||c.ficha.status!=="Concluída"))
+    .sort((a,b)=>(a.ficha.status==="Concluída")-(b.ficha.status==="Concluída")||score(b.ficha)-score(a.ficha)||restante(a.ficha)-restante(b.ficha));
+  const tb=document.getElementById("tb");
+  if(!lista.length){tb.innerHTML='<tr><td colspan="7">Nenhuma demanda nesta visão.</td></tr>';return}
+  tb.innerHTML=lista.map(c=>{const f=c.ficha,r=ROTAS[f.rota],p=prio(f),fl=faltando(f);
+    return '<tr><td><span class="pill '+PCLS[p]+'">'+p+'</span></td><td class="mono">'+f.proto+'</td>'+
+    '<td><button type="button" class="linkbtn" data-abrir="'+c.id+'">'+esc(c.nome)+'</button><div class="hint">'+c.canal+(c.cliente?"":" · novo cliente")+'</div></td>'+
+    '<td>'+r.curto+'<div class="hint">'+r.setor+' · '+r.resp+'</div></td>'+
+    '<td style="max-width:34ch">'+esc(f.resumo.split("\n")[0])+(fl.length&&f.status!=="Concluída"?'<div class="hint" style="color:var(--ochre);font-weight:600">Falta: '+esc(fl.join("; "))+'</div>':'')+'</td>'+
+    '<td>'+prazoTxt(f)+'</td>'+
+    '<td><select data-st="'+c.id+'" aria-label="Status de '+esc(f.proto)+'">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select></td></tr>'}).join("");
+}
+document.getElementById("tb").addEventListener("click",ev=>{const id=ev.target.getAttribute("data-abrir");if(!id)return;st.sel=id;salvar();mostrar("mesa")});
+document.getElementById("tb").addEventListener("change",ev=>{const id=ev.target.getAttribute("data-st");if(!id)return;const f=st.convs.find(c=>c.id===id).ficha;f.status=ev.target.value;f.log.push("Status alterado para "+f.status+" na fila");salvar();renderFila();contador()});
+
+// formulário do site
+const sRota=document.getElementById("s-rota"); MENU.forEach(([n,k])=>sRota.insertAdjacentHTML("beforeend",'<option value="'+k+'">'+ROTAS[k].nome+'</option>'));
+document.getElementById("abrir-site").addEventListener("click",()=>{const p=document.getElementById("sitepanel");p.hidden=!p.hidden;if(!p.hidden)document.getElementById("s-nome").focus()});
+document.getElementById("s-ex").addEventListener("click",()=>{
+  document.getElementById("s-nome").value="Auto Peças Cruzeiro Ltda";document.getElementById("s-tel").value="(88) 9 0000-8808";
+  document.getElementById("s-doc").value="22.333.444/0001-55";document.getElementById("s-cli").value="1";sRota.value="processo";
+  document.getElementById("s-proc").value="";document.getElementById("s-desc").value="Recebemos intimação para pagar débito de ICMS na execução fiscal e queremos saber o prazo para defesa.";
+});
+document.getElementById("fsite").addEventListener("submit",ev=>{
+  ev.preventDefault();
+  const v={nome:document.getElementById("s-nome").value.trim(),tel:document.getElementById("s-tel").value.trim(),doc:document.getElementById("s-doc").value.trim(),rota:sRota.value,desc:document.getElementById("s-desc").value.trim(),proc:document.getElementById("s-proc").value.trim(),cli:document.getElementById("s-cli").value==="1"};
+  const e={};
+  if(!v.nome)e.nome="Informe o nome ou a razão social.";
+  if(v.tel.replace(/\D/g,"").length<10)e.tel="Informe o WhatsApp com DDD.";
+  const dg=v.doc.replace(/\D/g,""); if(dg.length!==11&&dg.length!==14)e.doc="Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).";
+  if(!v.rota)e.rota="Escolha o assunto.";
+  if(v.desc.length<30)e.desc="Conte um pouco mais: pelo menos 30 caracteres.";
+  const map={nome:"s-nome",tel:"s-tel",doc:"s-doc",rota:"s-rota",desc:"s-desc"};
+  for(const k in map){const el=document.getElementById(map[k]);el.classList.toggle("invalid",!!e[k]);if(e[k])el.setAttribute("aria-invalid","true");else el.removeAttribute("aria-invalid");document.getElementById("es-"+k).textContent=e[k]||""}
+  if(Object.keys(e).length){document.getElementById("s-toast").textContent="";return}
+  const resumo=v.desc+(v.proc?"\nProcesso: "+v.proc:"");
+  const c={id:"w"+Date.now(),canal:"Site",nome:v.nome,tel:v.tel,cliente:v.cli,etapa:"fim",msgs:[{de:"sys",tx:"Pedido recebido pelo formulário do site. A resposta sai pelo WhatsApp informado.",em:new Date().toISOString()},{de:"cli",tx:"Assunto: "+ROTAS[v.rota].nome+"\n"+(dg.length===14?"CNPJ: ":"CPF: ")+v.doc+"\n\n"+resumo,em:new Date().toISOString()}],ficha:null};
+  st.convs.push(c); const f=novaFicha(c,v.rota,v.doc,resumo,"formulário do site");
+  salvar(); document.getElementById("fsite").reset();
+  document.getElementById("s-toast").textContent="Pedido "+f.proto+" criado"+(faltando(f).length?" como incompleto: falta "+faltando(f).join("; "):"")+".";
+  renderFila(); contador();
+});
+
+// documentos
+const CASOS={
+  pj:{tipo:"PJ",nome:"Comercial Serra Alta Ltda",campos:[
+    ["RAZAO","Razão social","COMERCIAL SERRA ALTA LTDA","alta","consulta pública do CNPJ"],
+    ["CNPJ","CNPJ","12.345.678/0001-90","alta","consulta pública do CNPJ"],
+    ["ENDERECO","Endereço da sede","Rua Exemplo, 100, Centro, Sobral/CE, CEP 62010-000","alta","consulta pública do CNPJ"],
+    ["REP_NOME","Representante","JOÃO EXEMPLO DA SILVA","alta","contrato social, cláusula 7ª"],
+    ["REP_CARGO","Cargo","sócio-administrador","media","contrato social, cláusula 7ª"],
+    ["REP_CPF","CPF do representante","123.456.789-0?","baixa","CNH (foto com reflexo)"]
+  ]},
+  pf:{tipo:"PF",nome:"Fernanda Lopes",campos:[
+    ["NOME","Nome completo","FERNANDA EXEMPLO LOPES","alta","RG, frente"],
+    ["NACIONALIDADE","Nacionalidade","brasileira","media","RG, naturalidade"],
+    ["ESTADO_CIVIL","Estado civil","","baixa","não consta do RG"],
+    ["PROFISSAO","Profissão","","baixa","não consta dos documentos"],
+    ["RG","RG e órgão emissor","2000000000000 SSPDS/CE","alta","RG, verso"],
+    ["CPF","CPF","123.456.789-09","alta","RG, verso"],
+    ["ENDERECO","Endereço","Av. Exemplo, 250, apto 3, Centro, Sobral/CE, CEP 62011-000","media","conta de luz de setembro"]
+  ]}
+};
+const PODERES=["receber citação","confessar","reconhecer a procedência do pedido","transigir","desistir","renunciar ao direito sobre o qual se funda a ação","receber e dar quitação","firmar compromisso"];
+document.getElementById("poderes").innerHTML=PODERES.map((p,i)=>'<label><input type="checkbox" id="pod-'+i+'" value="'+esc(p)+'"> '+p[0].toUpperCase()+p.slice(1)+'</label>').join("");
+let caso="pj", lido=false, gerado="";
+function escolherCaso(k){caso=k;lido=false;document.querySelectorAll(".case").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.case===k)));document.getElementById("extracao").hidden=true;document.getElementById("scanbar").style.width="0";limparPrevia()}
+document.querySelectorAll(".case").forEach(b=>b.addEventListener("click",()=>escolherCaso(b.dataset.case)));
+function limparPrevia(){const p=document.getElementById("paper");p.className="paper blank";p.textContent="A prévia do documento aparece aqui depois da conferência.";document.getElementById("docacoes").hidden=true;document.getElementById("rfb-aviso").hidden=true;document.getElementById("acao-msg").textContent="";document.getElementById("g-toast").textContent="";gerado=""}
+document.getElementById("ler").addEventListener("click",()=>{
+  const bar=document.getElementById("scanbar"); bar.style.width="0"; void bar.offsetWidth; bar.style.width="100%";
+  setTimeout(()=>{lido=true;renderExt();document.getElementById("extracao").hidden=false},650);
+});
+document.getElementById("cn-num").addEventListener("input",e=>{const c=CNPJ.limpar(e.target.value),el=document.getElementById("cn-links");
+  if(c.length<14){el.textContent="Digite o CNPJ para abrir a consulta.";return}
+  if(!CNPJ.valido(c)){el.textContent="CNPJ inválido: os dígitos verificadores não conferem.";return}
+  el.innerHTML="Abrir consulta: "+CNPJ.fontes(c).slice(0,3).map(f=>'<a href="'+f.url+'" target="_blank" rel="noopener">'+esc(f.nome)+'</a>').join(" · ")});
+document.getElementById("cn-aplica").addEventListener("click",()=>{const msg=document.getElementById("cn-msg");let n;
+  try{n=CNPJ.normalizar(document.getElementById("cn-cola").value)}catch(e){msg.textContent=e.message;return}
+  const dig=CNPJ.limpar(document.getElementById("cn-num").value); if(dig.length===14&&dig!==n.cnpj){msg.textContent="O resultado colado é de outro CNPJ ("+CNPJ.fmtCNPJ(n.cnpj)+").";return}
+  const adm=n.socios.find(s=>/administrador/i.test(s.qualificacao))||n.socios[0]||{nome:"",qualificacao:""};
+  const cep=(n.cep||"").replace(/^(\d{5})(\d{3})$/,"$1-$2"), fonte="consulta pública do CNPJ ("+n.fonte+")";
+  CASOS.pj.nome=n.razao;
+  CASOS.pj.campos=[["RAZAO","Razão social",n.razao,"alta",fonte],["CNPJ","CNPJ",CNPJ.fmtCNPJ(n.cnpj),"alta",fonte],
+    ["ENDERECO","Endereço da sede",n.endereco+", "+(n.municipio||"")+"/"+(n.uf||"")+(cep?", CEP "+cep:""),"alta",fonte],
+    ["REP_NOME","Representante",adm.nome,"media","quadro de sócios da Receita; conferir no contrato social"],
+    ["REP_CARGO","Cargo",(adm.qualificacao||"").toLowerCase(),"media","quadro de sócios da Receita; conferir no contrato social"],
+    ["REP_CPF","CPF do representante","","baixa","não consta da base pública (CPF mascarado); usar documento pessoal"]];
+  const b=document.querySelector('.case[data-case="pj"] b'); if(b)b.textContent=n.razao;
+  escolherCaso("pj"); lido=true; renderExt(); document.getElementById("extracao").hidden=false; document.getElementById("cn-cola").value="";
+  msg.textContent=(/ATIVA/i.test(n.situacao||"")?"":"Atenção: situação cadastral "+n.situacao+". ")+"Ficha preenchida com dados da Receita. Confira o representante no contrato social e informe o CPF dele."});
+function triagemConv(c){ const r={msgs:c.msgs.map(m=>({autor:m.de==="cli"?c.nome:"Escritório",tx:m.tx})),participantes:[c.nome,"Escritório"]}; return WAImport.triagem(r,c.nome) }
+function aplicaCNPJ(n){ document.getElementById("cn-cola").value=JSON.stringify(n.__bruto||{}); }
+document.getElementById("cn-auto").addEventListener("click",async()=>{ const msg=document.getElementById("cn-msg"), c=CNPJ.limpar(document.getElementById("cn-num").value);
+  if(!CNPJ.valido(c)){msg.textContent="Digite um CNPJ válido.";return}
+  msg.textContent="Consultando a Receita…";
+  for(const f of CNPJ.fontes(c)){ try{ const r=await fetch(f.url); if(!r.ok) continue; document.getElementById("cn-cola").value=await r.text(); document.getElementById("cn-aplica").click(); return }catch(e){} }
+  msg.textContent="A busca automática só funciona com o Atendimento hospedado no domínio do escritório. Aqui, use os links acima e cole o resultado."; });
+const LVK="rd-aovivo"; let lv={url:"",chave:"",desde:""}, lvTimer=null;
+try{ lv=Object.assign(lv,JSON.parse(localStorage.getItem(LVK)||"{}")) }catch(e){}
+document.getElementById("lv-url").value=lv.url; document.getElementById("lv-chave").value=lv.chave;
+async function lvBusca(){ const stEl=document.getElementById("lv-st");
+  try{ const u=lv.url+(lv.url.includes("?")?"&":"?")+"chave="+encodeURIComponent(lv.chave)+"&desde="+encodeURIComponent(lv.desde);
+    const r=await fetch(u); const j=await r.json(); if(j.erro){ stEl.textContent="Recusado: "+j.erro+"."; return }
+    const g=AoVivo.agrupar(j.linhas||[],st.convs);
+    g.novas.forEach(c=>{ st.convs.push(c); const t=triagemConv(c); novaFicha(c,t.rota,t.doc,t.resumo,"WhatsApp ao vivo") });
+    if((j.linhas||[]).length) lv.desde=j.linhas.map(l=>l.data).sort().pop(); try{localStorage.setItem(LVK,JSON.stringify(lv))}catch(e){}
+    if(g.novas.length||g.novasMsgs){ salvar(); renderMesa(); }
+    stEl.textContent="Conectado · última verificação "+new Date().toLocaleTimeString("pt-BR").slice(0,5)+(g.novas.length?" · "+g.novas.length+" conversa(s) nova(s)":"")+(g.novasMsgs?" · "+g.novasMsgs+" mensagem(ns) nova(s)":"");
+  }catch(e){ stEl.textContent="Sem conexão. A conexão ao vivo só funciona com o Atendimento hospedado no domínio do escritório e o n8n ligado."; clearInterval(lvTimer); lvTimer=null }
+}
+document.getElementById("lv-ok").addEventListener("click",()=>{ lv.url=document.getElementById("lv-url").value.trim(); lv.chave=document.getElementById("lv-chave").value.trim();
+  if(!/^https:\/\//.test(lv.url)){ document.getElementById("lv-st").textContent="Informe o endereço https do n8n."; return }
+  try{localStorage.setItem(LVK,JSON.stringify(lv))}catch(e){}; clearInterval(lvTimer); lvBusca(); lvTimer=setInterval(lvBusca,30000); });
+if(lv.url&&lv.chave){ lvBusca(); lvTimer=setInterval(lvBusca,30000) }
+function renderExt(){
+  const c=CASOS[caso];
+  document.getElementById("ext").innerHTML=c.campos.map(([k,l,v,conf,src])=>{
+    const cls=conf==="baixa"?"low":conf==="media"?"mid":"";
+    const pill=conf==="alta"?'<span class="pill ok">Alta</span>':conf==="media"?'<span class="pill warn">Média</span>':'<span class="pill crit">Baixa</span>';
+    const chk=conf==="alta"?'<span class="hint">—</span>':'<label class="chk"><input type="checkbox" id="ok-'+k+'"> sim</label>';
+    return '<tr class="'+cls+'"><td><label for="v-'+k+'">'+l+'</label><div class="src">'+src+'</div></td><td><input id="v-'+k+'" value="'+esc(v)+'"></td><td>'+pill+'</td><td>'+chk+'</td></tr>';
+  }).join("");
+  document.getElementById("trava-pj").hidden=c.tipo!=="PJ";
+  document.getElementById("chk-poderes").checked=false;
+  document.getElementById("pend").innerHTML="";
+}
+document.getElementById("modelo").addEventListener("change",e=>{document.getElementById("op-proc").hidden=e.target.value!=="proc";limparPrevia()});
+function val(k){const el=document.getElementById("v-"+k);return el?el.value.trim():""}
+function V(k){return '<span class="var">'+esc(val(k))+'</span>'}
+function pendencias(){
+  const c=CASOS[caso], out=[];
+  c.campos.forEach(([k,l,v,conf])=>{
+    if(!val(k))out.push("Preencha o campo "+l.toLowerCase()+".");
+    else if(conf!=="alta"&&!document.getElementById("ok-"+k).checked)out.push("Marque "+l.toLowerCase()+" como conferido.");
+    if(val(k).includes("?"))out.push("Corrija o campo "+l.toLowerCase()+": há caractere ilegível.");
+  });
+  if(c.tipo==="PJ"&&!document.getElementById("chk-poderes").checked)out.push("Confirme os poderes do representante no contrato social.");
+  if(!document.getElementById("cidade").value.trim())out.push("Informe local e data.");
+  return out;
+}
+function qualificacao(){
+  if(CASOS[caso].tipo==="PJ") return V("RAZAO")+', pessoa jurídica de direito privado, inscrita no CNPJ sob o nº '+V("CNPJ")+', com sede na '+V("ENDERECO")+', neste ato representada por seu '+V("REP_CARGO")+', '+V("REP_NOME")+', inscrito no CPF sob o nº '+V("REP_CPF");
+  return V("NOME")+', '+V("NACIONALIDADE")+', '+V("ESTADO_CIVIL")+', '+V("PROFISSAO")+', portadora do RG nº '+V("RG")+', inscrita no CPF sob o nº '+V("CPF")+', residente e domiciliada na '+V("ENDERECO");
+}
+function assinante(){return CASOS[caso].tipo==="PJ"?V("RAZAO")+'<br><small>'+V("REP_NOME")+'</small>':V("NOME")}
+document.getElementById("gerar").addEventListener("click",()=>{
+  const pend=pendencias(); const ul=document.getElementById("pend");
+  if(pend.length){ul.innerHTML=pend.map(p=>"<li>"+esc(p)+"</li>").join("");document.getElementById("g-toast").textContent="";return}
+  ul.innerHTML="";
+  const modelo=document.getElementById("modelo").value; let html;
+  const local=esc(document.getElementById("cidade").value.trim());
+  if(modelo==="proc"){
+    const pod=PODERES.filter((p,i)=>document.getElementById("pod-"+i).checked);
+    html='<h4>PROCURAÇÃO AD JUDICIA ET EXTRA</h4>'+
+      '<p><b>OUTORGANTE:</b> '+qualificacao()+'.</p>'+
+      '<p><b>OUTORGADO:</b> CARLOS RAFAEL AGUIAR DIDIER, advogado inscrito na OAB/CE sob o nº 24.502, com escritório profissional em <span class="var">{{ENDERECO_ESCRITORIO}}</span>.</p>'+
+      '<p><b>PODERES:</b> Pelo presente instrumento, o(a) outorgante nomeia e constitui seu bastante procurador o outorgado acima qualificado, a quem confere os poderes da cláusula ad judicia et extra para o foro em geral, em qualquer juízo, instância ou tribunal, podendo propor as ações cabíveis e defendê-lo(a) nas contrárias, seguindo umas e outras até decisão final, interpor recursos, bem como representá-lo(a) perante órgãos e repartições públicas federais, estaduais e municipais, inclusive administrações tributárias, podendo ainda substabelecer, com ou sem reserva de poderes'+(pod.length?', conferindo-lhe também os poderes especiais para <span class="var">'+esc(pod.join(", "))+'</span>':'')+'.</p>'+
+      '<p>'+local+'.</p><div class="assin"><span></span>'+assinante()+'</div>';
+  } else {
+    html='<h4>TERMO DE CIÊNCIA SOBRE TRATAMENTO DE DADOS PESSOAIS</h4>'+
+      '<p>'+qualificacao()+', declara estar ciente de que o escritório Rafael Didier Advocacia Tributária tratará os dados pessoais e os documentos fornecidos exclusivamente para a prestação dos serviços jurídicos contratados, o cumprimento de obrigações legais e o exercício regular de direitos em processos judiciais e administrativos, nos termos da Lei nº 13.709/2018.</p>'+
+      '<p>Os documentos serão guardados em pasta de acesso restrito à equipe responsável pelo atendimento, pelo prazo necessário à prestação dos serviços e ao cumprimento de obrigações legais. O titular pode solicitar informações, correção ou eliminação de dados pelo canal oficial de atendimento do escritório.</p>'+
+      '<p>'+local+'.</p><div class="assin"><span></span>'+assinante()+'</div>';
+  }
+  const p=document.getElementById("paper"); p.className="paper"; p.innerHTML=html; gerado=p.innerText;
+  document.getElementById("docacoes").hidden=false;
+  document.getElementById("rfb-aviso").hidden=!(modelo==="proc"&&document.getElementById("chk-rfb").checked);
+  document.getElementById("acao-msg").textContent="";
+  document.getElementById("g-toast").textContent="Documento gerado. Confira a prévia antes de enviar.";
+});
+document.getElementById("copiar").addEventListener("click",()=>{
+  const msg=document.getElementById("acao-msg");
+  const sel=()=>{const r=document.createRange();r.selectNodeContents(document.getElementById("paper"));const s=getSelection();s.removeAllRanges();s.addRange(r);msg.textContent="Texto selecionado. Use Ctrl+C para copiar."};
+  try{navigator.clipboard.writeText(gerado).then(()=>msg.textContent="Texto copiado.",sel)}catch(e){sel()}
+});
+function registrar(txt){
+  const nome=CASOS[caso].nome; const c=st.convs.find(x=>x.nome===nome);
+  if(c&&c.ficha){c.ficha.log.push(txt);salvar()}
+  document.getElementById("acao-msg").textContent="Simulação: "+txt.toLowerCase()+". O registro aparece no histórico da ficha.";
+}
+document.getElementById("enviar-ass").addEventListener("click",()=>registrar("Documento enviado ao cliente para assinatura"));
+document.getElementById("salvar-pasta").addEventListener("click",()=>registrar("Documento salvo na pasta do cliente"));
+
+// indicadores
+function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}
+function renderInd(){
+  const fs=st.convs.filter(c=>c.ficha).map(c=>({c,f:c.ficha}));
+  const resp=fs.filter(x=>x.f.primeiraResp).map(x=>(new Date(x.f.primeiraResp)-new Date(x.f.em))/60000);
+  const media=resp.length?resp.reduce((a,b)=>a+b,0)/resp.length:null;
+  const noPrazo=fs.filter(x=>x.f.primeiraResp&&(new Date(x.f.primeiraResp)-new Date(x.f.em))/3600000<=ROTAS[x.f.rota].sla).length;
+  const atras=fs.filter(x=>x.f.status!=="Concluída"&&restante(x.f)<0).length;
+  const comp=fs.filter(x=>x.f.completoEntrada).length;
+  const pct=(a,b)=>b?Math.round(100*a/b):0;
+  document.getElementById("kpis").innerHTML=[
+    ["Tempo até a 1ª resposta humana",fmtMin(media),resp.length+" ficha(s) já respondidas"],
+    ["Respondidas dentro do prazo",pct(noPrazo,resp.length)+"%","Prazo do setor de cada assunto"],
+    ["Abertas fora do prazo",String(atras),"Sem resposta e com prazo vencido"],
+    ["Pedidos completos na entrada",pct(comp,fs.length)+"%",comp+" de "+fs.length+" chegaram com tudo"]
+  ].map(([l,v,m])=>'<div class="kpi"><span class="l">'+l+'</span><span class="v">'+v+'</span><span class="m">'+m+'</span></div>').join("");
+  const bars=(pairs,cls)=>{const mx=Math.max(1,...pairs.map(p=>p[1]));return pairs.map(([n,v,c])=>'<div class="rowbar"><span>'+esc(n)+'</span><div class="track"><span class="'+(c||"")+'" style="width:'+(100*v/mx)+'%"></span></div><span class="mono">'+v+'</span></div>').join("")};
+  document.getElementById("b-setor").innerHTML=bars(SETORES.map(s=>[s,fs.filter(x=>ROTAS[x.f.rota].setor===s).length]));
+  const canais=["WhatsApp","Site"];
+  document.getElementById("b-canal").innerHTML=bars(canais.map(c=>[c,fs.filter(x=>x.c.canal===c).length]))+
+    '<div class="hint" style="margin:12px 0 8px;font-weight:600">Incompletos na entrada</div>'+bars(canais.map(c=>[c,fs.filter(x=>x.c.canal===c&&!x.f.completoEntrada).length,"crit"]))+
+    '<div class="hint" style="margin-top:8px">O formulário do site exige os campos mínimos, então tende a gerar menos pedidos incompletos que a conversa.</div>';
+}
+function renderRegras(){
+  document.getElementById("regras").innerHTML=MENU.map(([n,k])=>{const r=ROTAS[k];return '<tr><td><span class="mono">'+n+'.</span> '+r.nome+'</td><td>'+r.setor+'</td><td>'+r.resp+'</td><td><span class="pill '+r.nivel+'">'+r.sla+' horas</span></td><td>CPF/CNPJ; '+(k==="processo"||k==="urgencia"?"número do processo ou foto do documento; ":"")+'descrição com 30 caracteres ou mais</td></tr>'}).join("");
+}
+
+document.getElementById("reset").addEventListener("click",()=>{st=inicial();salvar();setModo("cli");escolherCaso("pj");const v=tabs.find(b=>b.getAttribute("aria-selected")==="true").dataset.view;mostrar(v)});
+
+carregar(); setModo("cli"); renderMesa();
+})();
+</script>
+
+</body></html>

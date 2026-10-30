@@ -203,7 +203,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     <div class="desk">
       <div class="col">
         <h2>Conversas <button class="btn small" id="nova-conv" type="button">Simular novo contato</button></h2>
-        <p class="hint" id="wa-msg" role="status" style="margin:4px 0 8px"><label class="btn small ghost" for="wa-arq" style="margin-right:6px">Importar do WhatsApp</label>Exporte em: conversa → Mais → Exportar conversa → Sem mídia.</p><input type="file" id="wa-arq" accept=".txt,.zip,text/plain,application/zip" multiple hidden>
+        <p class="hint" id="wa-msg" role="status" style="margin:4px 0 8px"><label class="btn small ghost" for="wa-arq" style="margin-right:6px">Importar do WhatsApp</label>Exporte em: conversa → Mais → Exportar conversa → Sem mídia.</p><span class="hint" id="base-info" style="display:block;margin:0 0 6px">Conversas guardadas só neste navegador.</span><input type="file" id="wa-arq" accept=".txt,.zip,text/plain,application/zip" multiple hidden>
         <details id="lv-box" style="margin:0 0 8px"><summary class="hint">Conexão ao vivo com o WhatsApp</summary><div style="display:grid;gap:6px;margin-top:6px"><input id="lv-url" placeholder="Endereço do n8n (…/webhook/atendimento-rd/mensagens)" autocomplete="off"><input id="lv-chave" type="password" placeholder="Chave da equipe" autocomplete="off"><button class="btn small" type="button" id="lv-ok">Conectar</button><div class="hint" id="lv-st" role="status">Desconectado.</div></div></details>
         <ul class="inbox" id="inbox"></ul>
       </div>
@@ -673,7 +673,22 @@ const EXEMPLOS=[
 let st;
 function inicial(){return {convs:JSON.parse(JSON.stringify(EXEMPLOS)),sel:"c1",seq:413,simN:0}}
 function carregar(){try{const s=localStorage.getItem(KEY);if(s){st=JSON.parse(s);return}}catch(e){} st=inicial()}
-function salvar(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+function salvarLocal(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+let DBA=null; const HASH={}, FILA={}; const EX_IDS=new Set(EXEMPLOS.map(c=>c.id));
+function salvar(){ salvarLocal(); if(!DBA) return;
+  st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
+    FILA[c.id]=(FILA[c.id]||Promise.resolve()).then(()=>DBA.doc('atendimento/'+c.id).set({conv:JSON.parse(h),atualizado:new Date().toISOString()})).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar na base do escritório agora.'; }); }); }
+(async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const db=await window.claude.use('db'); if(!db) return; DBA=db;
+  db.collection('atendimento').limit(500).onSnapshot(sn=>{ const docs=sn.docs.map(d=>d.data()).filter(x=>x&&x.conv);
+    const info=document.getElementById('base-info'); if(info) info.textContent='Base do escritório: '+docs.length+' conversa(s) compartilhada(s) com a equipe.';
+    if(!docs.length){ salvar(); return; }
+    docs.forEach(d=>{ HASH[d.conv.id]=JSON.stringify(d.conv) });
+    const exemplos=st.convs.filter(c=>EX_IDS.has(c.id)&&!docs.length);
+    st.convs=docs.map(d=>d.conv).concat(exemplos);
+    st.seq=Math.max(st.seq||0,...docs.map(d=>+((d.conv.ficha&&d.conv.ficha.proto||'').split('-').pop())||0));
+    if(!st.convs.some(c=>c.id===st.sel)) st.sel=st.convs[0]&&st.convs[0].id;
+    salvarLocal(); try{ renderMesa(); renderFila(); contador(); }catch(e){} },()=>{});
+  salvar(); }catch(e){} })();
 const conv=()=>st.convs.find(c=>c.id===st.sel)||st.convs[0];
 
 function restante(f){const r=ROTAS[f.rota];return (new Date(f.em).getTime()+r.sla*3600000-AGORA.getTime())/3600000}

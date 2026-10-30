@@ -434,6 +434,9 @@ footer .wrap{display:grid;gap:.5rem}
 
   // contato → mostra resumo copiável e link de WhatsApp pré-preenchido
   const WA='5585981772100'; // WhatsApp Web do escritório
+  // Endereço do n8n para guardar os contatos (ex.: https://SEU-ENDERECO/webhook/site/contato). Vazio = só WhatsApp.
+  const N8N_CONTATO='';
+  function enviaN8N(dados){ if(!N8N_CONTATO) return Promise.resolve(false); return fetch(N8N_CONTATO,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(dados)}).then(()=>true).catch(()=>false); }
   const enc=s=>encodeURIComponent(s);
   function showDone(box,texto){
     const url='https://wa.me/'+WA+'?text='+enc(texto);
@@ -452,6 +455,7 @@ footer .wrap{display:grid;gap:.5rem}
     const t='Contato pelo site\nNome: '+$('#cNome').value+'\nEmpresa: '+$('#cEmp').value+'\nE-mail: '+$('#cMail').value+'\nWhatsApp: '+$('#cFone').value+'\nAssunto: '+$('#cAss').value+'\nRegime: '+$('#cReg').value+'\nUrgência: '+$('#cUrg').value+'\n\n'+$('#cMsg').value;
     try{localStorage.setItem('rd_contato',t)}catch(_){}
     showDone($('#contactDone'),t);
+    enviaN8N({nome:$('#cNome').value,empresa:$('#cEmp').value,email:$('#cMail').value,fone:$('#cFone').value,assunto:$('#cAss').value,regime:$('#cReg').value,urgencia:$('#cUrg').value,mensagem:$('#cMsg').value}).then(ok=>{ if(ok){ const n=$('#contactDone .note'); if(n) n.textContent='Recebemos sua mensagem e o escritório retorna em dia útil. Se preferir, envie também pelo WhatsApp.'; } });
   });
 
   // calculadora de INSS retido
@@ -498,6 +502,7 @@ footer .wrap{display:grid;gap:.5rem}
     e.preventDefault();const f=e.target;if(!valid(f))return;
     const t='Pedido de material: '+material+'\nNome: '+$('#mNome').value+'\nE-mail: '+$('#mMail').value+'\nPerfil: '+$('#mPerfil').value+'\nAvisos por e-mail: '+($('#mNews').checked?'sim':'não');
     showDone($('#matDone'),t);
+    enviaN8N({nome:$('#mNome').value,email:$('#mMail').value,assunto:'Pedido de material: '+material,mensagem:'Perfil: '+$('#mPerfil').value+' · Avisos por e-mail: '+($('#mNews').checked?'sim':'não')});
   });
 })();
 </script>

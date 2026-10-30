@@ -1202,9 +1202,20 @@ function renderFicha(){
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
   document.getElementById("ir-docs").addEventListener("click",()=>{ const dg=String(c.doc||f.doc||"").replace(/\D/g,""); docsConvId=c.id;
     if(c.nome==="Fernanda Lopes"||c.nome==="Comercial Serra Alta Ltda"){ escolherCaso(c.nome==="Fernanda Lopes"?"pf":"pj"); mostrar("docs"); return }
-    escolherCaso(dg.length===11?"pf":"pj"); mostrar("docs"); const n=document.getElementById("cn-num"), m=document.getElementById("cn-msg");
-    if(dg.length===14){ n.value=Modelos.fmtDoc(dg); n.dispatchEvent(new Event("input")); n.closest("details").open=true; m.textContent="Cliente "+c.nome+": consulte o CNPJ para preencher a ficha com os dados reais. Os campos abaixo são de demonstração até a consulta." }
-    else m.textContent="Cliente "+c.nome+": os campos abaixo são de demonstração. Para documentos com os dados deste cliente, use “📎 Modelo” na conversa."; });
+    const d=c.dados||{}, j=c.cnpj||{}, x=(k,v)=>d[k]||v||"", fonte=v=>v?"dados da conversa":"não informado";
+    if(dg.length===11){ CASOS.pf={tipo:"PF",nome:c.nome,campos:[["NOME","Nome completo",x("NOME",c.nome),"media",fonte(1)],["NACIONALIDADE","Nacionalidade",x("NACIONALIDADE"),"baixa",fonte(d.NACIONALIDADE)],
+        ["ESTADO_CIVIL","Estado civil",x("ESTADO_CIVIL"),"baixa",fonte(d.ESTADO_CIVIL)],["PROFISSAO","Profissão",x("PROFISSAO"),"baixa",fonte(d.PROFISSAO)],["RG","RG e órgão emissor",x("RG"),"baixa",fonte(d.RG)],
+        ["CPF","CPF",Modelos.fmtDoc(dg),"alta","CPF informado na triagem (dígito conferido)"],["ENDERECO","Endereço",x("ENDERECO"),"baixa",fonte(d.ENDERECO)]]}; }
+    else { CASOS.pj={tipo:"PJ",nome:c.nome,campos:[["RAZAO","Razão social",j.razao||x("RAZAO_SOCIAL",c.nome),j.razao?"alta":"media",j.razao?"consulta pública do CNPJ":"nome da conversa"],
+        ["CNPJ","CNPJ",dg.length===14?Modelos.fmtDoc(dg):"",dg.length===14?"alta":"baixa","CNPJ informado na triagem"],
+        ["ENDERECO","Endereço da sede",j.endereco?j.endereco+", "+(j.municipio||"")+"/"+(j.uf||"")+(j.cep?", CEP "+j.cep:""):x("ENDERECO"),j.endereco?"alta":"baixa",j.endereco?"consulta pública do CNPJ":"consultar o CNPJ"],
+        ["REP_NOME","Representante",j.representante||x("REPRESENTANTE"),"media","conferir no contrato social"],["REP_CARGO","Cargo",j.cargo||x("CARGO"),"media","conferir no contrato social"],
+        ["REP_CPF","CPF do representante",x("REP_CPF"),"baixa","documento pessoal do representante"]]};
+      const b0=document.querySelector('.case[data-case="pj"] b'); if(b0) b0.textContent=c.nome; }
+    escolherCaso(dg.length===11?"pf":"pj"); mostrar("docs"); lido=true; renderExt(); document.getElementById("extracao").hidden=false;
+    const n=document.getElementById("cn-num"), m=document.getElementById("cn-msg");
+    if(dg.length===14&&!j.razao){ n.value=Modelos.fmtDoc(dg); n.dispatchEvent(new Event("input")); n.closest("details").open=true; m.textContent="Dados de "+c.nome+". Clique em “Buscar automaticamente” para completar endereço e representante pela Receita."; }
+    else m.textContent="Dados de "+c.nome+" carregados da conversa. Confira e complete os campos em vermelho."; });
 }
 function renderMesa(){renderInbox();renderMsgs();renderQuick();renderFicha();contador()}
 

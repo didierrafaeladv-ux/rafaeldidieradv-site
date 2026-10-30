@@ -84,17 +84,19 @@
     const blocos = cortes.map((c, i) => t.slice(c, cortes[i + 1] === undefined ? t.length : cortes[i + 1]).trim()).filter(Boolean);
     return blocos.map(b => classificar(b, o));
   }
-  /* acompanhados(publicacoes, fichas, hoje, limiteDias): processos com a última publicação, próximo vencimento e sinal de "parado" */
-  function acompanhados(pubs, fichas, hoje, limite) {
-    limite = limite || 60; const M = new Map();
-    const get = cnj => { if (!M.has(cnj)) M.set(cnj, { cnj, cliente: '', ultima: '', proximo: '', pendentes: 0, publicacoes: 0, tipoUltimo: '' }); return M.get(cnj); };
+  /* acompanhados(publicacoes, fichas, hoje, limiteDias, movimentos): processos com a última publicação, a última movimentação do Datajud,
+   * próximo vencimento e sinal de "parado" (nem publicação nem movimentação há mais de `limite` dias) */
+  function acompanhados(pubs, fichas, hoje, limite, movs) {
+    limite = limite || 60; const M = new Map(); movs = movs || {};
+    const get = cnj => { if (!M.has(cnj)) M.set(cnj, { cnj, cliente: '', ultima: '', proximo: '', pendentes: 0, publicacoes: 0, tipoUltimo: '', mov: movs[cnj] || null }); return M.get(cnj); };
+    Object.keys(movs).forEach(c => get(c));
     for (const f of fichas || []) { const cnj = f && f.cnj; if (!cnj) continue; const x = get(cnj); x.cliente = x.cliente || f.cliente || ''; if (f.desde && (!x.ultima || f.desde > x.ultima)) { x.ultima = f.desde; x.tipoUltimo = x.tipoUltimo || 'protocolo'; } }
     for (const p of pubs || []) { if (!p.cnj) continue; const x = get(p.cnj); x.publicacoes++; x.cliente = x.cliente || p.cliente || '';
       if (p.disp && p.disp > x.ultima) { x.ultima = p.disp; x.tipoUltimo = p.tipoNome || p.tipo || ''; }
       if (p.venc && p.venc >= hoje && (!x.proximo || p.venc < x.proximo)) x.proximo = p.venc;
       if (p.status !== 'lancada') x.pendentes++; }
     const dias = iso => iso ? Math.round((Date.parse(hoje + 'T12:00:00') - Date.parse(iso + 'T12:00:00')) / 864e5) : null;
-    return [...M.values()].map(x => Object.assign(x, { diasSem: dias(x.ultima), parado: x.ultima ? dias(x.ultima) > limite : true }))
+    return [...M.values()].map(x => { const ref = [x.ultima, x.mov && x.mov.data].filter(Boolean).sort().pop() || ''; return Object.assign(x, { referencia: ref, diasSem: dias(ref), parado: ref ? dias(ref) > limite : true }); })
       .sort((a, b) => (b.parado - a.parado) || ((a.proximo || '9') < (b.proximo || '9') ? -1 : 1));
   }
   const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.0' };

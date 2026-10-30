@@ -208,7 +208,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     <button role="tab" aria-selected="false" data-view="fila" id="tab-fila">Fila única <span id="cnt"></span></button>
     <button role="tab" aria-selected="false" data-view="docs" id="tab-docs">Documentos</button>
     <button role="tab" aria-selected="false" data-view="prazos" id="tab-prazos">Prazos processuais</button>
-    <button role="tab" aria-selected="false" data-view="ind" id="tab-ind">Indicadores</button>
+    <button role="tab" aria-selected="false" data-view="tarefas" id="tab-tarefas">Minhas tarefas</button>
+        <button role="tab" aria-selected="false" data-view="ind" id="tab-ind">Indicadores</button>
     <button role="tab" aria-selected="false" data-view="regras" id="tab-regras">Regras de triagem</button>
   </nav>
 
@@ -457,6 +458,23 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       <div id="ac-res"></div>
     </div>
   </section>
+
+  <section id="v-tarefas" hidden>
+    <h2 class="sec">Minhas tarefas</h2>
+    <p class="sub">Tarefas criadas pelos checklists de cada caso (quando o contrato é liberado), pelas publicações registradas e à mão pela equipe. Prazo interno em dias úteis; não substitui o prazo processual do Astrea.</p>
+    <div class="panel" style="display:grid;gap:10px;max-width:900px">
+      <div class="grid2">
+        <div class="fld"><label for="tf-resp">Responsável</label><select id="tf-resp"><option value="">Todos</option></select></div>
+        <div class="fld"><label for="tf-st">Mostrar</label><select id="tf-st"><option value="pendente">Pendentes</option><option value="feita">Concluídas</option><option value="">Todas</option></select></div>
+      </div>
+      <div id="tf-resumo" class="hint"></div>
+      <div id="tf-lista"></div>
+      <details><summary class="hint">Nova tarefa à mão</summary>
+        <div class="grid2" style="margin-top:6px"><div class="fld"><label for="tf-titulo">Tarefa</label><input id="tf-titulo" autocomplete="off"></div><div class="fld"><label for="tf-cli">Cliente ou processo</label><input id="tf-cli" autocomplete="off"></div>
+        <div class="fld"><label for="tf-quem">Responsável</label><select id="tf-quem"></select></div><div class="fld"><label for="tf-prazo">Prazo</label><input id="tf-prazo" type="date"></div></div>
+        <div style="margin-top:6px"><button class="btn small" type="button" id="tf-add">Criar tarefa</button> <span class="hint" id="tf-msg" role="status"></span></div></details>
+    </div>
+  </section>
   <section id="v-ind" hidden>
     <h2 class="sec">Indicadores do atendimento</h2>
     <p class="sub">Calculados a partir das fichas desta página. Servem para ajustar os prazos de cada setor depois de algumas semanas de uso.</p>
@@ -490,6 +508,72 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </footer>
 </div>
 
+<script>
+/* Tarefas do escritório: checklists por tipo de caso, "minhas tarefas" e prazos internos em dias úteis (v1.0, 30/10/2026).
+ * Usado pela página do Atendimento RD e pela rotina Ponte RD (que cria o checklist quando o contrato é liberado).
+ * Prazo interno = dias úteis a partir do início (fins de semana e feriados nacionais; não é prazo processual). */
+(function (root) {
+  'use strict';
+  const EQUIPE = [
+    { nome: 'Rafael', setor: 'Direção' }, { nome: 'Ana Maria', setor: 'Comercial' }, { nome: 'David', setor: 'Coordenação Jurídica' },
+    { nome: 'Mariana', setor: 'Controladoria' }, { nome: 'Lillian', setor: 'Coordenação Administrativa' }, { nome: 'Victor', setor: 'Financeiro' }];
+  // checklists: [título, responsável, dias úteis a partir do início]
+  const CHECKLISTS = {
+    'recuperacao': { nome: 'Recuperação tributária', areas: ['Tributário'], itens: [
+      ['Receber os documentos fiscais do cliente (XML, SPED, folha) ou pedir à Fortes', 'David', 5],
+      ['Importar no PlanejaTrib e rodar a auditoria', 'Rafael', 7],
+      ['Parecer preliminar aprovado pela Direção', 'Rafael', 10],
+      ['Conferência item a item com os XML (valor exato)', 'David', 20],
+      ['Pedido protocolado (PER/DCOMP ou ação) com aprovação da Direção', 'Rafael', 30],
+      ['Se judicial: lançar o processo e os prazos no Astrea', 'Mariana', 31],
+      ['Cadastrar honorários fixos e de êxito do contrato', 'Victor', 5]] },
+    'execucao': { nome: 'Execução fiscal', areas: ['Execução fiscal'], itens: [
+      ['Obter cópia integral dos autos e da CDA', 'Mariana', 2],
+      ['Analisar a CDA, a prescrição e os vícios (Núcleo CDA)', 'David', 5],
+      ['Definir a estratégia (exceção, embargos, transação) com a Direção', 'Rafael', 7],
+      ['Peça protocolada no prazo processual (conferir na calculadora)', 'Rafael', 10],
+      ['Lançar o processo e os prazos no Astrea', 'Mariana', 11],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'contencioso': { nome: 'Contencioso e consultivo', areas: ['Cível', 'Administrativo e licitações', 'Empresarial e societário', 'Imobiliário', 'Consumidor', 'Previdenciário', 'Trabalhista', 'Outra'], itens: [
+      ['Conferir procuração, contrato e documentos recebidos', 'Lillian', 2],
+      ['Preparar a minuta ou o parecer', 'David', 10],
+      ['Revisão e aprovação da Direção', 'Rafael', 12],
+      ['Protocolo e lançamento no Astrea (se houver processo)', 'Mariana', 15],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] }
+  };
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dia = s => { const [a, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(a, m - 1, d, 12); };
+  function feriadosNacionais(ano) {   // os mesmos da calculadora de prazos; sem os forenses, por ser prazo interno
+    const f = [[1, 1], [4, 21], [5, 1], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25]].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
+    const PP = root.PrazoProcessual; if (PP && PP.feriados) return PP.feriados(ano, [], '');
+    return new Set(f);
+  }
+  function somaUteis(inicio, n) { let d = dia(inicio), c = 0; while (c < n) { d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 12); const w = d.getDay(); if (w === 0 || w === 6 || feriadosNacionais(d.getFullYear()).has(iso(d))) continue; c++; } return iso(d); }
+  function tipoDaArea(area) { const a = String(area || ''); for (const [k, c] of Object.entries(CHECKLISTS)) if (c.areas.includes(a)) return k; return 'contencioso'; }
+  const setorDe = nome => (EQUIPE.find(e => e.nome === nome) || {}).setor || '';
+  /* gerar({ tipo | area, leadId, cliente, inicio: 'AAAA-MM-DD', agora: ISO }) → tarefas prontas para gravar */
+  function gerar(o) {
+    o = o || {}; const k = o.tipo && CHECKLISTS[o.tipo] ? o.tipo : tipoDaArea(o.area), c = CHECKLISTS[k], inicio = o.inicio || iso(new Date()), agora = o.agora || new Date().toISOString();
+    return c.itens.map(([titulo, resp, dias], i) => ({ id: 't' + (o.leadId || 'x') + '-' + k + '-' + (i + 1), leadId: o.leadId || '', cliente: o.cliente || '', area: o.area || c.nome, checklist: k,
+      ordem: i + 1, titulo, resp, setor: setorDe(resp), prazo: somaUteis(inicio, dias), status: 'pendente', feitaEm: '', feitaPor: '', origem: 'checklist', criadoEm: agora }));
+  }
+  /* minhas(tarefas, { resp, hoje, status }) → ordenadas: vencidas, hoje, depois; concluídas por último */
+  function minhas(tarefas, o) {
+    o = o || {}; const hoje = o.hoje || iso(new Date());
+    const L = (tarefas || []).filter(t => (!o.resp || t.resp === o.resp) && (!o.status || t.status === o.status) && (!o.leadId || t.leadId === o.leadId));
+    const sit = t => t.status === 'feita' ? 'feita' : !t.prazo ? 'sem prazo' : t.prazo < hoje ? 'vencida' : t.prazo === hoje ? 'hoje' : 'a vencer';
+    const peso = { vencida: 0, hoje: 1, 'a vencer': 2, 'sem prazo': 3, feita: 4 };
+    return L.map(t => Object.assign({}, t, { situacao: sit(t) })).sort((a, b) => peso[a.situacao] - peso[b.situacao] || ((a.prazo || '9') < (b.prazo || '9') ? -1 : 1) || (a.ordem || 0) - (b.ordem || 0));
+  }
+  function resumo(tarefas, hoje) { const m = minhas(tarefas, { hoje }); const por = {};
+    for (const t of m) { const r = por[t.resp] = por[t.resp] || { resp: t.resp, pendentes: 0, vencidas: 0, hoje: 0 }; if (t.status === 'feita') continue; r.pendentes++; if (t.situacao === 'vencida') r.vencidas++; if (t.situacao === 'hoje') r.hoje++; }
+    return Object.values(por).sort((a, b) => b.vencidas - a.vencidas || b.pendentes - a.pendentes); }
+  const API = { EQUIPE, CHECKLISTS, tipoDaArea, gerar, minhas, resumo, somaUteis, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Tarefas = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>
 /* Classificador de publicações (DJEN/DJe) com prazo sugerido e tarefa (v1.0, 30/10/2026).
  * Regras objetivas, sem IA: identifica tipo, processo (CNJ), tribunal, prazo expresso no texto, dobro e audiência;
@@ -577,17 +661,19 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     const blocos = cortes.map((c, i) => t.slice(c, cortes[i + 1] === undefined ? t.length : cortes[i + 1]).trim()).filter(Boolean);
     return blocos.map(b => classificar(b, o));
   }
-  /* acompanhados(publicacoes, fichas, hoje, limiteDias): processos com a última publicação, próximo vencimento e sinal de "parado" */
-  function acompanhados(pubs, fichas, hoje, limite) {
-    limite = limite || 60; const M = new Map();
-    const get = cnj => { if (!M.has(cnj)) M.set(cnj, { cnj, cliente: '', ultima: '', proximo: '', pendentes: 0, publicacoes: 0, tipoUltimo: '' }); return M.get(cnj); };
+  /* acompanhados(publicacoes, fichas, hoje, limiteDias, movimentos): processos com a última publicação, a última movimentação do Datajud,
+   * próximo vencimento e sinal de "parado" (nem publicação nem movimentação há mais de `limite` dias) */
+  function acompanhados(pubs, fichas, hoje, limite, movs) {
+    limite = limite || 60; const M = new Map(); movs = movs || {};
+    const get = cnj => { if (!M.has(cnj)) M.set(cnj, { cnj, cliente: '', ultima: '', proximo: '', pendentes: 0, publicacoes: 0, tipoUltimo: '', mov: movs[cnj] || null }); return M.get(cnj); };
+    Object.keys(movs).forEach(c => get(c));
     for (const f of fichas || []) { const cnj = f && f.cnj; if (!cnj) continue; const x = get(cnj); x.cliente = x.cliente || f.cliente || ''; if (f.desde && (!x.ultima || f.desde > x.ultima)) { x.ultima = f.desde; x.tipoUltimo = x.tipoUltimo || 'protocolo'; } }
     for (const p of pubs || []) { if (!p.cnj) continue; const x = get(p.cnj); x.publicacoes++; x.cliente = x.cliente || p.cliente || '';
       if (p.disp && p.disp > x.ultima) { x.ultima = p.disp; x.tipoUltimo = p.tipoNome || p.tipo || ''; }
       if (p.venc && p.venc >= hoje && (!x.proximo || p.venc < x.proximo)) x.proximo = p.venc;
       if (p.status !== 'lancada') x.pendentes++; }
     const dias = iso => iso ? Math.round((Date.parse(hoje + 'T12:00:00') - Date.parse(iso + 'T12:00:00')) / 864e5) : null;
-    return [...M.values()].map(x => Object.assign(x, { diasSem: dias(x.ultima), parado: x.ultima ? dias(x.ultima) > limite : true }))
+    return [...M.values()].map(x => { const ref = [x.ultima, x.mov && x.mov.data].filter(Boolean).sort().pop() || ''; return Object.assign(x, { referencia: ref, diasSem: dias(ref), parado: ref ? dias(ref) > limite : true }); })
       .sort((a, b) => (b.parado - a.parado) || ((a.proximo || '9') < (b.proximo || '9') ? -1 : 1));
   }
   const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.0' };
@@ -1334,6 +1420,7 @@ function salvar(){ salvarLocal(); if(!DBA) return;
   st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
     FILA[c.id]=(FILA[c.id]||Promise.resolve()).then(()=>DBA.doc('atendimento/'+c.id).set({conv:JSON.parse(h),atualizado:new Date().toISOString()})).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar na base do escritório agora.'; }); }); }
 (async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const db=await window.claude.use('db'); if(!db) return; DBA=db;
+  try{ db.collection('tarefas').limit(1000).onSnapshot(sn=>{ tarefasDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderTarefas==='function') renderTarefas(); },()=>{}); db.collection('processos').limit(500).onSnapshot(sn=>{ procsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.cnj); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   try{ db.collection('publicacoes').limit(500).onSnapshot(sn=>{ pubsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   db.collection('atendimento').limit(500).onSnapshot(sn=>{ const docs=sn.docs.map(d=>d.data()).filter(x=>x&&x.conv);
     const info=document.getElementById('base-info'); if(info) info.textContent='Base do escritório: '+docs.length+' conversa(s) compartilhada(s) com a equipe.';
@@ -1370,7 +1457,7 @@ function novaFicha(c,rota,doc,resumo,origem){
 
 // abas
 const tabs=[...document.querySelectorAll("nav.tabs button")];
-const RENDER={prazos:()=>{ if(!document.getElementById("pub-data").value) document.getElementById("pub-data").value=hojeISO(); renderAcomp(); },mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
+const RENDER={tarefas:()=>renderTarefas(),prazos:()=>{ if(!document.getElementById("pub-data").value) document.getElementById("pub-data").value=hojeISO(); renderAcomp(); },mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
 function mostrar(v){
   tabs.forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===v)));
   Object.keys(RENDER).forEach(k=>document.getElementById("v-"+k).hidden=(k!==v));
@@ -1536,7 +1623,7 @@ function painelFluxo(c,f){ const a=f.astrea||{}, e=f.encerramento||{}, lx=f.lgpd
   return h+'</div>' }
 document.getElementById("ficha").addEventListener("click",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
   if(ev.target.id==="fx-conflito"){ f.status="Concluída"; f.encerramento=Object.assign({},f.encerramento,{motivo:"conflito de interesses impedido",em:new Date().toISOString(),resp:RESP_ENC}); f.log.push("Conflito impedido: atendimento encerrado (etapa 9)"); salvar(); renderMesa(); renderFila&&renderFila() }
-  if(ev.target.id==="fx-lgpd"){ f.lgpdExclusao.status="atendida"; f.lgpdExclusao.atendidaEm=hojeISO(); f.log.push("Exclusão de dados (LGPD) atendida"); salvar(); renderMesa(); renderFila&&renderFila() } });
+  if(ev.target.id==="fx-lgpd"){ f.lgpdExclusao.status="atendida"; f.lgpdExclusao.atendidaEm=hojeISO(); f.log.push("Exclusão de dados (LGPD) atendida"); anonimizar(c); salvar(); renderMesa(); renderFila&&renderFila() } });
 document.getElementById("ficha").addEventListener("change",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
   if(ev.target.id==="fx-cnj"){ const v=ev.target.value.trim(); f.astrea=Object.assign({},f.astrea,{cnj:v,protocoloEm:(f.astrea&&f.astrea.protocoloEm)||hojeISO()}); if(!v) delete f.astrea; f.log.push(v?"Processo protocolado: "+v+" (lançar no Astrea hoje)":"Número do processo removido"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
   if(ev.target.id==="fx-astrea"){ f.astrea.lancado=ev.target.checked?hojeISO():""; f.log.push(ev.target.checked?"Processo lançado no Astrea":"Lançamento no Astrea desmarcado"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
@@ -1572,13 +1659,15 @@ document.getElementById("pub-res").addEventListener("click",e=>{ const b=e.targe
     if(r.cnj) f.astrea={cnj:r.cnj,protocoloEm:r.disponibilizacao||hoje}; }
   else { c.ficha.log.push("Publicação registrada por "+por+": "+r.tipoNome+(r.vencimento?" · vencimento estimado "+r.vencimento.split("-").reverse().join("/"):"")); c.msgs.push({de:"sys",tx:"Publicação ("+r.tipoNome+"): "+r.resumo,em:agora}); if(c.ficha.status==="Concluída") c.ficha.status="Nova"; if(c.ficha.astrea) c.ficha.astrea.lancado=""; }
   const p={id:"pub"+Date.now()+Math.floor(Math.random()*1000),chave:r.chave,cnj:r.cnj,tipo:r.tipo,tipoNome:r.tipoNome,urgente:r.urgente,disp:r.disponibilizacao||"",prazoDias:r.prazoDias,contagem:r.contagem,venc:r.vencimento||"",audiencia:r.audiencia||null,resumo:r.resumo,astrea:r.astrea,fichaId:c.id,cliente:c.nome,fonte:"manual",status:"nova",registradaEm:agora,por};
+  novaTarefa({titulo:r.tipoNome+(r.vencimento?' · vencimento '+r.vencimento.split('-').reverse().join('/'):'')+' · conferir e lançar no Astrea',resp:respDaRota(r.rota),cliente:(c.nome||'')+(r.cnj?' · '+r.cnj:''),prazo:r.vencimento||(r.audiencia&&r.audiencia.data)||'',origem:'publicacao',leadId:c.id});
   salvarPub(p); salvar(); renderMesa(); renderFila&&renderFila(); renderPubs(); renderAcomp(); });
 function renderAcomp(){ const el=document.getElementById("ac-res"); if(!el) return; const lim=+document.getElementById("ac-dias").value||60, hoje=hojeISO();
   const fichas=st.convs.filter(c=>c.ficha&&c.ficha.astrea&&c.ficha.astrea.cnj).map(c=>({cnj:c.ficha.astrea.cnj,cliente:c.nome,desde:c.ficha.astrea.protocoloEm||""}));
-  const pubs=pubsTodas(), ac=Publicacao.acompanhados(pubs,fichas,hoje,lim), br=s=>s?s.split("-").reverse().join("/"):"—";
+  const movs={}; (procsDb||[]).forEach(p=>{ movs[p.cnj]={data:p.ultimaMov||'',nome:p.ultimaMovNome||'',carga:p.cargaDatajud||''} });
+  const pubs=pubsTodas(), ac=Publicacao.acompanhados(pubs,fichas,hoje,lim,movs), br=s=>s?s.split("-").reverse().join("/"):"—";
   if(!ac.length){ el.innerHTML='<div class="hint">Nenhum processo registrado ainda. Informe o número CNJ na ficha da demanda ou registre uma publicação.</div>'; return }
-  el.innerHTML='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Processo</th><th>Cliente</th><th>Última publicação</th><th>Próximo vencimento</th><th>Astrea</th><th>Situação</th></tr></thead><tbody>'+
-    ac.map(x=>'<tr><td class="mono">'+esc(x.cnj)+'</td><td>'+esc(x.cliente||"—")+'</td><td>'+br(x.ultima)+(x.tipoUltimo?'<div class="hint">'+esc(x.tipoUltimo)+'</div>':'')+'</td><td>'+(x.proximo?'<b>'+br(x.proximo)+'</b>':'—')+'</td><td>'+(x.pendentes?'<span class="pill warn">'+x.pendentes+' a lançar</span>':'<span class="pill ok">em dia</span>')+'</td><td>'+(x.parado?'<span class="pill crit">parado há '+(x.diasSem==null?"?":x.diasSem)+' dias</span>':'<span class="hint">'+(x.diasSem==null?"—":x.diasSem+" dias sem publicação")+'</span>')+'</td></tr>').join("")+'</tbody></table></div>'+
+  el.innerHTML='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Processo</th><th>Cliente</th><th>Última publicação</th><th>Última movimentação (Datajud)</th><th>Próximo vencimento</th><th>Astrea</th><th>Situação</th></tr></thead><tbody>'+
+    ac.map(x=>'<tr><td class="mono">'+esc(x.cnj)+'</td><td>'+esc(x.cliente||"—")+'</td><td>'+br(x.ultima)+(x.tipoUltimo?'<div class="hint">'+esc(x.tipoUltimo)+'</div>':'')+'</td><td>'+(x.mov&&x.mov.data?br(x.mov.data)+'<div class="hint">'+esc(x.mov.nome||'')+(x.mov.carga?' · carga de '+esc(br(String(x.mov.carga).slice(0,10))):'')+'</div>':'<span class="hint">sem consulta</span>')+'</td><td>'+(x.proximo?'<b>'+br(x.proximo)+'</b>':'—')+'</td><td>'+(x.pendentes?'<span class="pill warn">'+x.pendentes+' a lançar</span>':'<span class="pill ok">em dia</span>')+'</td><td>'+(x.parado?'<span class="pill crit">parado há '+(x.diasSem==null?"?":x.diasSem)+' dias</span>':'<span class="hint">'+(x.diasSem==null?"—":x.diasSem+" dias sem publicação")+'</span>')+'</td></tr>').join("")+'</tbody></table></div>'+
     '<details style="margin-top:8px"><summary class="hint">Publicações registradas ('+pubs.length+')</summary><ul class="hint" style="margin:6px 0 0 16px">'+pubs.sort((a,b)=>a.disp<b.disp?1:-1).slice(0,50).map(p=>'<li><label><input type="checkbox" data-publanc="'+esc(p.id)+'"'+(p.status==="lancada"?" checked":"")+'> '+esc(br(p.disp))+' · '+esc(p.tipoNome)+' · <span class="mono">'+esc(p.cnj||"—")+'</span>'+(p.venc?' · vence '+esc(br(p.venc)):'')+' · lançada no Astrea</label></li>').join("")+'</ul></details>'; }
 document.getElementById("ac-dias").addEventListener("change",renderAcomp);
 document.getElementById("ac-res").addEventListener("change",e=>{ const id=e.target.getAttribute("data-publanc"); if(!id) return; const p=pubsTodas().find(x=>x.id===id); if(!p) return;
@@ -1586,6 +1675,33 @@ document.getElementById("ac-res").addEventListener("change",e=>{ const id=e.targ
   const c=st.convs.find(x=>x.id===p.fichaId); if(c&&c.ficha&&c.ficha.astrea&&e.target.checked){ c.ficha.astrea.lancado=hojeISO(); c.ficha.log.push("Prazo da publicação lançado no Astrea"); salvar(); renderMesa(); }
   setTimeout(renderAcomp,0); });
 window.__pubs={classificar:(t,o)=>Publicacao.lote(t,o),todas:()=>pubsTodas(),renderAcomp:()=>renderAcomp()};
+
+// ---------- tarefas (checklists, publicações e manuais) ----------
+const TARDB={}; let tarefasDb=null, procsDb=null;
+function tarefasTodas(){ const m=new Map(); (st&&st.tarefas||[]).forEach(t=>m.set(t.id,t)); (tarefasDb||[]).forEach(t=>m.set(t.id,t)); return [...m.values()]; }
+function salvarTarefa(t){ st.tarefas=(st.tarefas||[]).filter(x=>x.id!==t.id).concat([t]); salvarLocal();
+  if(DBA){ TARDB[t.id]=(TARDB[t.id]||Promise.resolve()).then(()=>DBA.doc('tarefas/'+t.id).set(t)).catch(()=>{ const b=document.getElementById('base-info'); if(b) b.textContent='Não foi possível salvar a tarefa na base do escritório agora.'; }); } }
+function novaTarefa(o){ const agora=new Date().toISOString(); const t=Object.assign({id:'tm'+Date.now()+Math.floor(Math.random()*1000),leadId:'',cliente:'',area:'',checklist:'',ordem:0,titulo:'',resp:'',setor:'',prazo:'',status:'pendente',feitaEm:'',feitaPor:'',origem:'manual',criadoEm:agora},o);
+  t.setor=t.setor||(Tarefas.EQUIPE.find(e=>e.nome===t.resp)||{}).setor||''; salvarTarefa(t); return t; }
+function respDaRota(rota){ return rota==='urgencia'?'Rafael':rota==='nova'?'Ana Maria':rota==='docs'?'David':rota==='fin'?'Victor':rota==='agenda'?'Lillian':'Mariana'; }
+function renderTarefas(){ const el=document.getElementById('tf-lista'); if(!el) return; const sel=document.getElementById('tf-resp'), quem=document.getElementById('tf-quem');
+  if(sel.options.length===1){ Tarefas.EQUIPE.forEach(e=>{ sel.insertAdjacentHTML('beforeend','<option>'+e.nome+'</option>'); quem.insertAdjacentHTML('beforeend','<option>'+e.nome+'</option>'); }); }
+  const hoje=hojeISO(), todas=tarefasTodas(), L=Tarefas.minhas(todas,{resp:sel.value,status:document.getElementById('tf-st').value,hoje}), br=s=>s?s.split('-').reverse().join('/'):'sem prazo';
+  const R=Tarefas.resumo(todas,hoje); document.getElementById('tf-resumo').innerHTML=R.length?R.map(r=>'<span class="pill '+(r.vencidas?'crit':r.hoje?'warn':'info')+'" style="margin-right:4px">'+esc(r.resp)+': '+r.pendentes+' pendente(s)'+(r.vencidas?', '+r.vencidas+' vencida(s)':'')+'</span>').join(''):'Nenhuma tarefa ainda.';
+  const cls={vencida:'crit',hoje:'warn','a vencer':'info','sem prazo':'',feita:'ok'};
+  el.innerHTML=L.length?'<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Prazo</th><th>Tarefa</th><th>Cliente / processo</th><th>Responsável</th><th>Origem</th><th></th></tr></thead><tbody>'+L.slice(0,200).map(t=>'<tr><td><span class="pill '+cls[t.situacao]+'">'+br(t.prazo)+(t.situacao==='vencida'?' · vencida':t.situacao==='hoje'?' · hoje':'')+'</span></td><td>'+esc(t.titulo)+(t.checklist?'<div class="hint">checklist '+esc((Tarefas.CHECKLISTS[t.checklist]||{}).nome||t.checklist)+' · passo '+t.ordem+'</div>':'')+'</td><td>'+esc(t.cliente||'—')+'</td><td>'+esc(t.resp)+'</td><td class="hint">'+esc(t.origem)+(t.feitaEm?'<br>feita em '+esc(br(t.feitaEm))+(t.feitaPor?' por '+esc(t.feitaPor):''):'')+'</td><td>'+(t.status==='feita'?'<button class="btn ghost small" type="button" data-tf="reabrir" data-id="'+esc(t.id)+'">Reabrir</button>':'<button class="btn small" type="button" data-tf="feita" data-id="'+esc(t.id)+'">Concluir</button>')+'</td></tr>').join('')+'</tbody></table></div>':'<div class="hint">Nenhuma tarefa nesta visão.</div>'; }
+document.getElementById('tf-resp').addEventListener('change',renderTarefas); document.getElementById('tf-st').addEventListener('change',renderTarefas);
+document.getElementById('tf-lista').addEventListener('click',e=>{ const b=e.target.closest('[data-tf]'); if(!b) return; const t=tarefasTodas().find(x=>x.id===b.dataset.id); if(!t) return;
+  if(b.dataset.tf==='feita'){ t.status='feita'; t.feitaEm=hojeISO(); t.feitaPor=document.getElementById('tf-resp').value||''; } else { t.status='pendente'; t.feitaEm=''; t.feitaPor=''; }
+  salvarTarefa(t); renderTarefas(); });
+document.getElementById('tf-add').addEventListener('click',()=>{ const g=id=>document.getElementById(id); const titulo=g('tf-titulo').value.trim(), resp=g('tf-quem').value; if(!titulo||!resp){ g('tf-msg').textContent='Informe a tarefa e o responsável.'; return }
+  novaTarefa({titulo,resp,cliente:g('tf-cli').value.trim(),prazo:g('tf-prazo').value}); g('tf-titulo').value=''; g('tf-cli').value=''; g('tf-prazo').value=''; g('tf-msg').textContent='Tarefa criada.'; renderTarefas(); });
+// ---------- exclusão de dados (LGPD): anonimiza a conversa, mantendo a guarda mínima (art. 16, I) ----------
+function anonimizar(c){ const f=c.ficha||{}; c.nome='Titular (dados excluídos)'; c.tel=''; c.doc=''; c.dados={}; c.docs=[]; c.docsZip=[];
+  c.msgs=(c.msgs||[]).map(m=>m.de==='cli'?Object.assign({},m,{tx:'[mensagem excluída a pedido do titular]',extraido:'',link:'',arquivo:'',midia:false}):m.de==='eq'?Object.assign({},m,{tx:'[resposta da equipe excluída]',anexo:''}):m);
+  if(c.ficha){ f.doc=''; f.resumo='[pedido excluído a pedido do titular]'; f.log.push('Dados pessoais excluídos a pedido do titular (LGPD, art. 18, VI); mantidos protocolo, datas, número do processo e este registro (art. 16, I)'); }
+  c.anonimizadaEm=new Date().toISOString(); return c; }
+window.__tarefas={todas:()=>tarefasTodas(),nova:o=>novaTarefa(o),render:()=>renderTarefas(),anonimizar:c=>anonimizar(c)};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};

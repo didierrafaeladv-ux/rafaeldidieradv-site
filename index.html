@@ -16,7 +16,7 @@
 <meta property="og:description" content="Contencioso cível, créditos tributários municipais e estaduais, direito administrativo, reestruturações societárias e transações imobiliárias. Sobral/CE.">
 <meta property="og:url" content="https://didierrafaeladv-ux.github.io/rafaeldidieradv-site/">
 <link rel="canonical" href="https://didierrafaeladv-ux.github.io/rafaeldidieradv-site/">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"LegalService","name":"Rafael Didier Advocacia Tributária Especializada","url":"https://rafaeldidieradv.com/","telephone":["+55-88-99693-6282","+55-85-98177-2100"],"email":"contato@rafaeldidieradv.com","address":{"@type":"PostalAddress","streetAddress":"Rua Padre Fialho, 117, Centro","addressLocality":"Sobral","addressRegion":"CE","addressCountry":"BR"},"areaServed":"Ceará","knowsAbout":["Contencioso cível","Recuperação de créditos tributários","ISS","ICMS","Execução fiscal","Direito administrativo","Contratos administrativos","Reestruturação societária","Holding familiar","Transações imobiliárias","Direito previdenciário","Direito do trabalho","Direito constitucional","Direito eleitoral"],"employee":{"@type":"Person","name":"Carlos Rafael Aguiar Didier","jobTitle":"Advogado, OAB/CE 24.502"},"sameAs":["https://www.instagram.com/rafaeldidieradv/"]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"LegalService","name":"Rafael Didier Advocacia Tributária Especializada","url":"https://rafaeldidieradv.com/","telephone":["+55-88-99693-6282","+55-85-98177-2100"],"email":"contato@rafaeldidieradv.com","address":{"@type":"PostalAddress","streetAddress":"Rua Padre Fialho, 117, Centro","addressLocality":"Sobral","addressRegion":"CE","addressCountry":"BR"},"areaServed":"Ceará","knowsAbout":["Contencioso cível","Recuperação de créditos tributários","ISS","ICMS","Execução fiscal","Direito administrativo","Contratos administrativos","Reestruturação societária","Holding familiar","Transações imobiliárias","Direito do consumidor","Direito previdenciário","Direito do trabalho"],"employee":{"@type":"Person","name":"Carlos Rafael Aguiar Didier","jobTitle":"Advogado, OAB/CE 24.502"},"sameAs":["https://www.instagram.com/rafaeldidieradv/"]}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* Layout: uma página longa com seções ancoradas, faixa de conteúdo em 1100px, hero assimétrico texto+foto, rodapé institucional. */
@@ -49,6 +49,7 @@ section{padding-block:4rem;scroll-margin-top:72px}
 .grid{display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:1.5rem;display:grid;gap:.6rem;align-content:start;min-width:0}
 .card h3{font-size:1.15rem}
+.sits{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}.card.sit{grid-template-rows:auto auto 1fr auto}.card.sit .btn{justify-self:start}.card.sit.urg{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}.ter{font-size:.9rem}.ter ul{margin:.25rem 0 0;padding-left:1.1rem}.passos{list-style:none;counter-reset:p;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1rem 1.5rem}.passos li{counter-increment:p;display:grid;gap:.35rem;padding-top:.75rem;border-top:2px solid var(--line)}.passos li::before{content:counter(p);font-family:var(--display,Georgia,serif);font-size:1.6rem;color:var(--accent);line-height:1}
 #servicos .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}#servicos .card{grid-template-rows:auto 1fr auto}#servicos .card .btn{justify-self:start;white-space:nowrap}
 .card ul{margin:0;padding-left:1.1rem;color:var(--muted);font-size:.95rem}
 .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;border-radius:4px;font-weight:600;text-decoration:none;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;font-family:var(--body);font-size:.95rem}
@@ -144,13 +145,11 @@ footer .wrap{display:grid;gap:.5rem}
     <a class="brand" href="#inicio">Rafael Didier<small>Advocacia Tributária Especializada</small></a>
     <button id="menuBtn" aria-expanded="false" aria-controls="links">Menu</button>
     <ul class="links" id="links">
-      <li><a href="#sobre">O escritório</a></li>
-      <li><a href="#setores">Setores</a></li>
+      <li><a href="#situacao">Sua situação</a></li>
       <li><a href="#servicos">Áreas</a></li>
-      <li><a href="#metodo">Método</a></li>
-      <li><a href="#casos">Casos</a></li>
+      <li><a href="#como">Como funciona</a></li>
+      <li><a href="#sobre">O escritório</a></li>
       <li><a href="#ferramentas">Ferramentas</a></li>
-      <li><a href="#conteudos">Conteúdos</a></li>
       <li><a href="#faq">Perguntas</a></li>
       <li><a href="#contato">Contato</a></li>
     </ul>
@@ -162,14 +161,44 @@ footer .wrap{display:grid;gap:.5rem}
   <div class="stack">
     <span class="eyebrow">Sobral · Ceará</span>
     <h1>Advocacia para empresas que lidam com o fisco, o poder público e o próprio patrimônio.</h1>
-    <p class="lead">Contencioso cível, recuperação de créditos tributários municipais e estaduais, direito administrativo, reestruturações societárias e transações imobiliárias, para empresários e fornecedores do poder público no interior do Ceará.</p>
+    <p class="lead">Contencioso cível, recuperação de créditos tributários municipais e estaduais, direito administrativo, reestruturações societárias e transações imobiliárias. Também atende consumidor, previdenciário e trabalhista. Para empresas e pessoas no interior do Ceará.</p>
     <div class="cta">
-      <a class="btn primary" href="#contato">Agendar uma conversa</a>
-      <a class="btn" href="#servicos">Ver áreas de atuação</a>
+      <a class="btn primary" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20agendar%20uma%20conversa." target="_blank" rel="noopener">Falar pelo WhatsApp</a>
+      <a class="btn" href="#situacao">Começar pela minha situação</a>
     </div>
     <p class="note">Primeira conversa sem compromisso · retorno em até 2 horas úteis (seg. a sex., 8h às 17h) · atendimento presencial em Sobral ou por vídeo</p>
   </div>
   <div class="photo">Espaço para foto do advogado<br>(escritório ou fórum, 4:5)</div>
+</section>
+
+<section id="situacao" class="wrap" aria-labelledby="t-sit">
+  <div class="head">
+    <span class="eyebrow">Por onde começar</span>
+    <h2 id="t-sit">Qual é a sua situação?</h2>
+    <p class="muted">Escolha a mais parecida com a sua. A mensagem já vai pronta para o WhatsApp do escritório, e você sabe o que separar antes da conversa.</p>
+  </div>
+  <div class="grid sits">
+      <div class="card sit urg"><h3>Recebi uma citação, penhora ou bloqueio de conta</h3><p class="muted">Há prazo correndo. Mande hoje o que recebeu.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Foto ou PDF do mandado, da citação ou do extrato do bloqueio</li><li>Número do processo, se tiver</li></ul></div><a class="btn primary" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Recebi%20uma%20cita%C3%A7%C3%A3o%2C%20penhora%20ou%20bloqueio%20e%20preciso%20de%20orienta%C3%A7%C3%A3o%20com%20urg%C3%AAncia." target="_blank" rel="noopener">Falar agora pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Tenho valores a receber de prefeitura ou do Estado</h3><p class="muted">Medições, empenhos ou reajustes em atraso, ou contrato desequilibrado.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Contrato e aditivos</li><li>Notas fiscais e empenhos em aberto</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Tenho%20valores%20a%20receber%20de%20prefeitura%20ou%20do%20Estado%20e%20gostaria%20de%20uma%20an%C3%A1lise." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Paguei imposto a mais ou sofri retenção indevida</h3><p class="muted">ISS, ICMS, ICMS-ST ou INSS retido nos últimos 5 anos.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Cartão CNPJ</li><li>Notas fiscais e guias do período</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Acho%20que%20paguei%20imposto%20a%20mais%20ou%20sofri%20reten%C3%A7%C3%A3o%20indevida%20e%20gostaria%20de%20uma%20an%C3%A1lise." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Preciso cobrar alguém ou estou sendo cobrado</h3><p class="muted">Contratos não cumpridos, ações de cobrança, execuções e indenizações.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Contrato, títulos ou notas</li><li>Conversas e notificações trocadas</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Preciso%20de%20ajuda%20com%20uma%20cobran%C3%A7a%20%28cobrar%20ou%20me%20defender%29." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Vou comprar, vender ou regularizar um imóvel</h3><p class="muted">Antes de assinar: riscos, documentos e tributos da operação.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Matrícula atualizada do imóvel</li><li>Minuta ou proposta do negócio, se houver</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Vou%20comprar%2C%20vender%20ou%20regularizar%20um%20im%C3%B3vel%20e%20gostaria%20de%20orienta%C3%A7%C3%A3o." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Quero organizar a empresa, os sócios ou a sucessão</h3><p class="muted">Holding, entrada e saída de sócios, mudança de regime ou de tipo societário.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Contrato social e última alteração</li><li>Lista dos bens que entrariam na estrutura</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Quero%20organizar%20a%20empresa%2C%20os%20s%C3%B3cios%20ou%20a%20sucess%C3%A3o%20e%20gostaria%20de%20uma%20conversa." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Tive problema com banco, loja ou plano</h3><p class="muted">Cobrança indevida, negativação, produto ou serviço que não foi entregue como prometido.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Contrato, fatura ou nota</li><li>Protocolos de atendimento e conversas</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Tive%20um%20problema%20com%20banco%2C%20loja%20ou%20plano%20e%20gostaria%20de%20orienta%C3%A7%C3%A3o." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+      <div class="card sit"><h3>Questão trabalhista ou com o INSS</h3><p class="muted">Reclamação trabalhista, rotina de pessoal da empresa, aposentadoria ou benefício negado.</p><div class="ter"><b>Tenha em mãos</b><ul><li>Contrato de trabalho ou notificação recebida</li><li>Extrato do CNIS ou carta do INSS, se for benefício</li></ul></div><a class="btn" href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site.%20Tenho%20uma%20quest%C3%A3o%20trabalhista%20ou%20com%20o%20INSS%20e%20gostaria%20de%20orienta%C3%A7%C3%A3o." target="_blank" rel="noopener">Enviar pelo WhatsApp</a></div>
+  </div>
+</section>
+
+<section id="como" class="band" aria-labelledby="t-como">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">Como funciona</span><h2 id="t-como">Do primeiro contato à proposta</h2></div>
+    <ol class="passos">
+      <li><b>Você conta o caso</b><span class="muted">Pelo WhatsApp, pelo formulário ou no escritório. Pode mandar foto dos documentos.</span></li>
+      <li><b>Retorno em até 2 horas úteis</b><span class="muted">De segunda a sexta, das 8h às 17h. Antes de qualquer análise, o escritório confere se pode atender (conflito de interesses).</span></li>
+      <li><b>Conversa de diagnóstico</b><span class="muted">Presencial em Sobral ou por vídeo, com o advogado. Você sai sabendo os caminhos possíveis e os riscos de cada um.</span></li>
+      <li><b>Proposta por escrito</b><span class="muted">Escopo, prazos e honorários definidos em contrato antes de começar. Sem surpresa depois.</span></li>
+    </ol>
+  </div>
 </section>
 
 <section id="sobre" class="band">
@@ -222,10 +251,9 @@ footer .wrap{display:grid;gap:.5rem}
       <ul style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:.6rem 1.5rem;padding-left:1.1rem;margin:0">
         <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20tribut%C3%A1rio%20consultivo%20e%20planejamento." target="_blank" rel="noopener"><strong>Direito tributário consultivo e planejamento</strong></a><br><span class="muted">Escolha de regime, diagnóstico de obrigações, reforma do consumo (IBS e CBS) e Simples híbrido.</span></li>
         <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20execu%C3%A7%C3%A3o%20fiscal%20e%20d%C3%ADvida%20ativa." target="_blank" rel="noopener"><strong>Execução fiscal e dívida ativa</strong></a><br><span class="muted">Defesa em execuções municipais, estaduais e federais, transação com a PGFN e parcelamentos.</span></li>
-        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20previdenci%C3%A1rio." target="_blank" rel="noopener"><strong>Direito previdenciário</strong></a><br><span class="muted">Retenções do INSS de empresas, contribuições e planejamento de benefícios.</span></li>
-        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20do%20trabalho%20empresarial." target="_blank" rel="noopener"><strong>Direito do trabalho empresarial</strong></a><br><span class="muted">Consultoria preventiva: regulamento interno, contratos e rotinas de pessoal.</span></li>
-        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20constitucional." target="_blank" rel="noopener"><strong>Direito constitucional</strong></a><br><span class="muted">Mandados de segurança e controle de leis e atos municipais e estaduais que afetam a empresa.</span></li>
-        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20eleitoral." target="_blank" rel="noopener"><strong>Direito eleitoral</strong></a><br><span class="muted">Consultoria em propaganda e elegibilidade em ano de eleição.</span></li>
+        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20do%20consumidor." target="_blank" rel="noopener"><strong>Direito do consumidor</strong></a><br><span class="muted">Cobranças indevidas, negativação, contratos com bancos, planos e prestadores de serviço.</span></li>
+        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20previdenci%C3%A1rio." target="_blank" rel="noopener"><strong>Direito previdenciário</strong></a><br><span class="muted">Aposentadorias e benefícios do INSS, planejamento previdenciário e contribuições de empresas.</span></li>
+        <li><a href="https://wa.me/5585981772100?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20gostaria%20de%20falar%20sobre%20direito%20do%20trabalho." target="_blank" rel="noopener"><strong>Direito do trabalho</strong></a><br><span class="muted">Reclamações trabalhistas e consultoria preventiva: contratos, regulamento interno e rotinas de pessoal.</span></li>
       </ul>
     </div>
     <p class="note" style="margin-top:1.5rem">Os serviços são prestados mediante contrato de honorários, com escopo definido caso a caso. As informações deste site são gerais e não substituem a análise de um caso concreto.</p>
@@ -334,7 +362,7 @@ footer .wrap{display:grid;gap:.5rem}
     <div class="addr">
       <span class="eyebrow">Contato</span>
       <h2>Agende uma conversa</h2>
-      <p class="muted">Descreva a situação em poucas linhas. O retorno é feito em dia útil, por e-mail ou WhatsApp.</p>
+      <p class="muted">Descreva a situação em poucas linhas. O retorno é feito em até 2 horas úteis (seg. a sex., 8h às 17h), pelo WhatsApp que você informar.</p>
       <div><b>Endereço</b><span>Rua Padre Fialho, 117, Centro, Sobral/CE</span></div>
       <div><b>WhatsApp</b><a href="https://wa.me/5585981772100" target="_blank" rel="noopener">(85) 9.8177-2100</a></div>
       <div><b>Telefone</b><span id="phoneTxt">(88) 9.9693-6282</span></div>
@@ -344,20 +372,20 @@ footer .wrap{display:grid;gap:.5rem}
     <form id="contactForm" novalidate>
       <div class="two">
         <label>Nome<input id="cNome" name="nome" required autocomplete="name"></label>
-        <label>Empresa<input id="cEmp" name="empresa" autocomplete="organization"></label>
+        <label>Empresa (se houver)<input id="cEmp" name="empresa" autocomplete="organization"></label>
       </div>
       <div class="two">
-        <label>E-mail<input id="cMail" name="email" type="email" required autocomplete="email"></label>
-        <label>WhatsApp<input id="cFone" name="fone" type="tel" autocomplete="tel"></label>
+        <label>E-mail (opcional)<input id="cMail" name="email" type="email" autocomplete="email"></label>
+        <label>WhatsApp<input id="cFone" name="fone" type="tel" required autocomplete="tel" placeholder="(88) 9 0000-0000"></label>
       </div>
       <label>Assunto
         <select id="cAss" name="assunto">
-          <option>Diagnóstico tributário</option><option>Recuperação de tributos</option><option>Execução fiscal ou dívida</option><option>Holding ou reorganização</option><option>Outro</option>
+          <option>Citação, penhora ou bloqueio (urgente)</option><option>Valores a receber de prefeitura ou do Estado</option><option>Imposto pago a mais ou retenção indevida</option><option>Execução fiscal ou dívida com o fisco</option><option>Cobrança ou ação cível</option><option>Imóvel: compra, venda ou regularização</option><option>Empresa, sócios ou sucessão</option><option>Problema com banco, loja ou plano (consumidor)</option><option>Trabalhista ou INSS</option><option>Planejamento tributário</option><option>Outro</option>
         </select>
       </label>
       <div class="two">
-        <label>Regime da empresa
-          <select id="cReg"><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option><option>MEI</option><option>Não sei</option></select>
+        <label>Regime da empresa (se souber)
+          <select id="cReg"><option>Não sei ou não se aplica</option><option>Simples Nacional</option><option>Lucro Presumido</option><option>Lucro Real</option><option>MEI</option></select>
         </label>
         <label>Urgência
           <select id="cUrg"><option>Sem prazo correndo</option><option>Nas próximas semanas</option><option>Prazo correndo (citação, intimação ou auto de infração)</option></select>

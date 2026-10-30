@@ -553,8 +553,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     [/trabalhis|demiss|\bCLT\b|reclama[cç][aã]o trabalhista|funcion[aá]ri/i, 'Trabalhista'],
     [/holding|societ|s[oó]cio|contrato social|sucess/i, 'Empresarial e societário'],
     [/im[oó]ve(l|is)|escritura|matr[ií]cula|usucapi|ITBI|terreno|loteamento/i, 'Imobiliário'],
-    [/elei[cç][aã]o|eleitoral|candidat|propaganda eleitoral/i, 'Eleitoral'],
-    [/mandado de seguran[cç]a|inconstitucional/i, 'Constitucional'],
+    [/consumidor|negativ(a[cç][aã]o|ado|aram)|serasa|\bspc\b|plano de sa[uú]de|cobran[cç]a indevida|produto com defeito|operadora|cart[aã]o de cr[eé]dito|empr[eé]stimo consignado/i, 'Consumidor'],
     [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário'],
     [/cobran[cç]a|indeniza|execu[cç][aã]o de t[ií]tulo|contrato|danos|a[cç][aã]o c[ií]vel/i, 'Cível']];
   const dataLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -1505,7 +1504,7 @@ function renderModelos(){
   const sel=document.getElementById("md-sel"); if(sel){ const v=sel.value, pref=areaDaConv(); const grupos=[...new Set(ord.map(m=>m.area||""))].sort((a,b)=>(b===pref)-(a===pref)||(a===""?1:b===""?-1:a.localeCompare(b)));
     sel.innerHTML=ord.length?grupos.map(g=>'<optgroup label="'+esc((g||"Todas as áreas")+(g&&g===pref?" (área desta conversa)":""))+'">'+ord.filter(m=>(m.area||"")===g).map(m=>'<option value="'+m.id+'">'+esc(m.nome)+'</option>').join("")+'</optgroup>').join(""):'<option value="">Nenhum modelo: envie na aba Documentos</option>';
     if(MODELOS.some(m=>m.id===v)) sel.value=v; else { const p1=ord.find(m=>m.area===pref); if(p1) sel.value=p1.id } } }
-const AREAS_RD=["Tributário","Execução fiscal","Cível","Administrativo e licitações","Empresarial e societário","Imobiliário","Previdenciário","Trabalhista","Constitucional","Eleitoral"];
+const AREAS_RD=["Tributário","Execução fiscal","Cível","Administrativo e licitações","Empresarial e societário","Imobiliário","Consumidor","Previdenciário","Trabalhista"];
 function opArea(a){ return '<option value="">Todas as áreas</option>'+AREAS_RD.map(x=>'<option'+(x===a?" selected":"")+'>'+x+'</option>').join("") }
 function areaDaConv(){ try{ const c=conv(); return c.area||LeadRD.area([c.ficha&&c.ficha.resumo,...c.msgs.filter(m=>m.de==="cli").map(m=>m.tx)].join("\n")) }catch(e){ return "" } }
 document.getElementById("mdl-area").innerHTML=opArea("");

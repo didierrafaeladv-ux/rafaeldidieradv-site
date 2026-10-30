@@ -747,6 +747,44 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 
 </script>
 <script>
+/* Atendimento RD — prazos em horas úteis (v1.0, 30/10/2026).
+ * Expediente: segunda a sexta, das 8h às 17h (horário de Brasília, o do navegador). Não conta feriados nacionais
+ * (inclusive Carnaval, Sexta-feira Santa e Corpus Christi, calculados pela Páscoa), a Data Magna do Ceará (25/3)
+ * e o aniversário de Sobral (5/7). Navegador (window.Prazo) e node. */
+(function (root) {
+  'use strict';
+  const ABRE = 8, FECHA = 17, H = 3600000;
+  function pascoa(a) { const b = a % 19, c = Math.floor(a / 100), d = a % 100, e = Math.floor(c / 4), f = c % 4, g = Math.floor((c + 8) / 25), h = Math.floor((c - g + 1) / 3),
+      i = (19 * b + c - e - h + 15) % 30, k = Math.floor(d / 4), l = d % 4, m = (32 + 2 * f + 2 * k - i - l) % 7, n = Math.floor((b + 11 * i + 22 * m) / 451),
+      mes = Math.floor((i + m - 7 * n + 114) / 31), dia = ((i + m - 7 * n + 114) % 31) + 1; return new Date(a, mes - 1, dia); }
+  const chave = d => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  const cache = {};
+  function feriados(ano) {
+    if (cache[ano]) return cache[ano];
+    const fixos = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25]].map(([m, d]) => new Date(ano, m - 1, d));
+    const p = pascoa(ano), mais = n => new Date(p.getFullYear(), p.getMonth(), p.getDate() + n);
+    return (cache[ano] = new Set([...fixos, mais(-48), mais(-47), mais(-2), mais(60)].map(chave)));
+  }
+  const diaUtil = d => d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear()).has(chave(d));
+  const abertura = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), ABRE), fechamento = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), FECHA);
+  // próximo instante dentro do expediente (o próprio, se já estiver)
+  function proximo(t) { let d = new Date(t);
+    for (let i = 0; i < 400; i++) { if (diaUtil(d)) { if (d < abertura(d)) return abertura(d); if (d < fechamento(d)) return d; }
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, ABRE); }
+    return d; }
+  function somar(inicio, horas) { let t = proximo(inicio), resto = horas * H;
+    while (resto > 0) { const fim = fechamento(t), cabe = fim - t; if (resto <= cabe) return new Date(t.getTime() + resto); resto -= cabe; t = proximo(new Date(fim.getTime() + 1)); }
+    return t; }
+  // horas úteis entre a e b (negativo se b < a)
+  function entre(a, b) { a = new Date(a); b = new Date(b); if (b < a) return -entre(b, a); let t = proximo(a), ms = 0;
+    while (t < b) { const fim = fechamento(t); if (b <= fim) { ms += b - t; break; } ms += fim - t; t = proximo(new Date(fim.getTime() + 1)); }
+    return ms / H; }
+  const API = { somar, entre, proximo, feriados, pascoa, diaUtil, ABRE, FECHA, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Prazo = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* RD Integra — consulta assistida de CNPJ (v1.0, 30/10/2026).
  * As páginas publicadas no Claude não podem chamar APIs externas; por isso a ferramenta abre a consulta
  * numa nova aba, o usuário cola o resultado e este módulo o reconhece e normaliza.
@@ -1004,14 +1042,14 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 <script>
 (function(){
 const KEY="atendimento-rd-v2";
-const AGORA=new Date(2026,9,29,16,20);
+const AGORA=new Date();   // exemplos relativos à abertura da página; prazos usam o relógio real
 const ROTAS={
   urgencia:{nome:"Urgência (citação, penhora, bloqueio, prazo correndo)",curto:"Urgência",setor:"Direção",resp:"Rafael + Mariana",sla:2,peso:3,pede:"Número do processo ou foto do documento recebido",nivel:"crit"},
   processo:{nome:"Processo em andamento / intimação",curto:"Processo / intimação",setor:"Controladoria",resp:"Mariana",sla:8,peso:3,pede:"Número do processo ou foto do documento",nivel:"warn"},
-  nova:{nome:"Nova demanda / consulta",curto:"Nova demanda",setor:"Comercial",resp:"Ana Maria (após conflito: Lillian)",sla:24,peso:2,pede:"Descrição com pelo menos 30 caracteres",nivel:"info"},
-  docs:{nome:"Envio de documentos",curto:"Documentos",setor:"Coordenação Jurídica",resp:"David",sla:48,peso:1,pede:"A que caso os documentos se referem",nivel:"info"},
-  fin:{nome:"Financeiro / boleto / honorários",curto:"Financeiro",setor:"Financeiro",resp:"Victor",sla:24,peso:1,pede:"Nº do contrato ou mês de referência",nivel:"info"},
-  agenda:{nome:"Agendamento",curto:"Agendamento",setor:"Administrativo",resp:"Lillian",sla:24,peso:1,pede:"Melhor dia e horário",nivel:"info"}
+  nova:{nome:"Nova demanda / consulta",curto:"Nova demanda",setor:"Comercial",resp:"Ana Maria (após conflito: Lillian)",sla:2,peso:2,pede:"Descrição com pelo menos 30 caracteres",nivel:"info"},
+  docs:{nome:"Envio de documentos",curto:"Documentos",setor:"Coordenação Jurídica",resp:"David",sla:18,peso:1,pede:"A que caso os documentos se referem",nivel:"info"},
+  fin:{nome:"Financeiro / boleto / honorários",curto:"Financeiro",setor:"Financeiro",resp:"Victor",sla:9,peso:1,pede:"Nº do contrato ou mês de referência",nivel:"info"},
+  agenda:{nome:"Agendamento",curto:"Agendamento",setor:"Administrativo",resp:"Lillian",sla:9,peso:1,pede:"Melhor dia e horário",nivel:"info"}
 };
 const SETORES=["Direção","Comercial","Controladoria","Coordenação Jurídica","Financeiro","Administrativo"];
 const MENU=[["1","processo"],["2","urgencia"],["3","nova"],["4","docs"],["5","fin"],["6","agenda"]];
@@ -1076,7 +1114,7 @@ function salvar(){ salvarLocal(); if(!DBA) return;
   salvar(); }catch(e){} })();
 const conv=()=>st.convs.find(c=>c.id===st.sel)||st.convs[0];
 
-function restante(f){const r=ROTAS[f.rota];return (new Date(f.em).getTime()+r.sla*3600000-AGORA.getTime())/3600000}
+function restante(f){const r=ROTAS[f.rota];return Prazo.entre(new Date(),Prazo.somar(new Date(f.em),r.sla))}   // horas úteis
 function prazoTxt(f){
   if(f.status==="Concluída")return '<span class="pill ok">Concluída</span>';
   const h=restante(f);
@@ -1089,7 +1127,7 @@ function prio(f){const s=score(f);return s>=9?"P1":s>=6?"P2":"P3"}
 const PCLS={P1:"crit",P2:"warn",P3:"info"};
 function novaFicha(c,rota,doc,resumo,origem){
   st.seq++; const r=ROTAS[rota];
-  const f={proto:"RD-2026-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:AGORA.toISOString(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
+  const f={proto:"RD-2026-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:new Date().toISOString(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
   if(rota==="nova"&&!c.cliente){f.status="Aguardando checagem de conflito";f.log.push("Checagem de conflito pedida à Administração")}
   if(rota==="urgencia")f.log.push("Alerta imediato enviado à Direção e à Controladoria");
   const fl=faltando(f); f.completoEntrada=fl.length===0;
@@ -1152,7 +1190,7 @@ function renderFicha(){
   const r=ROTAS[f.rota]; const fl=faltando(f); const p=prio(f);
   el.innerHTML='<div class="ficha"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span><span class="pill '+PCLS[p]+'">'+p+'</span> <span class="mono" style="font-weight:600">'+f.proto+'</span></span>'+prazoTxt(f)+'</div>'+
    (fl.length&&f.status!=="Concluída"?'<div class="falta">Pedido incompleto. Falta: '+esc(fl.join("; "))+'.</div>':'')+
-   '<dl><dt>Cliente</dt><dd>'+esc(c.nome)+(c.cliente?"":' <span class="pill warn">novo</span>')+'</dd><dt>CPF/CNPJ</dt><dd class="mono">'+esc(f.doc)+'</dd><dt>Canal</dt><dd>'+c.canal+'</dd><dt>Assunto</dt><dd>'+r.nome+'</dd><dt>Setor</dt><dd>'+r.setor+'</dd><dt>Responsável</dt><dd>'+r.resp+'</dd><dt>Prazo</dt><dd>'+r.sla+' horas desde a entrada</dd></dl>'+
+   '<dl><dt>Cliente</dt><dd>'+esc(c.nome)+(c.cliente?"":' <span class="pill warn">novo</span>')+'</dd><dt>CPF/CNPJ</dt><dd class="mono">'+esc(f.doc)+'</dd><dt>Canal</dt><dd>'+c.canal+'</dd><dt>Assunto</dt><dd>'+r.nome+'</dd><dt>Setor</dt><dd>'+r.setor+'</dd><dt>Responsável</dt><dd>'+r.resp+'</dd><dt>Prazo</dt><dd>'+r.sla+' horas úteis desde a entrada (seg. a sex., 8h às 17h) · vence '+Prazo.somar(new Date(f.em),r.sla).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</dd></dl>'+
    '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
    '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
    '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
@@ -1170,7 +1208,7 @@ function enviar(tx){
   const c=conv(); const agora=new Date().toISOString();
   if(modo==="eq"){
     c.msgs.push({de:"eq",por:"Equipe",tx,em:agora});
-    if(c.ficha){if(!c.ficha.primeiraResp)c.ficha.primeiraResp=AGORA.toISOString();c.ficha.log.push("Equipe respondeu ao cliente");if(c.ficha.status==="Nova")c.ficha.status="Em andamento"}
+    if(c.ficha){if(!c.ficha.primeiraResp)c.ficha.primeiraResp=new Date().toISOString();c.ficha.log.push("Equipe respondeu ao cliente");if(c.ficha.status==="Nova")c.ficha.status="Em andamento"}
     salvar();renderMesa();return;
   }
   c.msgs.push({de:"cli",tx,em:agora});
@@ -1188,7 +1226,7 @@ function enviar(tx){
     else{c.rota=op[1];c.etapa="desc";bot(c,c.rota==="urgencia"?"Descreva em poucas palavras o que aconteceu e, se puder, envie foto do documento recebido.":"Conte em poucas linhas o que você precisa. "+ROTAS[c.rota].pede+" ajuda a agilizar.")}
   } else if(c.etapa==="desc"){
     const f=novaFicha(c,c.rota,c.doc,tx,"assistente"); const r=ROTAS[c.rota]; const fl=faltando(f);
-    let m="Registrado. Protocolo "+f.proto+". "+(c.rota==="urgencia"?"Como é uma urgência, a equipe foi avisada agora e retorna em até 2 horas.":"A equipe retorna em até "+r.sla+" horas.");
+    let m="Registrado. Protocolo "+f.proto+". "+(c.rota==="urgencia"?"Como é uma urgência, a equipe foi avisada agora e retorna em até 2 horas úteis (seg. a sex., das 8h às 17h).":"A equipe retorna em até "+r.sla+" horas úteis (seg. a sex., das 8h às 17h).");
     if(fl.length){m+="\n\nPara agilizar, envie também: "+fl.join("; ")+".";c.etapa="complemento"}else c.etapa="fim";
     bot(c,m);
   } else if(c.etapa==="complemento"){
@@ -1610,7 +1648,7 @@ document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.c
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}
 function renderInd(){
   const fs=st.convs.filter(c=>c.ficha).map(c=>({c,f:c.ficha}));
-  const resp=fs.filter(x=>x.f.primeiraResp).map(x=>(new Date(x.f.primeiraResp)-new Date(x.f.em))/60000);
+  const resp=fs.filter(x=>x.f.primeiraResp).map(x=>Prazo.entre(x.f.em,x.f.primeiraResp)*60);   // minutos úteis
   const media=resp.length?resp.reduce((a,b)=>a+b,0)/resp.length:null;
   const noPrazo=fs.filter(x=>x.f.primeiraResp&&(new Date(x.f.primeiraResp)-new Date(x.f.em))/3600000<=ROTAS[x.f.rota].sla).length;
   const atras=fs.filter(x=>x.f.status!=="Concluída"&&restante(x.f)<0).length;
@@ -1630,7 +1668,7 @@ function renderInd(){
     '<div class="hint" style="margin-top:8px">O formulário do site exige os campos mínimos, então tende a gerar menos pedidos incompletos que a conversa.</div>';
 }
 function renderRegras(){
-  document.getElementById("regras").innerHTML=MENU.map(([n,k])=>{const r=ROTAS[k];return '<tr><td><span class="mono">'+n+'.</span> '+r.nome+'</td><td>'+r.setor+'</td><td>'+r.resp+'</td><td><span class="pill '+r.nivel+'">'+r.sla+' horas</span></td><td>CPF/CNPJ; '+(k==="processo"||k==="urgencia"?"número do processo ou foto do documento; ":"")+'descrição com 30 caracteres ou mais</td></tr>'}).join("");
+  document.getElementById("regras").innerHTML=MENU.map(([n,k])=>{const r=ROTAS[k];return '<tr><td><span class="mono">'+n+'.</span> '+r.nome+'</td><td>'+r.setor+'</td><td>'+r.resp+'</td><td><span class="pill '+r.nivel+'">'+r.sla+' h úteis</span></td><td>CPF/CNPJ; '+(k==="processo"||k==="urgencia"?"número do processo ou foto do documento; ":"")+'descrição com 30 caracteres ou mais</td></tr>'}).join("");
 }
 
 document.getElementById("reset").addEventListener("click",()=>{st=inicial();salvar();setModo("cli");escolherCaso("pj");const v=tabs.find(b=>b.getAttribute("aria-selected")==="true").dataset.view;mostrar(v)});

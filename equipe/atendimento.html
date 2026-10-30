@@ -414,6 +414,55 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 </div>
 
 <script>
+/* Atendimento RD → CRM de leads (v1.0, 30/10/2026). Monta o lead a partir da conversa e o "cartão" de transferência.
+ * Navegador (window.LeadRD) e node. */
+(function (root) {
+  'use strict';
+  const PREFIXO = 'CRM-RD-LEAD:';
+  const AREAS = [[/execu[cç][aã]o fiscal|penhora|\bCDA\b|d[ií]vida ativa|bloqueio|sisbajud/i, 'Execução fiscal'],
+    [/\bINSS\b|aposentad|benef[ií]cio|previdenci|sal[aá]rio-maternidade/i, 'Previdenciário'],
+    [/licita|contrato administrativo|prefeitura|munic[ií]pio|empenho|reajuste de contrato/i, 'Administrativo e licitações'],
+    [/trabalhis|demiss|\bCLT\b|reclama[cç][aã]o trabalhista|funcion[aá]ri/i, 'Trabalhista'],
+    [/holding|societ|s[oó]cio|contrato social|sucess/i, 'Empresarial e societário'],
+    [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário']];
+  const dataLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  function area(texto) { const t = String(texto || ''); const a = AREAS.find(([re]) => re.test(t)); return a ? a[1] : ''; }
+  // c: conversa; rotas: ROTAS do Atendimento; hoje: Date
+  function daConversa(c, rotas, hoje) {
+    const h = hoje || new Date(), f = c.ficha || {}, r = (rotas || {})[f.rota] || {}, j = c.cnpj || {};
+    const cli = (c.msgs || []).filter(m => m.de === 'cli').map(m => m.em).filter(Boolean).sort().pop();
+    const amanha = new Date(h.getTime() + 86400000);
+    const textoTodo = [f.resumo, ...(c.msgs || []).filter(m => m.de === 'cli').map(m => m.tx)].join('\n');
+    const resp = (f.rota === 'nova' || f.rota === 'urgencia') ? 'Rafael Didier' : String(r.resp || '').replace(/\s*\(.*\)$/, '');
+    const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
+    return {
+      id: 'at-' + c.id, nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
+      contato: c.tel || '', area: area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
+      ultimo: cli ? dataLocal(new Date(cli)) : dataLocal(h), proxAcao: 'Agendar primeira reunião e confirmar consentimento LGPD', proxData: dataLocal(amanha),
+      lgpd: { status: 'pendente', data: '', forma: '' }, criado: dataLocal(h),
+      hist: [{ data: dataLocal(h), canal: 'Atendimento RD', nota, por: '' }]
+    };
+  }
+  const cartao = lead => PREFIXO + JSON.stringify(lead);
+  // lê um ou mais cartões colados (CRM)
+  function lerCartoes(texto) {
+    const out = []; const t = String(texto || ''); let i = t.indexOf(PREFIXO);
+    while (i >= 0) { const ini = i + PREFIXO.length; let prof = 0, fim = -1, aspas = false;
+      for (let k = ini; k < t.length; k++) { const ch = t[k];
+        if (aspas) { if (ch === '\\') k++; else if (ch === '"') aspas = false; continue; }
+        if (ch === '"') aspas = true; else if (ch === '{') prof++; else if (ch === '}') { prof--; if (prof === 0) { fim = k; break; } } }
+      if (fim < 0) throw new Error('Cartão incompleto: copie de novo no Atendimento RD.');
+      const l = JSON.parse(t.slice(ini, fim + 1)); if (!l.id || !l.nome) throw new Error('Cartão sem identificação do lead.'); out.push(l);
+      i = t.indexOf(PREFIXO, fim); }
+    if (!out.length) throw new Error('Nenhum lead encontrado. No Atendimento RD, use “Virar lead no CRM” e cole aqui o que foi copiado.');
+    return out;
+  }
+  const API = { PREFIXO, area, daConversa, cartao, lerCartoes, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.LeadRD = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* Atendimento RD — modelos de documentos com preenchimento automático (v1.0, 30/10/2026).
  * Campos no modelo: {{NOME}}, {{CPF_CNPJ}}, {{Razão social}} … (maiúsculas, acentos e espaços são indiferentes).
  * Texto simples e .docx (document.xml, cabeçalhos, rodapés e notas), inclusive quando o Word quebra o campo em
@@ -937,8 +986,10 @@ function renderFicha(){
    '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
    '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
    '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
+   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+
    '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
+  document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
   document.getElementById("ir-docs").addEventListener("click",()=>{escolherCaso(c.nome==="Fernanda Lopes"?"pf":"pj");mostrar("docs")});
 }
 function renderMesa(){renderInbox();renderMsgs();renderQuick();renderFicha();contador()}
@@ -1299,6 +1350,19 @@ renderModelos();
     const info=document.getElementById("mdl-msg"); if(info&&!info.textContent) info.textContent="Base do escritório: "+daBase.length+" modelo(s) compartilhado(s) com a equipe." },()=>{});
   if(locais.length){ for(const m of locais){ try{ await gravaModelo(Object.assign({},m),m.b64||null) }catch(e){} } try{ localStorage.removeItem(MDK) }catch(e){} }
 }catch(e){} })();
+
+
+// ---------- Atendimento → CRM de leads (30/10/2026) ----------
+const CRMK="crm-leads-rd-v1";
+function viraLead(c){ const el=document.getElementById("crm-st"), lead=LeadRD.daConversa(c,ROTAS), card=LeadRD.cartao(lead); let local="";
+  try{ const s=localStorage.getItem(CRMK); const arr=s?JSON.parse(s):[];
+    if(arr.some(l=>l.id===lead.id)) local="Este contato já está no CRM aberto neste navegador.";
+    else { arr.push(lead); localStorage.setItem(CRMK,JSON.stringify(arr)); local="Lead incluído no CRM deste endereço (equipe/crm.html)." } }catch(e){}
+  if(c.ficha&&!c.ficha.log.some(l=>/CRM de leads/.test(l))){ c.ficha.log.push("Enviado ao CRM de leads"); salvar(); const lg=document.querySelector("#ficha .log"); if(lg) lg.insertAdjacentHTML("beforeend","<span>· Enviado ao CRM de leads</span>") }
+  const mostra=t=>{ el.innerHTML=esc(t)+'<textarea readonly rows="3" style="width:100%;margin-top:6px" aria-label="Cartão do lead">'+esc(card)+'</textarea>'; const ta=el.querySelector("textarea"); ta.focus(); ta.select() };
+  const ok=()=>{ el.textContent=(local?local+" ":"")+"Cartão copiado. No CRM de leads, clique em “Colar do Atendimento” e cole (Ctrl+V)." };
+  try{ navigator.clipboard.writeText(card).then(ok,()=>mostra((local?local+" ":"")+"Copie o cartão abaixo (Ctrl+C) e cole no CRM, em “Colar do Atendimento”.")) }
+  catch(e){ mostra("Copie o cartão abaixo (Ctrl+C) e cole no CRM, em “Colar do Atendimento”.") } }
 
 // indicadores
 function fmtMin(m){if(m==null)return"—";if(m<60)return Math.round(m)+" min";return (m/60).toFixed(1).replace(".",",")+" h"}

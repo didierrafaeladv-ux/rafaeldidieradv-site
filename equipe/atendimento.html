@@ -485,6 +485,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
         <div class="grid2" style="margin-top:6px"><div class="fld"><label for="mt-data">Contar a partir de (ciência, intimação, fato ou pagamento)</label><input id="mt-data" type="date"></div>
         <div class="fld"><label for="mt-trib">Calendário</label><select id="mt-trib"><option value="tjce">Estadual do Ceará (TJCE)</option><option value="jf">Federal (JFCE/TRF5)</option><option value="">Nacional (Justiça do Trabalho e outros — feriados locais a conferir)</option></select></div></div>
         <div id="mt-prazos"></div></details>
+      <details id="mt-fontes-box"><summary class="hint" style="cursor:pointer">Banco de fontes e sentenças (base da previsão de contestação e de sentença)</summary><div id="mt-fontes"></div></details>
       <details><summary class="hint" style="cursor:pointer">Teses iniciais (apoio interno; passam pela Direção antes de qualquer proposta)</summary><div id="mt-teses"></div></details>
     </div>
   </section>
@@ -537,6 +538,73 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </footer>
 </div>
 
+<script>
+/* Classificador de sentenças previdenciárias publicadas no DJEN — base para prever contestação e sentença (v1.0, 31/10/2026).
+ * A partir do texto da sentença: benefício discutido, resultado (procedente, parcial, improcedente, extinto), motivos e o trecho do dispositivo.
+ * Não guarda nome de parte (LGPD): só processo, órgão, data, benefício, resultado e motivos. Navegador (window.SentencaPrev) e node. */
+(function (root) {
+  'use strict';
+  const sem = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ');
+  const BENEFICIOS = [
+    ['bpc', 'BPC/LOAS', /beneficio (assistencial|de prestacao continuada)|\bloas\b|\bbpc\b|amparo assistencial|lei n?.? ?8\.742/],
+    ['salario_maternidade', 'Salário-maternidade', /salario[- ]maternidade/],
+    ['pensao_morte', 'Pensão por morte', /pensao por morte/],
+    ['auxilio_acidente', 'Auxílio-acidente', /auxilio[- ]acidente/],
+    ['incapacidade', 'Benefício por incapacidade', /auxilio[- ]doenca|beneficio por incapacidade|incapacidade (temporaria|permanente)|aposentadoria por invalidez|restabelecimento/],
+    ['especial', 'Aposentadoria especial / tempo especial', /aposentadoria especial|tempo (de servico |de contribuicao )?especial|atividade especial|agente(s)? nocivo/],
+    ['rural', 'Aposentadoria rural / segurado especial', /segurad[oa] especial|trabalhador(a)? rural|aposentadoria (por idade )?rural|atividade rural|aposentadoria hibrida/],
+    ['idade', 'Aposentadoria por idade', /aposentadoria (programada|por idade)/],
+    ['tempo_contribuicao', 'Aposentadoria por tempo de contribuição', /aposentadoria por tempo de contribuicao/],
+    ['revisao', 'Revisão de benefício', /revisao (do|de) beneficio|revisao da (rmi|renda mensal)|recalculo da renda/]];
+  const MOTIVOS = [
+    ['pericia', 'Perícia sem incapacidade', /(laudo|perito|pericia)[^.]{0,200}(nao (ha|houve|constatou|foi constatada|se constatou)|ausencia de|inexist\w+)[^.]{0,60}incapacidade|capacidade laborativa (preservada|mantida)|apt[oa] para (o trabalho|suas atividades)/],
+    ['prova_material', 'Falta de início de prova material', /(ausencia|inexistencia|falta) de (inicio de )?prova material|prova exclusivamente testemunhal|sumula 149/],
+    ['rural', 'Atividade rural / segurado especial não comprovado', /nao (restou |ficou )?(comprovad|demonstrad)\w*[^.]{0,80}(atividade rural|labor rural|lides rurais|segurad[oa] especial|regime de economia familiar)/],
+    ['qualidade_segurado', 'Sem qualidade de segurado', /(perda|perdeu|nao (detinha|possuia|ostentava|mantinha)) (d?a )?qualidade de segurad/],
+    ['carencia', 'Carência não cumprida', /(nao (cumpriu|preencheu|atingiu|implementou)|ausencia de|insuficien\w+)[^.]{0,40}carencia|carencia (minima )?(exigida )?nao (foi )?(cumprida|preenchida)/],
+    ['renda', 'Renda / vulnerabilidade não comprovada', /(nao (restou )?(comprovad|demonstrad)\w*|ausencia de)[^.]{0,40}(miserabilidade|vulnerabilidade|hipossuficiencia)|renda per capita[^.]{0,80}superior/],
+    ['epi_ruido', 'Tempo especial afastado (EPI/ruído/laudo)', /epi eficaz|equipamento de protecao individual eficaz|ruido (inferior|abaixo)|nivel de ruido inferior|ppp[^.]{0,80}(irregular|sem responsavel tecnico|extemporaneo)/],
+    ['rpps_ctc', 'Tempo de regime próprio sem CTC', /regime proprio[^.]{0,120}(certidao de tempo de contribuicao|ctc)|ctc[^.]{0,60}(nao|ausencia)/],
+    ['interesse', 'Sem requerimento administrativo / interesse de agir', /(ausencia|falta) de (previo )?requerimento administrativo|falta de interesse de agir|tema 350/],
+    ['dependencia', 'Dependência / união estável não comprovada', /(nao (restou )?(comprovad|demonstrad)\w*|ausencia de prova)[^.]{0,60}(uniao estavel|dependencia economica)/],
+    ['tempo_insuficiente', 'Tempo de contribuição insuficiente', /tempo (de contribuicao )?insuficiente|nao (atingiu|alcancou|perfaz)[^.]{0,40}tempo/]];
+  function dispositivo(texto) { const t = String(texto || ''), u = sem(t);
+    const marcas = ['dispositivo', 'ante o exposto', 'diante do exposto', 'isso posto', 'isto posto', 'pelo exposto', 'em face do exposto', 'posto isso', 'ante todo o exposto'];
+    let i = -1; marcas.forEach(m => { const k = u.lastIndexOf(m); if (k > i) i = k; }); if (i < 0) i = Math.max(0, u.length - 1500); return { u: u.slice(i), t: t.slice(i, i + 900).replace(/\s+/g, ' ').trim() }; }
+  function resultado(u) {
+    if (/julgo (o |os )?pedidos? (\w+ )?parcialmente procedente|julgo parcialmente procedente|parcialmente procedente(s)? o(s)? pedido|procedencia parcial/.test(u)) return 'parcial';
+    if (/julgo (o |os )?pedidos? (\w+ )?improcedentes?|julgo improcedente|improcedente(s)? o(s)? pedido|julgo improcedentes/.test(u)) return 'improcedente';
+    if (/julgo (o |os )?pedidos? (\w+ )?procedentes?|julgo procedente|procedente(s)? o(s)? pedido|julgo procedentes/.test(u)) return 'procedente';
+    if (/(extingo|extinto|extincao) (o processo|o feito)?[^.]{0,40}sem (resolucao|julgamento) do merito|art\.? ?485/.test(u)) return 'extinto';
+    if (/homologo (o )?acordo/.test(u)) return 'acordo';
+    return '';
+  }
+  /* classificar(item) — item do DJEN: { numeroprocessocommascara | numero_processo, nomeOrgao, data_disponibilizacao, tipoDocumento, texto, link, id } */
+  function classificar(item) {
+    const texto = String(item.texto || ''), u = sem(texto), cnj = item.numeroprocessocommascara || item.numero_processo || '';
+    const ehSentenca = /sentenca/.test(sem(item.tipoDocumento)) || /\bsentenca\b/.test(u.slice(0, 1500));
+    const contraINSS = /instituto nacional do seguro social|\binss\b/.test(u.slice(0, 2500));
+    const disp = dispositivo(texto), res = resultado(disp.u);
+    // LGPD: tira do trecho guardado o nome das partes e dos advogados informados na publicação
+    let dt = disp.t; [].concat(item.destinatarios || [], (item.destinatarioadvogados || []).map(x => x.advogado || {})).map(x => x && x.nome).filter(n => n && n.length > 3).forEach(n => { dt = dt.split(n).join('[parte]'); }); disp.t = dt;
+    const b = BENEFICIOS.find(([, , re]) => re.test(disp.u)) || BENEFICIOS.find(([, , re]) => re.test(u.slice(0, 6000))) || BENEFICIOS.find(([, , re]) => re.test(u));
+    const motivos = res === 'procedente' || res === 'acordo' ? [] : MOTIVOS.filter(([, , re]) => re.test(u)).map(([k, n]) => ({ k, nome: n }));
+    return { id: 'djen-' + (item.id || cnj.replace(/\D/g, '')), cnj, orgao: item.nomeOrgao || '', subsecao: /\.4\.05\.8103$/.test(cnj) ? 'Sobral' : /\.4\.05\.8100$/.test(cnj) ? 'Fortaleza' : '',
+      data: item.data_disponibilizacao || '', tipo: 'sentenca', sentenca: ehSentenca, contraINSS, beneficio: b ? b[0] : 'outro', beneficioNome: b ? b[1] : 'Outro', resultado: res,
+      motivos, dispositivo: disp.t.slice(0, 700), link: item.link || '', materia: 'Previdenciário', fonte: 'DJEN' };
+  }
+  /* estatisticas(sentencas, { beneficio, subsecao }) → total, procedência, motivos mais frequentes de improcedência */
+  function estatisticas(lista, o) { o = o || {}; const L = (lista || []).filter(s => s.sentenca && s.contraINSS && s.resultado && (!o.beneficio || s.beneficio === o.beneficio) && (!o.subsecao || s.subsecao === o.subsecao));
+    const c = r => L.filter(s => s.resultado === r).length, n = L.length, mot = {};
+    L.filter(s => s.resultado === 'improcedente' || s.resultado === 'parcial').forEach(s => s.motivos.forEach(m => { mot[m.nome] = (mot[m.nome] || 0) + 1; }));
+    return { total: n, procedente: c('procedente'), parcial: c('parcial'), improcedente: c('improcedente'), extinto: c('extinto'), acordo: c('acordo'),
+      exito: n ? Math.round(100 * (c('procedente') + c('parcial') + c('acordo')) / n) : null, motivos: Object.entries(mot).sort((a, b) => b[1] - a[1]).map(([nome, qt]) => ({ nome, qt })),
+      suficiente: n >= 30 }; }
+  const API = { BENEFICIOS: BENEFICIOS.map(([k, n]) => ({ k, nome: n })), MOTIVOS: MOTIVOS.map(([k, n]) => ({ k, nome: n })), classificar, estatisticas, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.SentencaPrev = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>
 /* Leitor de documentos do INSS — RD Prev (v1.0, 31/10/2026).
  * Lê, a partir do texto de cada página (PDF.js no navegador; OCR nas páginas sem texto legível):
@@ -1916,6 +1984,7 @@ function salvar(){ salvarLocal(); if(!DBA) return;
   st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
     FILA[c.id]=(FILA[c.id]||Promise.resolve()).then(()=>DBA.doc('atendimento/'+c.id).set({conv:JSON.parse(h),atualizado:new Date().toISOString()})).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar na base do escritório agora.'; }); }); }
 (async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const db=await window.claude.use('db'); if(!db) return; DBA=db;
+  try{ db.collection('fontes').limit(2000).onSnapshot(sn=>{ fontesDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderFontesMt==='function') renderFontesMt(); },()=>{}); }catch(e){}
   try{ db.collection('config').limit(20).onSnapshot(sn=>{ const d=sn.docs.map(x=>x.data()).find(x=>x&&x.id==='materias'); if(d){ mtCfg=Object.assign({id:'materias',resp:{}},d); try{localStorage.setItem('rd-materias',JSON.stringify(mtCfg))}catch(e){} if(typeof renderMaterias==='function'&&!document.getElementById('v-materias').hidden) renderMaterias(); } },()=>{}); }catch(e){}
   try{ db.collection('tarefas').limit(1000).onSnapshot(sn=>{ tarefasDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderTarefas==='function') renderTarefas(); },()=>{}); db.collection('processos').limit(500).onSnapshot(sn=>{ procsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.cnj); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   try{ db.collection('publicacoes').limit(500).onSnapshot(sn=>{ pubsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
@@ -2316,6 +2385,26 @@ document.getElementById("ficha").addEventListener("click",async ev=>{ const c=co
   if(ev.target.id==="inss-limpa"){ delete INSS_UI.leituras[c.id]; INSS_UI.msg=""; renderMesa() }
   if(ev.target.id==="inss-mais"&&!INSS_UI.ocupado){ INSS_UI.ocupado=true; for(const r of L) if(r._doc&&(r.pendentesOCR||[]).length) await inssOCRPendentes(r,60); INSS_UI.ocupado=false; inssMsg("Leitura por OCR concluída."); renderMesa() } });
 window.__inss={leituras:()=>INSS_UI.leituras,ler:async(file)=>{ const c=conv(); const r=await inssLerArquivo(file,c.id); (INSS_UI.leituras[c.id]=INSS_UI.leituras[c.id]||[]).push(r); renderMesa(); return r }};
+
+// ---------- banco de fontes e sentenças (31/10/2026) ----------
+let fontesDb=null;
+function renderFontesMt(){ const el=document.getElementById("mt-fontes"); if(!el||!mtSel) return; const F=(fontesDb||[]).filter(x=>x.materia===mtSel||(!x.materia&&mtSel==="Previdenciário"));
+  if(!F.length){ el.innerHTML='<div class="hint" style="margin-top:6px">Nenhuma fonte cadastrada para esta matéria ainda.</div>'; return }
+  const normas=F.filter(x=>x.tipo!=="sentenca"), sent=F.filter(x=>x.tipo==="sentenca"), sub=document.getElementById("mt-fsub")?document.getElementById("mt-fsub").value:"";
+  let h='<h4 style="margin:8px 0 4px">Normas e precedentes citados nos modelos ('+normas.length+')</h4><div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Fonte</th><th>Conferida</th><th>Modelos</th></tr></thead><tbody>'+
+    normas.sort((a,b)=>(a.conferido==="sim")-(b.conferido==="sim")).map(x=>'<tr><td>'+(x.link?'<a href="'+esc(x.link)+'" target="_blank" rel="noopener">'+esc(x.referencia)+'</a>':esc(x.referencia))+'</td><td><span class="pill '+(x.conferido==="sim"?"ok":x.conferido==="parcial"?"warn":"line")+'">'+(x.conferido==="sim"?"sim":x.conferido==="parcial"?"parcial":"a conferir")+'</span>'+(x.nota?'<div class="hint">'+esc(x.nota)+'</div>':'')+'</td><td class="hint">'+esc((x.modelos||[]).join(", "))+'</td></tr>').join("")+'</tbody></table></div>';
+  const subs=[...new Set(sent.map(s=>s.subsecao).filter(Boolean))].sort();
+  h+='<div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px"><h4 style="margin:0">Sentenças coletadas ('+sent.length+')</h4><label class="hint">Subseção <select id="mt-fsub"><option value="">Todas</option>'+subs.map(s=>'<option'+(s===sub?" selected":"")+'>'+esc(s)+'</option>').join("")+'</select></label></div>';
+  if(!sent.length) h+='<div class="hint">A coleta semanal do DJEN ainda não trouxe sentenças.</div>';
+  else { const linhas=SentencaPrev.BENEFICIOS.concat([{k:"outro",nome:"Outro"}]).map(b=>({b,e:SentencaPrev.estatisticas(sent,{beneficio:b.k,subsecao:sub})})).filter(x=>x.e.total);
+    h+='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Benefício</th><th>Sentenças</th><th>Procedente / parcial</th><th>Improcedente</th><th>Êxito</th><th>Motivos mais comuns da derrota</th></tr></thead><tbody>'+
+      linhas.map(({b,e})=>'<tr><td>'+esc(b.nome)+'</td><td>'+e.total+'</td><td>'+(e.procedente+e.parcial)+'</td><td>'+e.improcedente+'</td><td><b>'+(e.exito==null?"—":e.exito+"%")+'</b>'+(e.suficiente?'':'<div class="hint">amostra pequena</div>')+'</td><td class="hint">'+(e.motivos.slice(0,3).map(m=>esc(m.nome)+' ('+m.qt+')').join("; ")||"—")+'</td></tr>').join("")+'</tbody></table></div>'+
+      '<div class="hint">Base interna para estratégia e para corrigir os modelos; não é promessa de resultado ao cliente. Com menos de 30 sentenças por benefício, o percentual é só indicativo.</div>';
+    h+='<details style="margin-top:6px"><summary class="hint" style="cursor:pointer">Últimas sentenças</summary><ul style="margin:4px 0;padding-left:18px">'+sent.filter(s=>!sub||s.subsecao===sub).sort((a,b)=>(b.data||"").localeCompare(a.data||"")).slice(0,30).map(s=>'<li class="hint"><span class="mono">'+esc(s.cnj)+'</span> · '+esc(s.orgao)+' · '+esc((s.data||"").split("-").reverse().join("/"))+' — '+esc(s.beneficioNome)+': <b>'+esc(s.resultado)+'</b>'+(s.motivos&&s.motivos.length?' ('+esc(s.motivos.map(m=>m.nome).join("; "))+')':'')+(s.link?' · <a href="'+esc(s.link)+'" target="_blank" rel="noopener">inteiro teor</a>':'')+'</li>').join("")+'</ul></details>' }
+  el.innerHTML=h }
+document.getElementById("mt-det").addEventListener("change",ev=>{ if(ev.target.id==="mt-fsub") renderFontesMt() });
+{ const _rmd=renderMateriaDet; renderMateriaDet=function(){ _rmd(); renderFontesMt() } }
+window.__fontes={definir:L=>{ fontesDb=L; renderFontesMt() },render:()=>renderFontesMt()};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};

@@ -468,7 +468,16 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     </div>
     <div class="panel" id="acomp-panel" style="display:grid;gap:10px;max-width:760px">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h3 style="margin:0">Processos acompanhados</h3><label class="hint">Parado há mais de <input id="ac-dias" type="number" min="7" max="365" value="60" style="width:70px"> dias</label></div>
-      <p class="hint" style="margin:0">Montado a partir das publicações registradas e dos processos informados nas fichas. “Parado” é alerta para conferir o andamento no PJe, não conclusão.</p>
+      <p class="hint" style="margin:0">Montado a partir da carteira de processos ativos, das publicações registradas e dos processos informados nas fichas. “Parado” é alerta para conferir o andamento no PJe, não conclusão.</p>
+      <details id="cart-box"><summary class="hint" style="cursor:pointer;font-weight:600">Carteira de processos ativos (importar do Astrea)</summary>
+        <div style="display:grid;gap:6px;margin-top:6px">
+          <p class="hint" style="margin:0">No Astrea, exporte a lista de processos ativos (Excel) e salve como CSV, ou selecione as linhas da planilha e copie. Cole abaixo ou escolha o arquivo: o sistema acha o número CNJ de cada linha e, se houver colunas “Cliente”, “Área” ou “Situação”, guarda também. Processos encerrados na planilha ficam fora.</p>
+          <textarea id="cart-tx" rows="4" placeholder="Cole aqui as linhas (com o cabeçalho) ou uma lista de números de processo"></textarea>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><label class="btn ghost small" for="cart-arq">Escolher arquivo CSV</label><input type="file" id="cart-arq" accept=".csv,.txt,text/csv,text/plain" hidden>
+            <button class="btn small" type="button" id="cart-ler">Conferir</button><button class="btn small" type="button" id="cart-grava" hidden>Gravar na carteira</button><span class="hint" id="cart-msg" role="status"></span></div>
+          <div id="cart-prev"></div>
+        </div></details>
+
       <div id="ac-res"></div>
     </div>
   </section>
@@ -1986,6 +1995,7 @@ function salvar(){ salvarLocal(); if(!DBA) return;
   st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
     FILA[c.id]=(FILA[c.id]||Promise.resolve()).then(()=>DBA.doc('atendimento/'+c.id).set({conv:JSON.parse(h),atualizado:new Date().toISOString()})).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar na base do escritório agora.'; }); }); }
 (async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const db=await window.claude.use('db'); if(!db) return; DBA=db;
+  try{ db.collection('carteira').limit(3000).onSnapshot(sn=>{ carteiraDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   try{ db.collection('clientes').limit(3000).onSnapshot(sn=>{ clientesDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); },()=>{}); }catch(e){}
   try{ db.collection('fontes').limit(2000).onSnapshot(sn=>{ fontesDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderFontesMt==='function') renderFontesMt(); },()=>{}); }catch(e){}
   try{ db.collection('config').limit(20).onSnapshot(sn=>{ const d=sn.docs.map(x=>x.data()).find(x=>x&&x.id==='materias'); if(d){ mtCfg=Object.assign({id:'materias',resp:{}},d); try{localStorage.setItem('rd-materias',JSON.stringify(mtCfg))}catch(e){} if(typeof renderMaterias==='function'&&!document.getElementById('v-materias').hidden) renderMaterias(); } },()=>{}); }catch(e){}
@@ -2232,7 +2242,8 @@ document.getElementById("pub-res").addEventListener("click",e=>{ const b=e.targe
   novaTarefa({titulo:r.tipoNome+(r.vencimento?' · vencimento '+r.vencimento.split('-').reverse().join('/'):'')+' · conferir e lançar no Astrea',resp:respDaRota(r.rota),cliente:(c.nome||'')+(r.cnj?' · '+r.cnj:''),prazo:r.vencimento||(r.audiencia&&r.audiencia.data)||'',origem:'publicacao',leadId:c.id});
   salvarPub(p); salvar(); renderMesa(); renderFila&&renderFila(); renderPubs(); renderAcomp(); });
 function renderAcomp(){ const el=document.getElementById("ac-res"); if(!el) return; const lim=+document.getElementById("ac-dias").value||60, hoje=hojeISO();
-  const fichas=st.convs.filter(c=>c.ficha&&c.ficha.astrea&&c.ficha.astrea.cnj).map(c=>({cnj:c.ficha.astrea.cnj,cliente:c.nome,desde:c.ficha.astrea.protocoloEm||""}));
+  const fichas=st.convs.filter(c=>c.ficha&&c.ficha.astrea&&c.ficha.astrea.cnj).map(c=>({cnj:c.ficha.astrea.cnj,cliente:c.nome,desde:c.ficha.astrea.protocoloEm||""}))
+    .concat((typeof carteiraTodos==='function'?carteiraTodos():[]).filter(x=>x.ativo!==false).map(x=>({cnj:x.cnj,cliente:x.cliente||'',desde:(x.importadoEm||'').slice(0,10)})));
   const movs={}; (procsDb||[]).forEach(p=>{ movs[p.cnj]={data:p.ultimaMov||'',nome:p.ultimaMovNome||'',carga:p.cargaDatajud||''} });
   const pubs=pubsTodas(), ac=Publicacao.acompanhados(pubs,fichas,hoje,lim,movs), br=s=>s?s.split("-").reverse().join("/"):"—";
   if(!ac.length){ el.innerHTML='<div class="hint">Nenhum processo registrado ainda. Informe o número CNJ na ficha da demanda ou registre uma publicação.</div>'; return }
@@ -2468,6 +2479,32 @@ document.getElementById("ficha").addEventListener("click",ev=>{ if(ev.target.id!
   if(!por){ const av=document.getElementById("fx-conflito-por"); if(av&&av.nextElementSibling) av.nextElementSibling.textContent=" Escolha quem checou."; return }
   f.conflito={liberadoEm:new Date().toISOString(),por}; f.status="Em andamento"; f.log.push("Conflito de interesses checado e liberado por "+por); salvar(); renderMesa(); renderFila&&renderFila() });
 window.__evolucao={cadastroDe:c=>cadastroDe(c),prazoProcessual:c=>prazoProcessual(c),duplicados:c=>duplicados(c)};
+
+// ---------- carteira de processos ativos (31/10/2026) ----------
+let carteiraDb=null, cartPrev=[]; const CARTDB={};
+function carteiraTodos(){ const m=new Map(); Object.values(st.carteira||{}).forEach(x=>m.set(x.id,x)); (carteiraDb||[]).forEach(x=>m.set(x.id,x)); return [...m.values()] }
+function fmtCNJ(d){ return d.slice(0,7)+"-"+d.slice(7,9)+"."+d.slice(9,13)+"."+d[13]+"."+d.slice(14,16)+"."+d.slice(16,20) }
+/* lerCarteira(texto) → [{cnj, cliente, area, situacao, ativo}] a partir de CSV (; , ou tab) ou de uma lista solta de números */
+function lerCarteira(texto){ const linhas=String(texto||"").split(/\r?\n/).filter(l=>l.trim()); if(!linhas.length) return [];
+  const sep=[ "\t",";","," ].sort((a,b)=>linhas[0].split(b).length-linhas[0].split(a).length)[0], div=l=>l.split(sep).map(x=>x.replace(/^"|"$/g,"").trim());
+  const cab=div(linhas[0]).map(h=>h.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase()), temCab=!/\d{7}-?\d{2}/.test(linhas[0]);
+  const col=re=>temCab?cab.findIndex(h=>re.test(h)):-1, iCli=col(/cliente|parte|contato/), iArea=col(/area|tipo de acao|assunto|natureza/), iSit=col(/situacao|status|andamento/);
+  const out=[], vistos=new Set();
+  linhas.slice(temCab?1:0).forEach(l=>{ const m=l.match(/\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}|\b\d{20}\b/); if(!m) return; const d=m[0].replace(/\D/g,""); if(d.length!==20||vistos.has(d)) return; vistos.add(d);
+    const c=div(l), sit=iSit>=0?(c[iSit]||""):"", ativo=!/encerrad|arquivad|baixad|inativ/i.test(sit);
+    out.push({id:d,cnj:fmtCNJ(d),cliente:iCli>=0?(c[iCli]||""):"",area:iArea>=0?(c[iArea]||""):"",situacao:sit,ativo}) });
+  return out }
+function salvarCarteira(x){ st.carteira=Object.assign({},st.carteira,{[x.id]:x}); if(DBA){ CARTDB[x.id]=(CARTDB[x.id]||Promise.resolve()).then(()=>DBA.doc("carteira/"+x.id).set(x)).catch(()=>{}) } }
+function cartConferir(){ cartPrev=lerCarteira(document.getElementById("cart-tx").value); const at=cartPrev.filter(x=>x.ativo), ja=new Set(carteiraTodos().map(x=>x.id));
+  document.getElementById("cart-msg").textContent=cartPrev.length?at.length+" processo(s) ativo(s) encontrado(s)"+(cartPrev.length-at.length?", "+(cartPrev.length-at.length)+" encerrado(s) ignorado(s)":"")+(at.filter(x=>ja.has(x.id)).length?", "+at.filter(x=>ja.has(x.id)).length+" já na carteira":"")+".":"Nenhum número de processo encontrado.";
+  document.getElementById("cart-grava").hidden=!at.length;
+  document.getElementById("cart-prev").innerHTML=at.length?'<div style="overflow-x:auto;max-height:260px"><table class="doc-tab"><thead><tr><th>Processo</th><th>Cliente</th><th>Área</th><th>Situação</th></tr></thead><tbody>'+at.slice(0,300).map(x=>'<tr><td class="mono">'+esc(x.cnj)+(ja.has(x.id)?' <span class="pill line">já está</span>':'')+'</td><td>'+esc(x.cliente||"—")+'</td><td>'+esc(x.area||"—")+'</td><td>'+esc(x.situacao||"—")+'</td></tr>').join("")+'</tbody></table></div>':"" }
+document.getElementById("cart-ler").addEventListener("click",cartConferir);
+document.getElementById("cart-arq").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; document.getElementById("cart-tx").value=await f.text(); cartConferir() });
+document.getElementById("cart-grava").addEventListener("click",()=>{ const agora=new Date().toISOString(), por=document.getElementById("pub-por").value.trim()||"Equipe"; let n=0;
+  cartPrev.filter(x=>x.ativo).forEach(x=>{ const ant=carteiraTodos().find(y=>y.id===x.id)||{}; salvarCarteira(Object.assign({},ant,x,{fonte:"importação (Astrea)",importadoEm:ant.importadoEm||agora,atualizadoEm:agora,por})); n++ });
+  salvarLocal(); document.getElementById("cart-msg").textContent=n+" processo(s) gravado(s) na carteira. A rotina diária do Datajud passa a consultá-los."; document.getElementById("cart-grava").hidden=true; document.getElementById("cart-tx").value=""; document.getElementById("cart-prev").innerHTML=""; renderAcomp() });
+window.__carteira={ler:t=>lerCarteira(t),todos:()=>carteiraTodos()};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};

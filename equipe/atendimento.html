@@ -192,6 +192,11 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   h1{font-size:24px}
 }
 @media (prefers-reduced-motion:reduce){.scan span{transition:none}}
+
+.mt-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:12px}
+.mt-card{all:unset;display:block;box-sizing:border-box;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;font:inherit;color:var(--ink)}
+.mt-card:hover{border-color:var(--petrol)}.mt-card[aria-pressed=true]{outline:2px solid var(--petrol);outline-offset:-1px}
+.mt-card b{color:var(--petrol);font-size:15px}
 </style>
 
 <div class="wrap">
@@ -208,7 +213,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     <button role="tab" aria-selected="false" data-view="fila" id="tab-fila">Fila única <span id="cnt"></span></button>
     <button role="tab" aria-selected="false" data-view="docs" id="tab-docs">Documentos</button>
     <button role="tab" aria-selected="false" data-view="prazos" id="tab-prazos">Prazos processuais</button>
-    <button role="tab" aria-selected="false" data-view="tarefas" id="tab-tarefas">Minhas tarefas</button>
+    <button role="tab" aria-selected="false" data-view="materias" id="tab-materias">Matérias</button>
+        <button role="tab" aria-selected="false" data-view="tarefas" id="tab-tarefas">Minhas tarefas</button>
         <button role="tab" aria-selected="false" data-view="ind" id="tab-ind">Indicadores</button>
     <button role="tab" aria-selected="false" data-view="regras" id="tab-regras">Regras de triagem</button>
   </nav>
@@ -302,6 +308,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       <select id="flt-setor"><option value="">Todos</option></select>
       <label for="flt-canal">Canal</label>
       <select id="flt-canal"><option value="">Todos</option><option>WhatsApp</option><option>Site</option><option>Telefone</option><option>Presencial</option><option>E-mail</option><option>Instagram</option><option>Indicação de contador</option><option>Publicação (DJEN)</option><option>Outro</option></select>
+      <label for="flt-area">Matéria</label>
+      <select id="flt-area"><option value="">Todas</option></select>
       <label for="flt-st">Mostrar</label>
       <select id="flt-st"><option value="abertas">Abertas</option><option value="todas">Todas</option></select>
       <span class="spacer"></span>
@@ -443,6 +451,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       <div class="fld"><label for="pp-extras">Feriados forenses e indisponibilidades (uma data por linha, AAAA-MM-DD)</label><textarea id="pp-extras" rows="2" placeholder="2026-12-08"></textarea></div>
       <div><button class="btn" type="button" id="pp-calc">Calcular</button></div>
       <div id="pp-res" class="hint" role="status"></div>
+      <div class="hint">Prazos típicos por matéria (prescrição, decadência, recursos do JEF, do JEC e da Justiça do Trabalho): aba <button type="button" class="linkbtn" id="pp-mt">Matérias</button>.</div>
     </div>
     <div class="panel" id="pub-panel" style="display:grid;gap:10px;max-width:760px">
       <h3 style="margin:0">Classificar publicação</h3>
@@ -459,6 +468,23 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     </div>
   </section>
 
+
+  <section id="v-materias" hidden>
+    <h2 class="sec">Matérias</h2>
+    <p class="sub">O escritório por matéria: cada área (RD Trib, RD Prev, RD Consul…) com os seus casos, tarefas, processos, perguntas de triagem, documentos a pedir, prazos típicos e teses iniciais. A matéria de cada caso é sugerida pela conversa e confirmada na ficha.</p>
+    <div id="mt-cards" class="mt-cards"></div>
+    <div class="panel" id="mt-det" hidden style="display:grid;gap:10px;max-width:980px">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h3 id="mt-tit" style="margin:0"></h3><label class="hint">Responsável pela matéria <select id="mt-resp" aria-label="Responsável pela matéria"></select></label></div>
+      <p class="hint" id="mt-desc" style="margin:0"></p>
+      <div id="mt-casos"></div>
+      <details><summary class="hint" style="cursor:pointer">Perguntas de triagem, documentos a pedir e checklist interno</summary><div id="mt-pacote"></div></details>
+      <details open><summary class="hint" style="cursor:pointer">Prazos típicos da matéria</summary>
+        <div class="grid2" style="margin-top:6px"><div class="fld"><label for="mt-data">Contar a partir de (ciência, intimação, fato ou pagamento)</label><input id="mt-data" type="date"></div>
+        <div class="fld"><label for="mt-trib">Calendário</label><select id="mt-trib"><option value="tjce">Estadual do Ceará (TJCE)</option><option value="jf">Federal (JFCE/TRF5)</option><option value="">Nacional (Justiça do Trabalho e outros — feriados locais a conferir)</option></select></div></div>
+        <div id="mt-prazos"></div></details>
+      <details><summary class="hint" style="cursor:pointer">Teses iniciais (apoio interno; passam pela Direção antes de qualquer proposta)</summary><div id="mt-teses"></div></details>
+    </div>
+  </section>
   <section id="v-tarefas" hidden>
     <h2 class="sec">Minhas tarefas</h2>
     <p class="sub">Tarefas criadas pelos checklists de cada caso (quando o contrato é liberado), pelas publicações registradas e à mão pela equipe. Prazo interno em dias úteis; não substitui o prazo processual do Astrea.</p>
@@ -509,7 +535,234 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 </div>
 
 <script>
-/* Tarefas do escritório: checklists por tipo de caso, "minhas tarefas" e prazos internos em dias úteis (v1.0, 30/10/2026).
+/* Matérias do escritório — "escritório virtual por matéria" (v1.0, 30/10/2026).
+ * Catálogo das áreas (RD Trib, RD EF, RD Prev, RD Consul, RD Trab, RD Cível, RD Adm, RD Emp, RD Imob): sigla, justiça habitual,
+ * perguntas de triagem, documentos a pedir ao cliente, prazos típicos (materiais e processuais) e teses iniciais.
+ * As teses e os prazos são apoio interno: tudo passa pela revisão do advogado antes de chegar ao cliente ("a validar" = ainda não aprovada pela Direção).
+ * Usado pelo Atendimento RD, pelo CRM e pelas rotinas. Navegador (window.Materia) e node. */
+(function (root) {
+  'use strict';
+  // contagem: 'uteis' (dias úteis, CPC art. 219 / CLT art. 775 / Lei 9.099 art. 12-A), 'corridos' (dias corridos; prorroga para o dia útil seguinte, CC art. 132, § 1º),
+  // 'conferir' (há divergência sobre a contagem), ou unidade 'anos'/'meses' (prazos materiais: prescrição e decadência). n = null: sem contagem (só referência).
+  const P = (nome, base, n, contagem, nota) => Object.assign({ nome, base, n, contagem: contagem || (n == null ? '' : 'uteis') }, nota ? { nota } : {});
+  const MATERIAS = {
+    'Tributário': { sigla: 'RD Trib', justica: ['jf', 'tjce'], resp: 'Rafael', checklist: 'recuperacao',
+      descricao: 'Planejamento, recuperação de créditos e defesa em autuações (federal, estadual e municipal).',
+      perguntas: ['Qual o regime tributário da empresa (Simples, Lucro Presumido ou Lucro Real)?', 'Qual o faturamento médio mensal e a atividade principal (CNAE)?',
+        'Há autuação, notificação ou cobrança em curso? Recebida em que data?', 'Quem faz a contabilidade (nome do contador)?',
+        'O objetivo é reduzir a carga daqui para a frente, recuperar o que foi pago a mais nos últimos 5 anos, ou os dois?'],
+      documentos: ['Cartão CNPJ e contrato social', 'SPED Fiscal (EFD ICMS/IPI) e EFD-Contribuições dos últimos 60 meses', 'XML das notas fiscais de entrada e saída',
+        'PGDAS/DCTF e guias pagas', 'Balancetes e DRE', 'Autos de infração, notificações ou CDAs recebidas'],
+      prazos: [P('Repetição de indébito / compensação', 'CTN, art. 168, I (5 anos do pagamento indevido)', 5, 'anos'),
+        P('Decadência do lançamento', 'CTN, art. 150, § 4º, e art. 173 (5 anos)', 5, 'anos'), P('Prescrição da cobrança', 'CTN, art. 174 (5 anos da constituição definitiva)', 5, 'anos'),
+        P('Impugnação administrativa federal', 'Decreto 70.235/1972, arts. 5º e 15 (30 dias corridos da intimação)', 30, 'corridos'),
+        P('Recurso voluntário ao CARF', 'Decreto 70.235/1972, art. 33 (30 dias corridos)', 30, 'corridos'),
+        P('Manifestação de inconformidade (PER/DCOMP não homologado)', 'Lei 9.430/1996, art. 74, §§ 7º e 9º (30 dias)', 30, 'corridos'),
+        P('Mandado de segurança', 'Lei 12.016/2009, art. 23 (120 dias da ciência do ato)', 120, 'corridos')],
+      teses: ['Biblioteca de teses tributárias (55 teses, com situação e grau) — ver o PlanejaTrib e a Biblioteca'] },
+    'Execução fiscal': { sigla: 'RD EF', justica: ['tjce', 'jf'], resp: 'Rafael', checklist: 'execucao',
+      descricao: 'Defesa do contribuinte em execuções fiscais municipais, estaduais e federais.',
+      perguntas: ['Foi citado ou recebeu mandado do oficial de justiça? Em que data?', 'Houve bloqueio de conta (Sisbajud) ou penhora de bens?',
+        'Qual o valor cobrado, de que tributo e de que período?', 'Já parcelou ou pagou parte da dívida?', 'Tem bens para garantir a execução (imóvel, veículo, seguro-garantia)?'],
+      documentos: ['Mandado de citação ou intimação, com a data do recebimento', 'CDA (certidão de dívida ativa) e petição inicial', 'Comprovantes de pagamento ou de parcelamento',
+        'Extratos do bloqueio (Sisbajud), se houver', 'Contrato social e cartão CNPJ (ou documentos pessoais)'],
+      prazos: [P('Pagar ou garantir a execução', 'LEF (Lei 6.830/1980), art. 8º (5 dias da citação)', 5, 'conferir', 'há divergência sobre contagem em dias úteis ou corridos; adotar a leitura mais curta'),
+        P('Embargos à execução fiscal', 'LEF, art. 16 (30 dias do depósito, da fiança/seguro ou da intimação da penhora)', 30, 'conferir', 'contagem a conferir; sem garantia os embargos não são admitidos (art. 16, § 1º)'),
+        P('Exceção de pré-executividade', 'Sem prazo: matéria de ordem pública conhecível de ofício, sem dilação probatória (Súmula 393 do STJ)', null),
+        P('Impugnação à penhora ou ao bloqueio', 'CPC, art. 525, § 11, ou art. 917, § 1º (15 dias úteis)', 15, 'uteis'),
+        P('Apelação', 'CPC, art. 1.003, § 5º (15 dias úteis); até 50 ORTN só embargos infringentes em 10 dias (LEF, art. 34)', 15, 'uteis'),
+        P('Prescrição da cobrança', 'CTN, art. 174 (5 anos)', 5, 'anos'),
+        P('Prescrição intercorrente', 'LEF, art. 40, § 4º; Temas 566 a 571 do STJ (1 ano de suspensão + 5 anos, automáticos)', 6, 'anos')],
+      teses: ['Nulidade da CDA (requisitos do art. 2º, §§ 5º e 6º, da LEF)', 'Prescrição e prescrição intercorrente (Temas 566 a 571 do STJ)', 'Decadência do lançamento',
+        'Ilegitimidade do sócio redirecionado (Súmula 430 do STJ; Temas 962 e 981 do STJ)', 'Excesso de execução e erro de cálculo (multa, juros, encargo)',
+        'Substituição da garantia por seguro-garantia ou fiança (LEF, arts. 9º e 15)', 'Impenhorabilidade (CPC, art. 833; bem de família, Lei 8.009/1990)'] },
+    'Previdenciário': { sigla: 'RD Prev', justica: ['jf'], resp: 'Rafael', checklist: 'previdenciario',
+      descricao: 'Benefícios do INSS: concessão, revisão e restabelecimento, na via administrativa e no Juizado Especial Federal.',
+      perguntas: ['O pedido ao INSS já foi feito? Em que data (DER) e com que resultado (concessão, indeferimento, cessação)?',
+        'Qual o benefício pretendido ou em discussão (aposentadoria, auxílio, pensão, BPC, salário-maternidade)?',
+        'Há vínculos ou períodos que não aparecem no CNIS (rural, informal, atividade especial)?', 'Recebeu carta ou comunicado do INSS? Em que data?',
+        'Já houve processo anterior sobre o mesmo pedido?'],
+      documentos: ['CNIS completo e extrato de contribuições (Meu INSS)', 'Carta de concessão ou comunicado de decisão do INSS, com a data', 'CTPS, carnês (GPS) e PPP/LTCAT (atividade especial)',
+        'Provas do período rural, quando houver', 'Laudos e documentos médicos (benefício por incapacidade)', 'RG, CPF, comprovante de residência e certidões (casamento/óbito, para pensão)'],
+      prazos: [P('Revisão do ato de concessão (decadência)', 'Lei 8.213/1991, art. 103 (10 anos, do 1º dia do mês seguinte ao do 1º pagamento)', 10, 'anos'),
+        P('Parcelas vencidas (prescrição)', 'Lei 8.213/1991, art. 103, parágrafo único (5 anos)', 5, 'anos'),
+        P('Recurso administrativo ao CRPS', 'Decreto 3.048/1999, art. 305 (30 dias da ciência da decisão)', 30, 'corridos'),
+        P('Pensão por morte com efeitos desde o óbito', 'Lei 8.213/1991, art. 74, I e II (requerimento em até 180 dias — menores de 16 — ou 90 dias)', 90, 'corridos'),
+        P('Recurso inominado (JEF)', 'Lei 9.099/1995, art. 42, c/c Lei 10.259/2001, art. 1º (10 dias úteis, art. 12-A)', 10, 'uteis'),
+        P('Embargos de declaração (JEF)', 'Lei 9.099/1995, art. 49 (5 dias úteis)', 5, 'uteis'),
+        P('Apelação (vara federal comum)', 'CPC, art. 1.003, § 5º (15 dias úteis)', 15, 'uteis')],
+      teses: ['Tempo especial (PPP/LTCAT) e conversão em comum até 13/11/2019 (EC 103/2019, art. 25, § 2º)', 'Tempo rural e segurado especial: início de prova material + testemunhas (Súmula 149 do STJ)',
+        'Revisão por salários não computados ou CNIS incompleto', 'Restabelecimento de benefício por incapacidade cessado indevidamente (DIB desde a cessação)',
+        'BPC/LOAS: critério de 1/4 do salário mínimo não é absoluto (RE 567.985, Tema 27 do STF)', 'Auxílio-acidente: concessão e cálculo',
+        'Não oferecer — desaposentação/reaposentação vedada (Tema 503 do STF)', 'Não oferecer — revisão da vida toda afastada pelo STF nas ADIs 2.110 e 2.111 (março/2024)',
+        'Contribuição patronal sobre salário-maternidade inconstitucional (Tema 72 do STF): recuperação é tese tributária (RD Trib)'] },
+    'Consumidor': { sigla: 'RD Consul', justica: ['tjce'], resp: 'Rafael', checklist: 'consumidor',
+      descricao: 'Relações de consumo: cobranças indevidas, negativação, contratos bancários, planos de saúde, produtos e serviços.',
+      perguntas: ['O que aconteceu, com qual empresa e quando?', 'Há contrato, fatura, protocolo de reclamação ou conversa por escrito?',
+        'Houve negativação (SPC/Serasa), cobrança indevida ou desconto em conta ou benefício?', 'Já reclamou no Procon ou no consumidor.gov.br? Qual foi a resposta?',
+        'Qual o valor envolvido e o que espera (cancelar, receber de volta, indenização)?'],
+      documentos: ['Contrato, proposta, fatura ou boleto', 'Comprovantes de pagamento e extratos bancários', 'Protocolos de atendimento, e-mails e conversas (prints com data)',
+        'Consulta SPC/Serasa com a data da inclusão', 'Laudo ou orçamento do defeito (produto ou serviço)', 'RG, CPF e comprovante de residência'],
+      prazos: [P('Reclamar vício aparente (decadência)', 'CDC, art. 26 (30 dias — não duráveis; 90 dias — duráveis); obsta-se pela reclamação ao fornecedor (§ 2º)', 90, 'corridos'),
+        P('Vício oculto', 'CDC, art. 26, § 3º (conta do momento em que o defeito aparece)', 90, 'corridos'),
+        P('Reparação por fato do produto ou do serviço', 'CDC, art. 27 (5 anos do conhecimento do dano e da autoria)', 5, 'anos'),
+        P('Repetição de indébito (cobrança indevida)', 'CC, art. 205 (10 anos — EAREsp 738.991/RS, STJ); em dobro: CDC, art. 42, parágrafo único', 10, 'anos'),
+        P('Baixa da negativação após o pagamento', 'Súmula 548 do STJ (5 dias úteis, a cargo do credor)', 5, 'uteis'),
+        P('Recurso inominado (JEC)', 'Lei 9.099/1995, art. 42 (10 dias úteis, art. 12-A)', 10, 'uteis'), P('Embargos de declaração (JEC)', 'Lei 9.099/1995, art. 49 (5 dias úteis)', 5, 'uteis'),
+        P('Apelação (vara cível)', 'CPC, art. 1.003, § 5º (15 dias úteis)', 15, 'uteis')],
+      teses: ['Negativação indevida: dano moral presumido, salvo anotação legítima anterior (Súmula 385 do STJ)',
+        'Repetição em dobro independe de má-fé para cobranças após 30/3/2021 (EAREsp 676.608/RS, STJ)', 'Empréstimo consignado ou cartão RMC não contratado: nulidade, devolução e danos',
+        'Plano de saúde: negativa de cobertura e rol da ANS (Lei 14.454/2022)', 'Tarifas e encargos abusivos em financiamentos (Temas 618 e 958 do STJ)',
+        'Fraude bancária: responsabilidade objetiva por fortuito interno (Súmula 479 do STJ)', 'Atraso e cancelamento de voo, extravio de bagagem (Tema 210 do STF para voos internacionais)',
+        'Superendividamento: repactuação de dívidas (Lei 14.181/2021; CDC, arts. 104-A a 104-C)', 'Venda casada e cobrança de serviço não contratado (CDC, art. 39, I e III)'] },
+    'Trabalhista': { sigla: 'RD Trab', justica: ['trt'], resp: 'Rafael', checklist: 'trabalhista',
+      descricao: 'Defesa do empregador em reclamações trabalhistas e consultivo (rescisões, regulamentos, acordos).',
+      perguntas: ['A empresa recebeu notificação de reclamação trabalhista? Qual a data da audiência?', 'O que se discute (admissão, demissão, função, salário, horas extras) e o que se pede?',
+        'Há acordo, TRCT, homologação ou documentos assinados?', 'A empresa tem controle de ponto, holerites e recibos?', 'Se for consulta: qual a situação (demissão, afastamento, regulamento, acordo)?'],
+      documentos: ['Notificação da Vara do Trabalho e petição inicial (PJe)', 'Contrato de trabalho, ficha de registro e CTPS', 'Controles de ponto, holerites, recibos de férias e 13º',
+        'TRCT e comprovantes das verbas rescisórias', 'Atestados, advertências, comunicados e e-mails relevantes', 'Convenção coletiva aplicável'],
+      prazos: [P('Prescrição para ajuizar', 'CF, art. 7º, XXIX (2 anos após o fim do contrato, limitada aos 5 anos anteriores)', 2, 'anos'),
+        P('Pagamento das verbas rescisórias', 'CLT, art. 477, § 6º (10 dias do término do contrato; multa do § 8º)', 10, 'corridos'),
+        P('Contestação e documentos', 'CLT, art. 847 (até a audiência; pelo PJe, antes dela)', null),
+        P('Recurso ordinário', 'CLT, art. 895 (8 dias úteis, art. 775)', 8, 'uteis'), P('Embargos de declaração', 'CLT, art. 897-A (5 dias úteis)', 5, 'uteis'),
+        P('Agravo de petição / recurso de revista', 'CLT, arts. 897 e 896 (8 dias úteis)', 8, 'uteis'),
+        P('Suspensão dos prazos no recesso', 'CLT, art. 775-A (20/12 a 20/1)', null), P('Homologação de acordo extrajudicial', 'CLT, arts. 855-B a 855-E', null)],
+      teses: ['Horas extras: validade dos controles de ponto e do banco de horas (CLT, art. 59; Súmula 338 do TST)', 'Justa causa: requisitos e prova (CLT, art. 482)',
+        'Terceirização e pejotização: licitude de contratos civis (Tema 725 do STF; Tema 1.389 do STF — conferir o julgamento)',
+        'Dano moral: parâmetros do art. 223-G da CLT (ADIs 6.050, 6.069 e 6.082 — valores são parâmetros, não tetos)',
+        'Honorários de sucumbência do beneficiário da justiça gratuita (ADI 5.766)', 'Grupo econômico e responsabilidade solidária (CLT, art. 2º, §§ 2º e 3º)',
+        'Intervalo intrajornada e adicionais de insalubridade/periculosidade (perícia)'] },
+    'Cível': { sigla: 'RD Cível', justica: ['tjce'], resp: 'Rafael', checklist: 'civel',
+      descricao: 'Cobranças, execuções, contratos, responsabilidade civil e defesas em geral.',
+      perguntas: ['Qual a relação entre as partes (contrato, dívida, acidente, vizinhança, família)?', 'Há documento escrito (contrato, nota promissória, cheque, mensagens)?',
+        'Qual o valor e desde quando existe o problema (data do fato ou do vencimento)?', 'Já houve cobrança, protesto, negociação ou processo?', 'O que espera: cobrar, se defender, indenização, rescisão?'],
+      documentos: ['Contrato, título (cheque, nota promissória, duplicata) ou provas da relação', 'Comprovantes de pagamento, extratos e notas fiscais', 'Mensagens, e-mails e notificações trocadas',
+        'Boletim de ocorrência, laudos e orçamentos (acidente ou dano)', 'Documentos pessoais e comprovante de residência (ou contrato social)'],
+      prazos: [P('Prescrição geral', 'CC, art. 205 (10 anos)', 10, 'anos'), P('Reparação civil', 'CC, art. 206, § 3º, V (3 anos)', 3, 'anos'),
+        P('Dívida líquida de instrumento público ou particular', 'CC, art. 206, § 5º, I (5 anos)', 5, 'anos'),
+        P('Execução de cheque', 'Lei 7.357/1985, art. 59 (6 meses após o prazo de apresentação de 30/60 dias)', 6, 'meses'),
+        P('Execução de nota promissória ou duplicata', 'LUG, art. 70; Lei 5.474/1968, art. 18 (3 anos do vencimento)', 3, 'anos'),
+        P('Contestação', 'CPC, art. 335 (15 dias úteis)', 15, 'uteis'), P('Embargos à execução', 'CPC, art. 915 (15 dias úteis da juntada do mandado)', 15, 'uteis'),
+        P('Impugnação ao cumprimento de sentença', 'CPC, art. 525 (15 dias úteis após o prazo de pagamento)', 15, 'uteis'),
+        P('Apelação / agravo de instrumento', 'CPC, art. 1.003, § 5º (15 dias úteis)', 15, 'uteis'), P('Embargos de declaração', 'CPC, art. 1.023 (5 dias úteis)', 5, 'uteis'),
+        P('Ação rescisória', 'CPC, art. 975 (2 anos do trânsito em julgado)', 2, 'anos')],
+      teses: ['Cobrança e execução de título extrajudicial; embargos (excesso, nulidade, prescrição)', 'Impenhorabilidade (CPC, art. 833; bem de família, Lei 8.009/1990)',
+        'Revisão contratual e onerosidade excessiva (CC, arts. 478 a 480)', 'Responsabilidade civil e danos (CC, arts. 186, 927 e 944)',
+        'Juros e correção monetária: Lei 14.905/2024 (IPCA e Selic como regra a partir de 30/8/2024)'] },
+    'Administrativo e licitações': { sigla: 'RD Adm', justica: ['tjce', 'jf'], resp: 'Rafael', checklist: 'administrativo',
+      descricao: 'Fornecedores e contratados do poder público: pagamentos, reajustes, sanções, licitações e omissões administrativas.',
+      perguntas: ['Qual o órgão ou ente (município, Estado, União, autarquia) e qual o ato ou a omissão em discussão?',
+        'Há contrato, empenho, nota fiscal ou medição pendente de pagamento? Valores e datas?', 'Há processo administrativo, licitação ou sanção em curso? Que prazo está correndo?',
+        'Já protocolou requerimento ou recurso administrativo? Com que número e data?', 'Qual o resultado esperado (pagamento, reajuste, anulação, habilitação)?'],
+      documentos: ['Edital, contrato, termos aditivos e ordem de serviço', 'Notas de empenho, notas fiscais, medições e comprovantes de entrega', 'Protocolos e respostas do órgão (ou prova da omissão)',
+        'Decisão ou sanção impugnada e intimação, com a data', 'Contrato social e certidões da empresa'],
+      prazos: [P('Prescrição contra a Fazenda Pública', 'Decreto 20.910/1932, art. 1º (5 anos)', 5, 'anos'), P('Mandado de segurança', 'Lei 12.016/2009, art. 23 (120 dias da ciência do ato)', 120, 'corridos'),
+        P('Recurso em licitação', 'Lei 14.133/2021, art. 165 (3 dias úteis); impugnação ao edital até 3 dias úteis antes da abertura (art. 164)', 3, 'uteis'),
+        P('Defesa em processo de sanção contratual', 'Lei 14.133/2021, arts. 157 e 158 (15 dias úteis da intimação)', 15, 'uteis'),
+        P('Recurso administrativo (processo federal)', 'Lei 9.784/1999, art. 59 (10 dias da ciência); contagem contínua (art. 66)', 10, 'corridos'),
+        P('Decisão da Administração sobre requerimento', 'Lei 9.784/1999, art. 49 (30 dias, prorrogáveis por igual período); omissão autoriza o mandado de segurança', 30, 'corridos'),
+        P('Decadência para a Administração anular atos favoráveis', 'Lei 9.784/1999, art. 54 (5 anos)', 5, 'anos'),
+        P('Ordem cronológica de pagamentos', 'Lei 14.133/2021, art. 141 (preterição indevida é ilegal)', null)],
+      teses: ['Pagamento de empenhos liquidados e não pagos; ordem cronológica (Lei 14.133/2021, art. 141)', 'Reajuste, repactuação e reequilíbrio; apostilamento',
+        'Nulidade de sanção sem processo regular; proporcionalidade', 'Omissão administrativa: mandado de segurança para obrigar a decidir (Lei 9.784/1999, art. 49)',
+        'Honorários contra a Fazenda (CPC, art. 85, § 3º)'] },
+    'Empresarial e societário': { sigla: 'RD Emp', justica: ['tjce'], resp: 'Rafael', checklist: 'empresarial',
+      descricao: 'Holdings, reorganizações, entrada e saída de sócios, conflitos societários e contratos empresariais.',
+      perguntas: ['Qual o tipo de sociedade (Ltda, S.A., SLU) e quantos sócios?', 'Qual o objetivo: holding e planejamento, entrada ou saída de sócio, conflito, reorganização, contrato?',
+        'Há contrato social ou acordo de sócios atualizado e balanço recente?', 'Existe prazo ou evento próximo (assembleia, venda, sucessão)?', 'Há dívidas, garantias pessoais ou passivos relevantes?'],
+      documentos: ['Contrato social ou estatuto consolidado e alterações (Junta Comercial)', 'Acordo de sócios ou acionistas', 'Balanço patrimonial e DRE dos últimos exercícios',
+        'Cartão CNPJ e certidões', 'Contratos relevantes (fornecedores, bancos, imóveis)', 'Documentos pessoais dos sócios e matrículas dos bens (holding)'],
+      prazos: [P('Registro de atos na Junta Comercial', 'Lei 8.934/1994, art. 36 (30 dias da assinatura, para efeitos desde a data do ato)', 30, 'corridos'),
+        P('Anulação de deliberação de assembleia (S.A.)', 'Lei 6.404/1976, art. 286 (2 anos)', 2, 'anos'), P('Anulação de decisões da pessoa jurídica', 'CC, art. 48, parágrafo único (3 anos)', 3, 'anos'),
+        P('Responsabilidade do sócio que se retira', 'CC, arts. 1.003, parágrafo único, e 1.032 (2 anos após a averbação)', 2, 'anos'),
+        P('Responsabilidade de administradores (violação da lei ou do estatuto)', 'CC, art. 206, § 3º, VII (3 anos)', 3, 'anos'),
+        P('Exclusão de sócio', 'CC, arts. 1.030 e 1.085 (reunião ou assembleia com direito de defesa)', null), P('Apuração de haveres', 'CC, art. 1.031; CPC, arts. 599 a 609 (dissolução parcial)', null)],
+      teses: ['Holding familiar e planejamento sucessório (ITBI: imunidade do art. 156, § 2º, I, da CF; Tema 796 do STF)', 'Exclusão de sócio por justa causa (CC, art. 1.085)',
+        'Dissolução parcial e apuração de haveres (balanço de determinação)', 'Desconsideração da personalidade jurídica: requisitos do art. 50 do CC (Lei 13.874/2019)',
+        'Transformação, incorporação, fusão e cisão (Lei 6.404/1976, arts. 220 a 234)'] },
+    'Imobiliário': { sigla: 'RD Imob', justica: ['tjce'], resp: 'Rafael', checklist: 'imobiliario',
+      descricao: 'Compra e venda, locação, posse e usucapião, regularização e licenças de imóveis.',
+      perguntas: ['Qual o imóvel (endereço, matrícula, cartório) e qual a situação (compra, venda, aluguel, posse, regularização)?', 'Há escritura, contrato ou só a posse? Desde quando?',
+        'Há dívidas (IPTU, condomínio), penhoras ou disputas sobre o imóvel?', 'Qual o valor envolvido e há prazo (escritura, despejo, obra)?', 'Quem são as outras partes (vendedor, inquilino, vizinhos, prefeitura)?'],
+      documentos: ['Matrícula atualizada e certidões do imóvel (ônus, IPTU)', 'Escritura, contrato de compra e venda, promessa ou contrato de locação',
+        'Provas da posse (contas, IPTU, fotos, testemunhas) para usucapião', 'Planta, memorial descritivo e ART (regularização ou usucapião)', 'Documentos pessoais e certidões das partes', 'Alvarás, habite-se e protocolos na prefeitura'],
+      prazos: [P('Usucapião', 'CC, arts. 1.238 a 1.242 (15, 10 ou 5 anos, conforme a modalidade); urbana especial: CF, art. 183 (5 anos, até 250 m²)', null),
+        P('Vício oculto em imóvel', 'CC, art. 445 (1 ano da entrega; se já estava na posse, da alienação, reduzido à metade)', 1, 'anos'),
+        P('Obra defeituosa (empreiteiro)', 'CC, art. 618 (garantia de 5 anos; ação em 180 dias do aparecimento do vício)', 180, 'corridos'),
+        P('Purga da mora no despejo por falta de pagamento', 'Lei 8.245/1991, art. 62, II (15 dias da citação)', 15, 'uteis'),
+        P('Desocupação após denúncia', 'Lei 8.245/1991, arts. 46, § 2º, e 57 (30 dias)', 30, 'corridos'),
+        P('Preferência do locatário na venda', 'Lei 8.245/1991, art. 28 (30 dias para aceitar) e art. 33 (6 meses para a adjudicação)', 30, 'corridos'),
+        P('Cobrança de cotas de condomínio', 'CC, art. 206, § 5º, I (5 anos — Tema 949 do STJ)', 5, 'anos')],
+      teses: ['Usucapião extrajudicial (Lei 6.015/1973, art. 216-A) e judicial', 'Regularização fundiária (REURB, Lei 13.465/2017)', 'Adjudicação compulsória e outorga de escritura (CC, art. 1.418)',
+        'Distrato e rescisão de compra e venda (Lei 13.786/2018: retenção de até 25% ou 50%)', 'ITBI: fato gerador no registro (Tema 1.124 do STF) e base de cálculo (Tema 1.113 do STJ) — RD Trib',
+        'Habite-se e licenças: mandado de segurança contra omissão ou negativa'] },
+    'Outra': { sigla: 'RD', justica: ['tjce'], resp: 'Rafael', checklist: 'contencioso', descricao: 'Demandas fora das áreas acima.',
+      perguntas: ['Descreva a situação, as partes e as datas.', 'Há documentos ou processo em curso?', 'Há prazo correndo?'], documentos: ['Documentos pessoais ou contrato social', 'Documentos relacionados ao caso'],
+      prazos: [P('Contestação', 'CPC, art. 335 (15 dias úteis)', 15, 'uteis'), P('Apelação', 'CPC, art. 1.003, § 5º (15 dias úteis)', 15, 'uteis'), P('Prescrição geral', 'CC, art. 205 (10 anos)', 10, 'anos')], teses: [] }
+  };
+  const LISTA = Object.keys(MATERIAS).filter(k => k !== 'Outra');
+  // detecção pela conversa (mesma lista do cartão de lead): a primeira regra que casar manda
+  const DETECCAO = [[/execu[cç][aã]o fiscal|penhora|\bCDA\b|d[ií]vida ativa|bloqueio|sisbajud/i, 'Execução fiscal'],
+    [/\bINSS\b|aposentad|benef[ií]cio|previdenci|sal[aá]rio-maternidade|\bBPC\b|\bLOAS\b|aux[ií]lio-doen[cç]a|pens[aã]o por morte/i, 'Previdenciário'],
+    [/licita|contrato administrativo|prefeitura|munic[ií]pio|empenho|reajuste de contrato|\bedital\b/i, 'Administrativo e licitações'],
+    [/trabalhis|demiss|\bCLT\b|reclama[cç][aã]o trabalhista|funcion[aá]ri|rescis[aã]o|verbas rescis/i, 'Trabalhista'],
+    [/holding|societ|s[oó]cio|contrato social|sucess/i, 'Empresarial e societário'],
+    [/im[oó]ve(l|is)|escritura|matr[ií]cula|usucapi|ITBI|terreno|loteamento|aluguel|loca[cç][aã]o|despejo|inquilin/i, 'Imobiliário'],
+    [/consumidor|negativ(a[cç][aã]o|ado|aram)|serasa|\bspc\b|plano de sa[uú]de|cobran[cç]a indevida|produto com defeito|operadora|cart[aã]o de cr[eé]dito|empr[eé]stimo consignado|\bvoo\b|bagagem/i, 'Consumidor'],
+    [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário'],
+    [/cobran[cç]a|indeniza|execu[cç][aã]o de t[ií]tulo|contrato|danos|a[cç][aã]o c[ií]vel/i, 'Cível']];
+  function detectar(texto) { const t = String(texto || ''); const a = DETECCAO.find(([re]) => re.test(t)); return a ? a[1] : ''; }
+  const de = area => MATERIAS[area] || MATERIAS['Outra'];
+  const sigla = area => (MATERIAS[area] || {}).sigla || (area ? 'RD' : '');
+  const porSigla = s => Object.keys(MATERIAS).find(k => MATERIAS[k].sigla.toLowerCase() === String(s || '').trim().toLowerCase()) || '';
+  // matéria de uma conversa do Atendimento: a definida na ficha, depois a detectada pelo pedido e pelas mensagens do cliente
+  function daConversa(c) { if (!c) return ''; const f = c.ficha || {}; if (f.area) return f.area; if (c.area) return c.area;
+    return detectar([f.resumo, ...((c.msgs || []).filter(m => m.de === 'cli').map(m => m.tx))].join('\n')); }
+  // datas
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dia = s => { const [a, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(a, m - 1, d, 12); };
+  const soma = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12);
+  const pp = () => root.PrazoProcessual || null;
+  const utilSimples = d => d.getDay() !== 0 && d.getDay() !== 6;
+  const ehUtil = (d, trib) => { const P2 = pp(); return P2 ? P2.util(iso(d), [], trib) : utilSimples(d); };
+  const tribunalDe = area => { const j = de(area).justica[0]; return j === 'jf' ? 'jf' : j === 'tjce' ? 'tjce' : ''; };
+  /* vencimentos(area, dataBase, { hoje, tribunal }) → prazos da matéria com a data-limite calculada a partir de dataBase (ciência, intimação, fato ou pagamento).
+   * Dias úteis pela calculadora de prazos (feriados do tribunal e recesso); corridos com prorrogação para o dia útil seguinte; anos/meses pelo calendário. É estimativa a conferir. */
+  function vencimentos(area, dataBase, o) {
+    o = o || {}; const m = de(area), trib = o.tribunal != null ? o.tribunal : tribunalDe(area), hoje = o.hoje || iso(new Date()), base = dataBase ? dia(dataBase) : null;
+    return m.prazos.map(p => { let venc = '', como = '';
+      if (base && p.n != null) {
+        if (p.contagem === 'anos' || p.contagem === 'meses') { const d = new Date(base); if (p.contagem === 'anos') d.setFullYear(d.getFullYear() + p.n); else d.setMonth(d.getMonth() + p.n); venc = iso(d); como = p.n + ' ' + (p.contagem === 'anos' ? (p.n === 1 ? 'ano' : 'anos') : 'meses') + ' pelo calendário'; }
+        else if (p.contagem === 'uteis') { const P2 = pp(); if (P2) { try { venc = P2.calcular({ intimacao: iso(base), dias: p.n, tribunal: trib }).vencimento; } catch (e) { venc = ''; } }
+          if (!venc) { let d = base, c = 0; while (c < p.n) { d = soma(d, 1); if (utilSimples(d)) c++; } venc = iso(d); } como = p.n + ' dias úteis' + (P2 ? ' (calendário ' + (trib || 'nacional') + ')' : ' (só fins de semana excluídos)'); }
+        else { let d = soma(base, p.n); while (!ehUtil(d, trib)) d = soma(d, 1); venc = iso(d); como = p.n + ' dias corridos' + (p.contagem === 'conferir' ? ' — contagem a conferir' : ', prorrogado para o dia útil se cair em dia sem expediente'); }
+      }
+      return Object.assign({}, p, { vencimento: venc, como, vencido: !!(venc && venc < hoje), diasAte: venc ? Math.round((dia(venc) - dia(hoje)) / 864e5) : null }); });
+  }
+  /* contadores({ convs, tarefas, procs, pubs, leads }, hoje) → por matéria: conversas abertas, tarefas pendentes/vencidas, processos, publicações novas, leads abertos */
+  function contadores(d, hoje) {
+    d = d || {}; hoje = hoje || iso(new Date()); const out = {}; const k0 = a => { const k = a || 'Outra'; return out[k] = out[k] || { area: k, sigla: sigla(k), abertas: 0, concluidas: 0, tarefas: 0, vencidas: 0, processos: 0, publicacoes: 0, leads: 0, cnjs: new Set() }; };
+    (d.convs || []).forEach(c => { if (!c.ficha) return; const r = k0(daConversa(c)); if (c.ficha.status === 'Concluída') r.concluidas++; else r.abertas++; if (c.ficha.astrea && c.ficha.astrea.cnj) r.cnjs.add(c.ficha.astrea.cnj); });
+    (d.tarefas || []).forEach(t => { if (t.status === 'feita') return; const r = k0(t.area && MATERIAS[t.area] ? t.area : areaDoChecklist(t.checklist) || t.area); r.tarefas++; if (t.prazo && t.prazo < hoje) r.vencidas++; });
+    const areaCnj = {}; (d.convs || []).forEach(c => { const cnj = c.ficha && c.ficha.astrea && c.ficha.astrea.cnj; if (cnj) areaCnj[cnj] = daConversa(c); });
+    (d.procs || []).forEach(p => { if (p.cnj) k0(areaCnj[p.cnj] || p.area).cnjs.add(p.cnj); });
+    (d.pubs || []).forEach(p => { if (p.status === 'nova') k0(areaCnj[p.cnj] || p.area).publicacoes++; });
+    (d.leads || []).forEach(l => { if (['novo', 'reuniao', 'proposta'].includes(l.etapa)) k0(l.area).leads++; });
+    Object.values(out).forEach(r => { r.processos = r.cnjs.size; delete r.cnjs; });
+    return LISTA.concat(['Outra']).filter(a => out[a]).map(a => out[a]).concat(Object.values(out).filter(r => !MATERIAS[r.area]));
+  }
+  function areaDoChecklist(k) { return Object.keys(MATERIAS).find(a => MATERIAS[a].checklist === k) || ''; }
+  // texto pronto para a equipe colar na conversa (perguntas e documentos); não é enviado automaticamente
+  function textoTriagem(area) { const m = de(area); return 'Para avaliarmos o seu caso, poderia nos responder:\n' + m.perguntas.map((p, i) => (i + 1) + '. ' + p).join('\n') +
+    '\n\nE, se tiver em mãos, enviar:\n' + m.documentos.map(x => '• ' + x).join('\n'); }
+  const API = { MATERIAS, LISTA, detectar, de, sigla, porSigla, daConversa, vencimentos, contadores, textoTriagem, areaDoChecklist, tribunalDe, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Materia = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Tarefas do escritório: checklists por matéria, "minhas tarefas" e prazos internos em dias úteis (v1.1, 30/10/2026).
  * Usado pela página do Atendimento RD e pela rotina Ponte RD (que cria o checklist quando o contrato é liberado).
  * Prazo interno = dias úteis a partir do início (fins de semana e feriados nacionais; não é prazo processual). */
 (function (root) {
@@ -534,7 +787,56 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       ['Peça protocolada no prazo processual (conferir na calculadora)', 'Rafael', 10],
       ['Lançar o processo e os prazos no Astrea', 'Mariana', 11],
       ['Cadastrar honorários do contrato', 'Victor', 5]] },
-    'contencioso': { nome: 'Contencioso e consultivo', areas: ['Cível', 'Administrativo e licitações', 'Empresarial e societário', 'Imobiliário', 'Consumidor', 'Previdenciário', 'Trabalhista', 'Outra'], itens: [
+    // checklists por matéria (escritório virtual por matéria, 30/10/2026)
+    'previdenciario': { nome: 'Previdenciário (RD Prev)', areas: ['Previdenciário'], itens: [
+      ['Conferir procuração, contrato e LGPD; pedir CNIS, carta ou comunicado do INSS e documentos', 'Lillian', 2],
+      ['Analisar CNIS, DER e decisão do INSS; levantar vínculos e períodos faltantes', 'David', 7],
+      ['Definir a via (recurso ao CRPS, novo requerimento ou ação no JEF) com a Direção', 'Rafael', 9],
+      ['Cálculo ou simulação do benefício e das parcelas atrasadas', 'David', 12],
+      ['Peça protocolada (recurso, requerimento ou inicial) com aprovação da Direção', 'Rafael', 15],
+      ['Lançar o processo e os prazos no Astrea', 'Mariana', 16],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'consumidor': { nome: 'Consumidor (RD Consul)', areas: ['Consumidor'], itens: [
+      ['Conferir procuração, contrato e LGPD; pedir contrato, comprovantes, protocolos e prints', 'Lillian', 2],
+      ['Reclamação prévia (consumidor.gov.br ou Procon) ou notificação, quando couber', 'David', 5],
+      ['Análise do caso: dano, prazos (CDC, arts. 26 e 27) e valor da causa', 'David', 7],
+      ['Minuta da inicial (JEC ou vara) aprovada pela Direção', 'Rafael', 10],
+      ['Protocolo, lançamento no Astrea e audiência de conciliação agendada', 'Mariana', 12],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'trabalhista': { nome: 'Trabalhista (RD Trab)', areas: ['Trabalhista'], itens: [
+      ['Conferir procuração e contrato; pedir notificação/inicial, contrato de trabalho, ponto, holerites e TRCT', 'Lillian', 2],
+      ['Conferir a data da audiência e os prazos (CLT, art. 775) e lançar no Astrea', 'Mariana', 2],
+      ['Análise dos pedidos e das provas; estratégia (defesa ou acordo) com a Direção', 'David', 6],
+      ['Contestação e documentos prontos e aprovados pela Direção antes da audiência', 'Rafael', 9],
+      ['Preparar preposto e testemunhas para a audiência', 'David', 10],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'civel': { nome: 'Cível (RD Cível)', areas: ['Cível'], itens: [
+      ['Conferir procuração, contrato e documentos recebidos (título, contrato, provas)', 'Lillian', 2],
+      ['Análise de prazos (prescrição) e estratégia com a Direção', 'David', 5],
+      ['Minuta da peça aprovada pela Direção', 'Rafael', 10],
+      ['Protocolo e lançamento no Astrea', 'Mariana', 12],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'administrativo': { nome: 'Administrativo e licitações (RD Adm)', areas: ['Administrativo e licitações'], itens: [
+      ['Conferir procuração e contrato; pedir edital, contrato, empenhos, notas e protocolos', 'Lillian', 2],
+      ['Conferir prazos administrativos correndo (recurso, defesa, MS em 120 dias) e lançar no Astrea', 'Mariana', 2],
+      ['Análise do ato ou da omissão e da via (requerimento, recurso, MS, ação) com a Direção', 'David', 5],
+      ['Peça aprovada e protocolada pela Direção', 'Rafael', 8],
+      ['Lançar o processo e os prazos no Astrea', 'Mariana', 9],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'empresarial': { nome: 'Empresarial e societário (RD Emp)', areas: ['Empresarial e societário'], itens: [
+      ['Conferir procuração e contrato; pedir contrato social, acordo de sócios, balanços e certidões', 'Lillian', 3],
+      ['Diagnóstico societário e tributário (PlanejaTrib, quando houver planejamento) com a Direção', 'Rafael', 10],
+      ['Minutas (alteração contratual, acordo de sócios, holding) aprovadas pela Direção', 'David', 15],
+      ['Assinaturas e registro na Junta Comercial em até 30 dias da assinatura (Lei 8.934, art. 36)', 'Lillian', 25],
+      ['Atualizações cadastrais (Receita, Sefaz, prefeitura) conferidas', 'Mariana', 30],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'imobiliario': { nome: 'Imobiliário (RD Imob)', areas: ['Imobiliário'], itens: [
+      ['Conferir procuração e contrato; pedir matrícula atualizada, certidões e contratos', 'Lillian', 3],
+      ['Análise da matrícula, dos ônus e da via (usucapião, adjudicação, locação, regularização) com a Direção', 'David', 7],
+      ['Minuta (petição, escritura, contrato ou requerimento ao cartório/prefeitura) aprovada pela Direção', 'Rafael', 12],
+      ['Protocolo (judicial, cartório ou prefeitura) e lançamento no Astrea', 'Mariana', 14],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'contencioso': { nome: 'Contencioso e consultivo', areas: ['Outra'], itens: [
       ['Conferir procuração, contrato e documentos recebidos', 'Lillian', 2],
       ['Preparar a minuta ou o parecer', 'David', 10],
       ['Revisão e aprovação da Direção', 'Rafael', 12],
@@ -569,7 +871,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function resumo(tarefas, hoje) { const m = minhas(tarefas, { hoje }); const por = {};
     for (const t of m) { const r = por[t.resp] = por[t.resp] || { resp: t.resp, pendentes: 0, vencidas: 0, hoje: 0 }; if (t.status === 'feita') continue; r.pendentes++; if (t.situacao === 'vencida') r.vencidas++; if (t.situacao === 'hoje') r.hoje++; }
     return Object.values(por).sort((a, b) => b.vencidas - a.vencidas || b.pendentes - a.pendentes); }
-  const API = { EQUIPE, CHECKLISTS, tipoDaArea, gerar, minhas, resumo, somaUteis, versao: '1.0' };
+  const API = { EQUIPE, CHECKLISTS, tipoDaArea, gerar, minhas, resumo, somaUteis, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Tarefas = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -868,7 +1170,8 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário'],
     [/cobran[cç]a|indeniza|execu[cç][aã]o de t[ií]tulo|contrato|danos|a[cç][aã]o c[ií]vel/i, 'Cível']];
   const dataLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  function area(texto) { const t = String(texto || ''); const a = AREAS.find(([re]) => re.test(t)); return a ? a[1] : ''; }
+  // a matéria vem do catálogo compartilhado (materia.js) quando carregado; esta lista é o reserva
+  function area(texto) { const M = root.Materia; if (M && M.detectar) return M.detectar(texto); const t = String(texto || ''); const a = AREAS.find(([re]) => re.test(t)); return a ? a[1] : ''; }
   // c: conversa; rotas: ROTAS do Atendimento; hoje: Date
   function daConversa(c, rotas, hoje) {
     const h = hoje || new Date(), f = c.ficha || {}, r = (rotas || {})[f.rota] || {}, j = c.cnpj || {};
@@ -879,7 +1182,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
     return {
       id: docId(c) || 'at-' + c.id, /* mesmo CPF/CNPJ = mesmo lead, ainda que venha de outra conversa */ nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
-      contato: c.tel || '', area: area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
+      contato: c.tel || '', area: f.area || c.area || area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
       ultimo: cli ? dataLocal(new Date(cli)) : dataLocal(h), proxAcao: 'Agendar primeira reunião e confirmar consentimento LGPD', proxData: dataLocal(amanha),
       lgpd: { status: 'pendente', data: '', forma: '' }, criado: dataLocal(h),
       hist: [{ data: dataLocal(h), canal: 'Atendimento RD', nota, por: '' }]
@@ -1420,6 +1723,7 @@ function salvar(){ salvarLocal(); if(!DBA) return;
   st.convs.forEach(c=>{ if(EX_IDS.has(c.id)) return; const h=JSON.stringify(c); if(HASH[c.id]===h) return; HASH[c.id]=h;
     FILA[c.id]=(FILA[c.id]||Promise.resolve()).then(()=>DBA.doc('atendimento/'+c.id).set({conv:JSON.parse(h),atualizado:new Date().toISOString()})).catch(()=>{ const t=document.getElementById('base-info'); if(t) t.textContent='Não foi possível salvar na base do escritório agora.'; }); }); }
 (async()=>{ try{ if(!(window.claude&&window.claude.use)) return; const db=await window.claude.use('db'); if(!db) return; DBA=db;
+  try{ db.collection('config').limit(20).onSnapshot(sn=>{ const d=sn.docs.map(x=>x.data()).find(x=>x&&x.id==='materias'); if(d){ mtCfg=Object.assign({id:'materias',resp:{}},d); try{localStorage.setItem('rd-materias',JSON.stringify(mtCfg))}catch(e){} if(typeof renderMaterias==='function'&&!document.getElementById('v-materias').hidden) renderMaterias(); } },()=>{}); }catch(e){}
   try{ db.collection('tarefas').limit(1000).onSnapshot(sn=>{ tarefasDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderTarefas==='function') renderTarefas(); },()=>{}); db.collection('processos').limit(500).onSnapshot(sn=>{ procsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.cnj); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   try{ db.collection('publicacoes').limit(500).onSnapshot(sn=>{ pubsDb=sn.docs.map(d=>d.data()).filter(x=>x&&x.id); if(typeof renderAcomp==='function') renderAcomp(); },()=>{}); }catch(e){}
   db.collection('atendimento').limit(500).onSnapshot(sn=>{ const docs=sn.docs.map(d=>d.data()).filter(x=>x&&x.conv);
@@ -1452,12 +1756,12 @@ function novaFicha(c,rota,doc,resumo,origem){
   if(rota==="urgencia")f.log.push("Alerta imediato enviado à Direção e à Controladoria");
   const fl=faltando(f); f.completoEntrada=fl.length===0;
   if(fl.length){f.status="Aguardando cliente";f.log.push("Pedido incompleto: falta "+fl.join("; "))}
-  c.ficha=f; return f;
+  c.ficha=f; if(window.Materia){ const a=Materia.daConversa(c); if(a){ f.area=a; f.areaOrigem="sugerida pela conversa"; f.log.push("Matéria sugerida: "+a+" ("+Materia.sigla(a)+")") } } return f;
 }
 
 // abas
 const tabs=[...document.querySelectorAll("nav.tabs button")];
-const RENDER={tarefas:()=>renderTarefas(),prazos:()=>{ if(!document.getElementById("pub-data").value) document.getElementById("pub-data").value=hojeISO(); renderAcomp(); },mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
+const RENDER={materias:()=>renderMaterias(),tarefas:()=>renderTarefas(),prazos:()=>{ if(!document.getElementById("pub-data").value) document.getElementById("pub-data").value=hojeISO(); renderAcomp(); },mesa:()=>renderMesa(),fila:()=>renderFila(),docs:()=>{},ind:()=>renderInd(),regras:()=>renderRegras()};
 function mostrar(v){
   tabs.forEach(b=>b.setAttribute("aria-selected",String(b.dataset.view===v)));
   Object.keys(RENDER).forEach(k=>document.getElementById("v-"+k).hidden=(k!==v));
@@ -1511,11 +1815,11 @@ function renderFicha(){
   const r=ROTAS[f.rota]; const fl=faltando(f); const p=prio(f);
   el.innerHTML='<div class="ficha"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span><span class="pill '+PCLS[p]+'">'+p+'</span> <span class="mono" style="font-weight:600">'+f.proto+'</span></span>'+prazoTxt(f)+'</div>'+
    (fl.length&&f.status!=="Concluída"?'<div class="falta">Pedido incompleto. Falta: '+esc(fl.join("; "))+'.</div>':'')+
-   '<dl><dt>Cliente</dt><dd>'+esc(c.nome)+(c.cliente?"":' <span class="pill warn">novo</span>')+'</dd><dt>CPF/CNPJ</dt><dd class="mono">'+esc(f.doc)+'</dd><dt>Canal</dt><dd>'+c.canal+'</dd><dt>Assunto</dt><dd>'+r.nome+'</dd><dt>Setor</dt><dd>'+r.setor+'</dd><dt>Responsável</dt><dd>'+r.resp+'</dd><dt>Prazo</dt><dd>'+r.sla+' horas úteis desde a entrada (seg. a sex., 8h às 17h) · vence '+Prazo.somar(new Date(f.em),r.sla).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</dd></dl>'+
+   '<dl><dt>Cliente</dt><dd>'+esc(c.nome)+(c.cliente?"":' <span class="pill warn">novo</span>')+'</dd><dt>CPF/CNPJ</dt><dd class="mono">'+esc(f.doc)+'</dd><dt>Canal</dt><dd>'+c.canal+'</dd><dt>Assunto</dt><dd>'+r.nome+'</dd><dt>Matéria</dt><dd>'+selMateria(c,f)+'</dd><dt>Setor</dt><dd>'+r.setor+'</dd><dt>Responsável</dt><dd>'+r.resp+'</dd><dt>Prazo</dt><dd>'+r.sla+' horas úteis desde a entrada (seg. a sex., 8h às 17h) · vence '+Prazo.somar(new Date(f.em),r.sla).toLocaleString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</dd></dl>'+
    '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
    '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
    '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
-   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+
+   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+painelMateria(c,f)+
    '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
@@ -1609,7 +1913,7 @@ var GUARDA_PADRAO="a definir", RESP_ENC="Coordenação Administrativa";
 function hojeISO(){ return new Date().toLocaleDateString("sv-SE") }
 function checaExcluir(c,f){ if(f.lgpdExclusao) return false; const m=(c.msgs||[]).find(x=>x.de==="cli"&&/^\s*excluir\s*[.!]?\s*$/i.test(x.tx||""));
   if(!m) return false; f.lgpdExclusao={status:"pendente",pedidoEm:m.em||new Date().toISOString(),resp:RESP_ENC}; f.log.push("Pedido de exclusão de dados (LGPD) recebido: "+RESP_ENC+" atende"); return true }
-function pendFluxo(f){ const p=[]; if(f.lgpdExclusao&&f.lgpdExclusao.status==="pendente") p.push("LGPD: exclusão pendente");
+function pendFluxo(f){ const p=[]; if(!f.area&&f.rota!=="fin"&&f.rota!=="agenda") p.push("Definir a matéria"); if(f.lgpdExclusao&&f.lgpdExclusao.status==="pendente") p.push("LGPD: exclusão pendente");
   const a=f.astrea||{}; if(a.cnj&&!a.lancado) p.push("Lançar no Astrea"+(a.protocoloEm&&a.protocoloEm<hojeISO()?" (atrasado)":" hoje")); return p }
 function painelFluxo(c,f){ const a=f.astrea||{}, e=f.encerramento||{}, lx=f.lgpdExclusao; let h='<div class="resumo" id="fx-box" style="display:grid;gap:6px"><div class="hint" style="font-weight:600">Andamento do fluxo</div>';
   if(lx) h+='<div class="'+(lx.status==="pendente"?"falta":"hint")+'">Pedido de exclusão de dados (LGPD) em '+esc(String(lx.pedidoEm).slice(0,10).split("-").reverse().join("/"))+': '+(lx.status==="pendente"?'pendente com '+esc(lx.resp)+'. <button class="btn ghost small" type="button" id="fx-lgpd">Exclusão atendida</button>':'atendida em '+esc(lx.atendidaEm.split("-").reverse().join("/"))+'.')+'</div>';
@@ -1702,6 +2006,59 @@ function anonimizar(c){ const f=c.ficha||{}; c.nome='Titular (dados excluídos)'
   if(c.ficha){ f.doc=''; f.resumo='[pedido excluído a pedido do titular]'; f.log.push('Dados pessoais excluídos a pedido do titular (LGPD, art. 18, VI); mantidos protocolo, datas, número do processo e este registro (art. 16, I)'); }
   c.anonimizadaEm=new Date().toISOString(); return c; }
 window.__tarefas={todas:()=>tarefasTodas(),nova:o=>novaTarefa(o),render:()=>renderTarefas(),anonimizar:c=>anonimizar(c)};
+
+// ---------- matérias: escritório virtual por matéria (30/10/2026) ----------
+let mtSel="", mtCfg={id:"materias",resp:{}}; const MTDB={};
+try{ mtCfg=Object.assign(mtCfg,JSON.parse(localStorage.getItem("rd-materias")||"{}")) }catch(e){}
+function mtResp(a){ return (mtCfg.resp||{})[a]||Materia.de(a).resp||"" }
+function areaConv(c){ return Materia.daConversa(c) }
+function salvarCfgMaterias(){ try{localStorage.setItem("rd-materias",JSON.stringify(mtCfg))}catch(e){} if(DBA){ MTDB.p=(MTDB.p||Promise.resolve()).then(()=>DBA.doc("config/materias").set(mtCfg)).catch(()=>{}) } }
+function selMateria(c,f){ const a=f.area||"", sug=a?"":Materia.daConversa(c);
+  return '<select id="f-area" aria-label="Matéria"><option value="">'+(sug?"sugerida: "+esc(sug)+" — confirmar":"a definir")+'</option>'+Materia.LISTA.concat(["Outra"]).map(x=>'<option'+(x===a?" selected":"")+'>'+esc(x)+'</option>').join("")+'</select>'+
+    (a?' <span class="pill info">'+esc(Materia.sigla(a))+'</span>'+(f.areaOrigem&&/sugerida/.test(f.areaOrigem)?' <span class="hint">sugerida pela conversa — confira</span>':''):sug?' <button class="btn ghost small" type="button" id="f-area-ok" data-area="'+esc(sug)+'">Confirmar '+esc(Materia.sigla(sug))+'</button>':"") }
+function painelMateria(c,f){ const a=f.area||Materia.daConversa(c); if(!a) return ""; const m=Materia.de(a), rec=f.docsMateria||{};
+  return '<details class="resumo" id="mt-box" style="display:block"><summary class="hint" style="font-weight:600;cursor:pointer">'+esc(m.sigla)+' · '+esc(a)+' — perguntas, documentos e prazos</summary><div style="display:grid;gap:6px;margin-top:6px">'+
+    '<div class="hint"><b>Perguntas de triagem</b> <button class="btn ghost small" type="button" id="mt-copiar">Texto para colar na conversa</button></div><ol style="margin:0;padding-left:18px">'+m.perguntas.map(p=>'<li>'+esc(p)+'</li>').join("")+'</ol><div id="mt-txt-box" hidden><textarea id="mt-txt" rows="6" readonly style="width:100%"></textarea><div class="hint">Copie, cole na conversa e revise antes de enviar; nada sai automaticamente.</div></div>'+
+    '<div class="hint"><b>Documentos a pedir</b> (marque os recebidos)</div>'+m.documentos.map((d,i)=>'<label class="hint" style="display:block"><input type="checkbox" data-mtdoc="'+i+'"'+(rec[i]?" checked":"")+'> '+esc(d)+'</label>').join("")+
+    '<div class="hint"><b>Prazos típicos</b>: '+m.prazos.slice(0,4).map(p=>esc(p.nome)).join(" · ")+'… <button class="btn ghost small" type="button" id="mt-ir" data-area="'+esc(a)+'">Calcular na aba Matérias</button></div>'+
+    '<div class="hint">Responsável pela matéria: '+esc(mtResp(a))+' · checklist interno ao liberar o contrato: '+esc((Tarefas.CHECKLISTS[m.checklist]||{}).nome||"")+'</div></div></details>' }
+document.getElementById("ficha").addEventListener("change",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
+  if(ev.target.id==="f-area"){ const v=ev.target.value; f.area=v; f.areaOrigem=v?"confirmada pela equipe":""; f.log.push(v?"Matéria definida: "+v+" ("+Materia.sigla(v)+")":"Matéria removida"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
+  const d=ev.target.getAttribute("data-mtdoc"); if(d!=null){ f.docsMateria=Object.assign({},f.docsMateria,{[d]:ev.target.checked}); if(!ev.target.checked) delete f.docsMateria[d]; f.log.push((ev.target.checked?"Documento recebido: ":"Documento desmarcado: ")+Materia.de(f.area||Materia.daConversa(c)).documentos[+d]); salvar() } });
+document.getElementById("ficha").addEventListener("click",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
+  if(ev.target.id==="f-area-ok"){ const a=ev.target.dataset.area; f.area=a; f.areaOrigem="confirmada pela equipe"; f.log.push("Matéria confirmada: "+a+" ("+Materia.sigla(a)+")"); salvar(); renderMesa(); renderFila&&renderFila() }
+  if(ev.target.id==="mt-copiar"){ const a=f.area||Materia.daConversa(c), tx=Materia.textoTriagem(a), box=document.getElementById("mt-txt-box"); box.hidden=false; document.getElementById("mt-txt").value=tx; try{ navigator.clipboard&&navigator.clipboard.writeText(tx).catch(()=>{}) }catch(e){} }
+  if(ev.target.id==="mt-ir"){ mtSel=ev.target.dataset.area; mostrar("materias") } });
+function mtDados(){ return {convs:st.convs,tarefas:typeof tarefasTodas==="function"?tarefasTodas():[],procs:procsDb||[],pubs:typeof pubsTodas==="function"?pubsTodas():[],leads:[]} }
+function renderMaterias(){ const hoje=hojeISO(), C=Materia.contadores(mtDados(),hoje), by={}; C.forEach(r=>by[r.area]=r);
+  document.getElementById("mt-cards").innerHTML=Materia.LISTA.concat(["Outra"]).map(a=>{ const m=Materia.de(a), r=by[a]||{abertas:0,tarefas:0,vencidas:0,processos:0,publicacoes:0,concluidas:0};
+    return '<button type="button" class="mt-card" data-mt="'+esc(a)+'" aria-pressed="'+(mtSel===a)+'"><div style="display:flex;justify-content:space-between;gap:6px;align-items:baseline"><b>'+esc(m.sigla)+'</b><span class="hint">'+esc(mtResp(a))+'</span></div><div class="hint">'+esc(a)+'</div>'+
+      '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px"><span class="pill '+(r.abertas?"info":"line")+'">'+r.abertas+' caso(s) aberto(s)</span><span class="pill '+(r.vencidas?"crit":r.tarefas?"warn":"line")+'">'+r.tarefas+' tarefa(s)'+(r.vencidas?" · "+r.vencidas+" vencida(s)":"")+'</span><span class="pill line">'+r.processos+' processo(s)</span>'+(r.publicacoes?'<span class="pill warn">'+r.publicacoes+' publicação(ões) nova(s)</span>':"")+'</div></button>' }).join("");
+  renderMateriaDet(); }
+function renderMateriaDet(){ const det=document.getElementById("mt-det"); if(!mtSel||!Materia.MATERIAS[mtSel]){ det.hidden=true; return } det.hidden=false; const a=mtSel, m=Materia.de(a), hoje=hojeISO(), br=s=>s?s.split("-").reverse().join("/"):"—";
+  document.getElementById("mt-tit").textContent=m.sigla+" · "+a; document.getElementById("mt-desc").textContent=m.descricao;
+  document.getElementById("mt-resp").innerHTML=Tarefas.EQUIPE.map(e=>'<option'+(e.nome===mtResp(a)?" selected":"")+'>'+esc(e.nome)+'</option>').join("");
+  const convs=st.convs.filter(c=>c.ficha&&areaConv(c)===a).sort((x,y)=>(x.ficha.status==="Concluída")-(y.ficha.status==="Concluída")), tar=Tarefas.minhas(mtDados().tarefas,{hoje}).filter(t=>t.status!=="feita"&&(t.area===a||Materia.areaDoChecklist(t.checklist)===a));
+  let h='<h4 style="margin:0">Casos ('+convs.filter(c=>c.ficha.status!=="Concluída").length+' abertos)</h4>';
+  h+=convs.length?'<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Protocolo</th><th>Cliente</th><th>Assunto</th><th>Status</th><th>Processo</th><th>Pendências</th></tr></thead><tbody>'+convs.slice(0,100).map(c=>{ const f=c.ficha; return '<tr><td class="mono">'+esc(f.proto)+'</td><td><button type="button" class="linkbtn" data-abrir-mt="'+esc(c.id)+'">'+esc(c.nome)+'</button></td><td>'+esc(ROTAS[f.rota].curto)+'</td><td>'+esc(f.status)+'</td><td class="mono">'+esc(f.astrea&&f.astrea.cnj||"—")+'</td><td>'+(pendFluxo(f).map(x=>'<span class="pill warn">'+esc(x)+'</span>').join(" ")||"—")+'</td></tr>' }).join("")+'</tbody></table></div>':'<div class="hint">Nenhum caso nesta matéria ainda.</div>';
+  h+='<h4 style="margin:8px 0 0">Tarefas pendentes ('+tar.length+')</h4>'+(tar.length?'<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Prazo</th><th>Tarefa</th><th>Cliente</th><th>Responsável</th></tr></thead><tbody>'+tar.slice(0,50).map(t=>'<tr><td><span class="pill '+({vencida:"crit",hoje:"warn","a vencer":"info"}[t.situacao]||"line")+'">'+br(t.prazo)+'</span></td><td>'+esc(t.titulo)+'</td><td>'+esc(t.cliente||"—")+'</td><td>'+esc(t.resp)+'</td></tr>').join("")+'</tbody></table></div>':'<div class="hint">Nenhuma tarefa pendente.</div>');
+  document.getElementById("mt-casos").innerHTML=h;
+  const ck=Tarefas.CHECKLISTS[m.checklist]||{nome:"",itens:[]};
+  document.getElementById("mt-pacote").innerHTML='<div class="hint" style="margin-top:6px"><b>Perguntas ao cliente</b></div><ol style="margin:4px 0;padding-left:18px">'+m.perguntas.map(p=>'<li>'+esc(p)+'</li>').join("")+'</ol><div class="hint"><b>Documentos a pedir</b></div><ul style="margin:4px 0;padding-left:18px">'+m.documentos.map(d=>'<li>'+esc(d)+'</li>').join("")+'</ul>'+
+    '<div class="hint"><b>Checklist interno ao liberar o contrato</b> — '+esc(ck.nome)+'</div><ol style="margin:4px 0;padding-left:18px">'+ck.itens.map(([t,r,d])=>'<li>'+esc(t)+' <span class="hint">('+esc(r)+', '+d+' dias úteis)</span></li>').join("")+'</ol>';
+  const tr=document.getElementById("mt-trib"); if(tr.dataset.area!==a){ tr.value=Materia.tribunalDe(a); tr.dataset.area=a }
+  renderMtPrazos();
+  document.getElementById("mt-teses").innerHTML=m.teses.length?'<ul style="margin:4px 0;padding-left:18px">'+m.teses.map(x=>'<li'+(/^Não oferecer/.test(x)?' style="color:var(--muted)"':"")+'>'+esc(x)+'</li>').join("")+'</ul><div class="hint">Lista inicial, a validar pela Direção. A biblioteca completa, com situação e grau de cada tese, existe só para o tributário.</div>':'<div class="hint">Sem teses cadastradas.</div>'; }
+function renderMtPrazos(){ if(!mtSel) return; const data=document.getElementById("mt-data").value, trib=document.getElementById("mt-trib").value, hoje=hojeISO(), V=Materia.vencimentos(mtSel,data,{hoje,tribunal:trib}), br=s=>s?s.split("-").reverse().join("/"):"";
+  const cont=p=>p.n==null?"—":p.contagem==="anos"?p.n+" "+(p.n===1?"ano":"anos"):p.contagem==="meses"?p.n+" meses":p.n+(p.contagem==="uteis"?" dias úteis":p.contagem==="corridos"?" dias corridos":" dias — contagem a conferir");
+  document.getElementById("mt-prazos").innerHTML='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Prazo</th><th>Base legal</th><th>Contagem</th>'+(data?"<th>Vence em</th>":"")+'</tr></thead><tbody>'+V.map(p=>'<tr><td>'+esc(p.nome)+'</td><td class="hint">'+esc(p.base)+(p.nota?"<br>"+esc(p.nota):"")+'</td><td class="hint">'+esc(cont(p))+'</td>'+
+    (data?'<td>'+(p.vencimento?'<span class="pill '+(p.vencido?"crit":p.diasAte<=7?"warn":"info")+'">'+br(p.vencimento)+'</span>'+(p.vencido?' <span class="hint">vencido</span>':"")+'<div class="hint">'+esc(p.como)+'</div>':"—")+'</td>':"")+'</tr>').join("")+'</tbody></table></div><div class="hint">Estimativa para orientar a equipe: o prazo oficial é o lançado no Astrea depois da conferência pela Controladoria.</div>' }
+document.getElementById("mt-cards").addEventListener("click",ev=>{ const b=ev.target.closest("[data-mt]"); if(!b) return; mtSel=mtSel===b.dataset.mt?"":b.dataset.mt; renderMaterias() });
+document.getElementById("mt-resp").addEventListener("change",ev=>{ if(!mtSel) return; mtCfg.resp=Object.assign({},mtCfg.resp,{[mtSel]:ev.target.value}); salvarCfgMaterias(); renderMaterias() });
+document.getElementById("mt-data").addEventListener("change",renderMtPrazos); document.getElementById("mt-trib").addEventListener("change",renderMtPrazos);
+document.getElementById("mt-casos").addEventListener("click",ev=>{ const id=ev.target.getAttribute("data-abrir-mt"); if(!id) return; st.sel=id; salvar(); mostrar("mesa") });
+document.getElementById("pp-mt").addEventListener("click",()=>mostrar("materias"));
+window.__materias={render:()=>renderMaterias(),selecionar:a=>{ mtSel=a; renderMaterias() },cfg:()=>mtCfg,areaConv:c=>areaConv(c)};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};
@@ -1734,17 +2091,18 @@ document.getElementById("nova-conv").addEventListener("click",()=>{
 
 // fila
 const fSetor=document.getElementById("flt-setor"); SETORES.forEach(s=>fSetor.insertAdjacentHTML("beforeend","<option>"+s+"</option>"));
-["flt-setor","flt-canal","flt-st"].forEach(id=>document.getElementById(id).addEventListener("change",renderFila));
+Materia.LISTA.concat(["Outra"]).forEach(a=>document.getElementById("flt-area").insertAdjacentHTML("beforeend","<option>"+a+"</option>"));
+["flt-setor","flt-canal","flt-area","flt-st"].forEach(id=>document.getElementById(id).addEventListener("change",renderFila));
 function renderFila(){
-  const se=fSetor.value, ca=document.getElementById("flt-canal").value, ab=document.getElementById("flt-st").value==="abertas";
-  const lista=st.convs.filter(c=>c.ficha).filter(c=>(!se||ROTAS[c.ficha.rota].setor===se)&&(!ca||c.canal===ca)&&(!ab||c.ficha.status!=="Concluída"))
+  const se=fSetor.value, ca=document.getElementById("flt-canal").value, ma=document.getElementById("flt-area").value, ab=document.getElementById("flt-st").value==="abertas";
+  const lista=st.convs.filter(c=>c.ficha).filter(c=>(!se||ROTAS[c.ficha.rota].setor===se)&&(!ca||c.canal===ca)&&(!ma||areaConv(c)===ma)&&(!ab||c.ficha.status!=="Concluída"))
     .sort((a,b)=>(a.ficha.status==="Concluída")-(b.ficha.status==="Concluída")||score(b.ficha)-score(a.ficha)||restante(a.ficha)-restante(b.ficha));
   const tb=document.getElementById("tb");
   if(!lista.length){tb.innerHTML='<tr><td colspan="7">Nenhuma demanda nesta visão.</td></tr>';return}
   tb.innerHTML=lista.map(c=>{const f=c.ficha,r=ROTAS[f.rota],p=prio(f),fl=faltando(f);
     return '<tr><td><span class="pill '+PCLS[p]+'">'+p+'</span></td><td class="mono">'+f.proto+'</td>'+
     '<td><button type="button" class="linkbtn" data-abrir="'+c.id+'">'+esc(c.nome)+'</button><div class="hint">'+c.canal+(c.cliente?"":" · novo cliente")+'</div></td>'+
-    '<td>'+r.curto+'<div class="hint">'+r.setor+' · '+r.resp+'</div></td>'+
+    '<td>'+r.curto+(areaConv(c)?' <span class="pill line">'+esc(Materia.sigla(areaConv(c)))+'</span>':'')+'<div class="hint">'+r.setor+' · '+r.resp+'</div></td>'+
     '<td style="max-width:34ch">'+esc(f.resumo.split("\n")[0])+(typeof pendFluxo==="function"&&pendFluxo(f).length?'<div>'+pendFluxo(f).map(x=>'<span class="pill warn">'+esc(x)+'</span>').join(" ")+'</div>':'')+(fl.length&&f.status!=="Concluída"?'<div class="hint" style="color:var(--ochre);font-weight:600">Falta: '+esc(fl.join("; "))+'</div>':'')+'</td>'+
     '<td>'+prazoTxt(f)+'</td>'+
     '<td><select data-st="'+c.id+'" aria-label="Status de '+esc(f.proto)+'">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select></td></tr>'}).join("");
@@ -1954,7 +2312,7 @@ function renderModelos(){
     if(MODELOS.some(m=>m.id===v)) sel.value=v; else { const p1=ord.find(m=>m.area===pref); if(p1) sel.value=p1.id } } }
 const AREAS_RD=["Tributário","Execução fiscal","Cível","Administrativo e licitações","Empresarial e societário","Imobiliário","Consumidor","Previdenciário","Trabalhista"];
 function opArea(a){ return '<option value="">Todas as áreas</option>'+AREAS_RD.map(x=>'<option'+(x===a?" selected":"")+'>'+x+'</option>').join("") }
-function areaDaConv(){ try{ const c=conv(); return c.area||LeadRD.area([c.ficha&&c.ficha.resumo,...c.msgs.filter(m=>m.de==="cli").map(m=>m.tx)].join("\n")) }catch(e){ return "" } }
+function areaDaConv(){ try{ const c=conv(); return Materia.daConversa(c)||c.area||LeadRD.area([c.ficha&&c.ficha.resumo,...c.msgs.filter(m=>m.de==="cli").map(m=>m.tx)].join("\n")) }catch(e){ return "" } }
 document.getElementById("mdl-area").innerHTML=opArea("");
 document.getElementById("mdl-lista").addEventListener("change",async e=>{ const s=e.target.closest("[data-mdl-area]"); if(!s) return; const m=MODELOS.find(x=>x.id===s.dataset.mdlArea); if(!m) return;
   m.area=s.value; try{ if(MDB){ const meta=Object.assign({},m); delete meta.b64; await MDB.doc("modelos/"+m.id).set(meta) } else { salvaLocalModelos(); renderModelos() } mdlMsg("Área de “"+m.nome+"” atualizada.") }catch(err){ mdlMsg("Não foi possível mudar a área: "+err.message) } });

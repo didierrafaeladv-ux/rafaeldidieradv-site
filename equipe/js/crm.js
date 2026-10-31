@@ -159,6 +159,12 @@
   function entradas(l) { const ent = { novo: l.criado };
     for (const h of l.hist || []) { if (h.canal !== 'Funil') continue; const m = /para “([^”]+)”/.exec(h.nota || ''); const e = m && ETAPAS.find(x => x.n === m[1]); if (e && !ent[e.k]) ent[e.k] = h.data; }
     return ent; }
+  // visão por matéria (escritório virtual por matéria: RD Trib, RD Prev, RD Consul…)
+  const SIGLAS = { 'Tributário': 'RD Trib', 'Execução fiscal': 'RD EF', 'Previdenciário': 'RD Prev', 'Consumidor': 'RD Consul', 'Trabalhista': 'RD Trab', 'Cível': 'RD Cível',
+    'Administrativo e licitações': 'RD Adm', 'Empresarial e societário': 'RD Emp', 'Imobiliário': 'RD Imob', 'Outra': 'RD' };
+  function porArea(leads) { const m = {}; (leads || []).forEach(l => { const a = l.area || 'Outra', r = m[a] = m[a] || { area: a, sigla: SIGLAS[a] || 'RD', abertos: 0, contratados: 0, perdidos: 0, valorAberto: 0, valorContratado: 0 };
+      if (ABERTAS.has(l.etapa)) { r.abertos++; r.valorAberto += +l.valor || 0; } else if (l.etapa === 'contratado') { r.contratados++; r.valorContratado += +l.valor || 0; } else if (l.etapa === 'perdido') r.perdidos++; });
+    return AREAS.filter(a => m[a]).map(a => Object.assign(m[a], { conversao: m[a].contratados + m[a].perdidos ? Math.round(100 * m[a].contratados / (m[a].contratados + m[a].perdidos)) : null })); }
   function tempos(leads, hoje, prazos) {
     hoje = hoje || hojeISO(); prazos = Object.assign({}, PRAZOS_ETAPA, prazos || {});
     const ORD = ['novo', 'reuniao', 'proposta', 'contratado', 'perdido'], acc = {}, add = (k, d, curso) => { const a = acc[k] = acc[k] || { soma: 0, n: 0, curso: 0, maior: 0 }; a.soma += d; a.n++; if (curso) a.curso++; a.maior = Math.max(a.maior, d); };
@@ -171,6 +177,6 @@
     return Object.keys(NOMES).map(k => { const a = acc[k] || { soma: 0, n: 0, curso: 0, maior: 0 }, media = a.n ? Math.round(a.soma / a.n * 10) / 10 : null, prazo = prazos[k];
       return { k, nome: NOMES[k], media, n: a.n, emCurso: a.curso, maior: a.maior, prazo, ok: prazo == null || media == null ? null : media <= prazo }; });
   }
-  const API = { tempos, entradas, PRAZOS_ETAPA, cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+  const API = { porArea, SIGLAS, tempos, entradas, PRAZOS_ETAPA, cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);

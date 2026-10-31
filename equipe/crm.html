@@ -94,6 +94,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .metas{contain:inline-size;min-width:0;margin:0 0 14px;border:1px solid var(--line);border-radius:10px;padding:8px 14px;background:var(--surface);color:var(--fg)}.metas summary{cursor:pointer;font-weight:600}.metas table{width:100%;border-collapse:collapse;font-size:.88rem;margin:8px 0}.metas th,.metas td{text-align:left;padding:6px;border-top:1px solid var(--line);vertical-align:top}.m-ok{color:var(--ok);font-weight:600}.m-nao{color:var(--crit);font-weight:600}#metas-c{overflow-x:auto}
 .chip.ok{background:var(--soft);color:var(--ok)}#travas-box label input[type=checkbox]{margin-right:6px}
+.lk{all:unset;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 </style>
 </head><body>
 
@@ -118,6 +119,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
 
   <section class="kpis" aria-label="Indicadores" id="kpis"></section>
   <details class="metas" id="metas"><summary>Metas do trimestre (Comercial)</summary><div id="metas-c"></div></details>
+  <details class="metas" id="materias"><summary>Leads por matéria (RD Trib, RD Prev, RD Consul…)</summary><div id="materias-c"></div></details>
   <details class="metas" id="tempos"><summary>Tempo por etapa (dias úteis)</summary><div id="tempos-c"></div></details>
 
   <div class="filtros" role="search">
@@ -354,6 +356,12 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
   function entradas(l) { const ent = { novo: l.criado };
     for (const h of l.hist || []) { if (h.canal !== 'Funil') continue; const m = /para “([^”]+)”/.exec(h.nota || ''); const e = m && ETAPAS.find(x => x.n === m[1]); if (e && !ent[e.k]) ent[e.k] = h.data; }
     return ent; }
+  // visão por matéria (escritório virtual por matéria: RD Trib, RD Prev, RD Consul…)
+  const SIGLAS = { 'Tributário': 'RD Trib', 'Execução fiscal': 'RD EF', 'Previdenciário': 'RD Prev', 'Consumidor': 'RD Consul', 'Trabalhista': 'RD Trab', 'Cível': 'RD Cível',
+    'Administrativo e licitações': 'RD Adm', 'Empresarial e societário': 'RD Emp', 'Imobiliário': 'RD Imob', 'Outra': 'RD' };
+  function porArea(leads) { const m = {}; (leads || []).forEach(l => { const a = l.area || 'Outra', r = m[a] = m[a] || { area: a, sigla: SIGLAS[a] || 'RD', abertos: 0, contratados: 0, perdidos: 0, valorAberto: 0, valorContratado: 0 };
+      if (ABERTAS.has(l.etapa)) { r.abertos++; r.valorAberto += +l.valor || 0; } else if (l.etapa === 'contratado') { r.contratados++; r.valorContratado += +l.valor || 0; } else if (l.etapa === 'perdido') r.perdidos++; });
+    return AREAS.filter(a => m[a]).map(a => Object.assign(m[a], { conversao: m[a].contratados + m[a].perdidos ? Math.round(100 * m[a].contratados / (m[a].contratados + m[a].perdidos)) : null })); }
   function tempos(leads, hoje, prazos) {
     hoje = hoje || hojeISO(); prazos = Object.assign({}, PRAZOS_ETAPA, prazos || {});
     const ORD = ['novo', 'reuniao', 'proposta', 'contratado', 'perdido'], acc = {}, add = (k, d, curso) => { const a = acc[k] = acc[k] || { soma: 0, n: 0, curso: 0, maior: 0 }; a.soma += d; a.n++; if (curso) a.curso++; a.maior = Math.max(a.maior, d); };
@@ -366,7 +374,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     return Object.keys(NOMES).map(k => { const a = acc[k] || { soma: 0, n: 0, curso: 0, maior: 0 }, media = a.n ? Math.round(a.soma / a.n * 10) / 10 : null, prazo = prazos[k];
       return { k, nome: NOMES[k], media, n: a.n, emCurso: a.curso, maior: a.maior, prazo, ok: prazo == null || media == null ? null : media <= prazo }; });
   }
-  const API = { tempos, entradas, PRAZOS_ETAPA, cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
+  const API = { porArea, SIGLAS, tempos, entradas, PRAZOS_ETAPA, cnjValido, travas, bloqueio, metas, diasUteisEntre, lerValor, ETAPAS, AREAS, ORIGENS, MOTIVOS, hojeISO, dias, semContato, vencida, indicadores, filtrar, registrarContato, mover, validar, paraCSV, lerCSV, mesclar, versao: '1.0' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.CRM = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -385,7 +393,8 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     [/\bICMS\b|\bISS\b|\bPIS\b|COFINS|imposto|tribut|Simples Nacional|\bIRPJ\b|\bCSLL\b|restitui|cr[eé]dito/i, 'Tributário'],
     [/cobran[cç]a|indeniza|execu[cç][aã]o de t[ií]tulo|contrato|danos|a[cç][aã]o c[ií]vel/i, 'Cível']];
   const dataLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  function area(texto) { const t = String(texto || ''); const a = AREAS.find(([re]) => re.test(t)); return a ? a[1] : ''; }
+  // a matéria vem do catálogo compartilhado (materia.js) quando carregado; esta lista é o reserva
+  function area(texto) { const M = root.Materia; if (M && M.detectar) return M.detectar(texto); const t = String(texto || ''); const a = AREAS.find(([re]) => re.test(t)); return a ? a[1] : ''; }
   // c: conversa; rotas: ROTAS do Atendimento; hoje: Date
   function daConversa(c, rotas, hoje) {
     const h = hoje || new Date(), f = c.ficha || {}, r = (rotas || {})[f.rota] || {}, j = c.cnpj || {};
@@ -396,7 +405,7 @@ legend{font-weight:700;font-size:13px;padding:0 4px}
     const nota = 'Veio do Atendimento RD' + (f.proto ? ', protocolo ' + f.proto : '') + (r.curto ? ' (' + r.curto + ')' : '') + (f.resumo ? ': ' + String(f.resumo).slice(0, 600) : '.');
     return {
       id: docId(c) || 'at-' + c.id, /* mesmo CPF/CNPJ = mesmo lead, ainda que venha de outra conversa */ nome: c.nome || 'Contato do Atendimento', empresa: j.razao && j.razao !== c.nome ? j.razao : '',
-      contato: c.tel || '', area: area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
+      contato: c.tel || '', area: f.area || c.area || area(textoTodo), origem: c.canal === 'Site' ? 'Site' : 'WhatsApp', valor: '', resp, etapa: 'novo',
       ultimo: cli ? dataLocal(new Date(cli)) : dataLocal(h), proxAcao: 'Agendar primeira reunião e confirmar consentimento LGPD', proxData: dataLocal(amanha),
       lgpd: { status: 'pendente', data: '', forma: '' }, criado: dataLocal(h),
       hist: [{ data: dataLocal(h), canal: 'Atendimento RD', nota, por: '' }]
@@ -527,7 +536,12 @@ function renderTempos(){
   $("tempos-c").innerHTML='<p class="s">Tempo médio em cada etapa do funil, contado pelo histórico de movimentações. Prazos combinados: a definir pelo Dr. Rafael (fluxograma de 30/10/2026).</p><table><thead><tr><th>Etapa</th><th>Média</th><th>Maior</th><th>Leads</th><th>Em curso</th><th>Prazo combinado</th><th>Situação</th></tr></thead><tbody>'+
    t.map(r=>'<tr><th scope="row">'+r.nome+'</th><td>'+f(r.media)+'</td><td>'+(r.n?r.maior:"—")+'</td><td>'+r.n+'</td><td>'+r.emCurso+'</td><td>'+(r.prazo==null?"a definir":r.prazo+" dias úteis")+'</td><td class="'+(r.ok==null?'':r.ok?'m-ok':'m-nao')+'">'+(r.ok==null?(r.n?"sem prazo":"sem dados"):r.ok?"Dentro":"Acima")+'</td></tr>').join("")+'</tbody></table>';
 }
-function render(){ renderKpis(); renderMetas(); renderTempos(); renderFiltros(); renderBoard(); renderDemo() }
+function renderMaterias(){ const R=CRM.porArea(leads), br=v=>v?v.toLocaleString("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}):"—";
+  $("materias-c").innerHTML=R.length?'<p class="s">Clique numa matéria para filtrar o funil por ela.</p><table><thead><tr><th>Matéria</th><th>Em aberto</th><th>Valor em aberto</th><th>Contratados</th><th>Valor contratado</th><th>Conversão</th></tr></thead><tbody>'+
+   R.map(r=>'<tr><th scope="row"><button type="button" class="lk" data-area-f="'+r.area+'">'+r.sigla+'</button> <span class="s">'+r.area+'</span></th><td>'+r.abertos+'</td><td>'+br(r.valorAberto)+'</td><td>'+r.contratados+'</td><td>'+br(r.valorContratado)+'</td><td>'+(r.conversao==null?"—":r.conversao+"%")+'</td></tr>').join("")+'</tbody></table>':'<p class="s">Nenhum lead ainda.</p>';
+}
+$("materias-c").addEventListener("click",e=>{ const b=e.target.closest("[data-area-f]"); if(!b) return; filtro.area=b.dataset.areaF; $("f-area").value=filtro.area; render() });
+function render(){ renderKpis(); renderMetas(); renderMaterias(); renderTempos(); renderFiltros(); renderBoard(); renderDemo() }
 
 // arrastar entre etapas
 $("board").addEventListener("dragstart",e=>{ const c=e.target.closest(".card"); if(!c) return; arrastando=c.dataset.id; c.classList.add("drag"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",arrastando) });

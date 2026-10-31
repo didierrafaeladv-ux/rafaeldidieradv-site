@@ -1,4 +1,4 @@
-/* Tarefas do escritório: checklists por tipo de caso, "minhas tarefas" e prazos internos em dias úteis (v1.0, 30/10/2026).
+/* Tarefas do escritório: checklists por matéria, "minhas tarefas" e prazos internos em dias úteis (v1.1, 30/10/2026).
  * Usado pela página do Atendimento RD e pela rotina Ponte RD (que cria o checklist quando o contrato é liberado).
  * Prazo interno = dias úteis a partir do início (fins de semana e feriados nacionais; não é prazo processual). */
 (function (root) {
@@ -23,7 +23,56 @@
       ['Peça protocolada no prazo processual (conferir na calculadora)', 'Rafael', 10],
       ['Lançar o processo e os prazos no Astrea', 'Mariana', 11],
       ['Cadastrar honorários do contrato', 'Victor', 5]] },
-    'contencioso': { nome: 'Contencioso e consultivo', areas: ['Cível', 'Administrativo e licitações', 'Empresarial e societário', 'Imobiliário', 'Consumidor', 'Previdenciário', 'Trabalhista', 'Outra'], itens: [
+    // checklists por matéria (escritório virtual por matéria, 30/10/2026)
+    'previdenciario': { nome: 'Previdenciário (RD Prev)', areas: ['Previdenciário'], itens: [
+      ['Conferir procuração, contrato e LGPD; pedir CNIS, carta ou comunicado do INSS e documentos', 'Lillian', 2],
+      ['Analisar CNIS, DER e decisão do INSS; levantar vínculos e períodos faltantes', 'David', 7],
+      ['Definir a via (recurso ao CRPS, novo requerimento ou ação no JEF) com a Direção', 'Rafael', 9],
+      ['Cálculo ou simulação do benefício e das parcelas atrasadas', 'David', 12],
+      ['Peça protocolada (recurso, requerimento ou inicial) com aprovação da Direção', 'Rafael', 15],
+      ['Lançar o processo e os prazos no Astrea', 'Mariana', 16],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'consumidor': { nome: 'Consumidor (RD Consul)', areas: ['Consumidor'], itens: [
+      ['Conferir procuração, contrato e LGPD; pedir contrato, comprovantes, protocolos e prints', 'Lillian', 2],
+      ['Reclamação prévia (consumidor.gov.br ou Procon) ou notificação, quando couber', 'David', 5],
+      ['Análise do caso: dano, prazos (CDC, arts. 26 e 27) e valor da causa', 'David', 7],
+      ['Minuta da inicial (JEC ou vara) aprovada pela Direção', 'Rafael', 10],
+      ['Protocolo, lançamento no Astrea e audiência de conciliação agendada', 'Mariana', 12],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'trabalhista': { nome: 'Trabalhista (RD Trab)', areas: ['Trabalhista'], itens: [
+      ['Conferir procuração e contrato; pedir notificação/inicial, contrato de trabalho, ponto, holerites e TRCT', 'Lillian', 2],
+      ['Conferir a data da audiência e os prazos (CLT, art. 775) e lançar no Astrea', 'Mariana', 2],
+      ['Análise dos pedidos e das provas; estratégia (defesa ou acordo) com a Direção', 'David', 6],
+      ['Contestação e documentos prontos e aprovados pela Direção antes da audiência', 'Rafael', 9],
+      ['Preparar preposto e testemunhas para a audiência', 'David', 10],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'civel': { nome: 'Cível (RD Cível)', areas: ['Cível'], itens: [
+      ['Conferir procuração, contrato e documentos recebidos (título, contrato, provas)', 'Lillian', 2],
+      ['Análise de prazos (prescrição) e estratégia com a Direção', 'David', 5],
+      ['Minuta da peça aprovada pela Direção', 'Rafael', 10],
+      ['Protocolo e lançamento no Astrea', 'Mariana', 12],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'administrativo': { nome: 'Administrativo e licitações (RD Adm)', areas: ['Administrativo e licitações'], itens: [
+      ['Conferir procuração e contrato; pedir edital, contrato, empenhos, notas e protocolos', 'Lillian', 2],
+      ['Conferir prazos administrativos correndo (recurso, defesa, MS em 120 dias) e lançar no Astrea', 'Mariana', 2],
+      ['Análise do ato ou da omissão e da via (requerimento, recurso, MS, ação) com a Direção', 'David', 5],
+      ['Peça aprovada e protocolada pela Direção', 'Rafael', 8],
+      ['Lançar o processo e os prazos no Astrea', 'Mariana', 9],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'empresarial': { nome: 'Empresarial e societário (RD Emp)', areas: ['Empresarial e societário'], itens: [
+      ['Conferir procuração e contrato; pedir contrato social, acordo de sócios, balanços e certidões', 'Lillian', 3],
+      ['Diagnóstico societário e tributário (PlanejaTrib, quando houver planejamento) com a Direção', 'Rafael', 10],
+      ['Minutas (alteração contratual, acordo de sócios, holding) aprovadas pela Direção', 'David', 15],
+      ['Assinaturas e registro na Junta Comercial em até 30 dias da assinatura (Lei 8.934, art. 36)', 'Lillian', 25],
+      ['Atualizações cadastrais (Receita, Sefaz, prefeitura) conferidas', 'Mariana', 30],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'imobiliario': { nome: 'Imobiliário (RD Imob)', areas: ['Imobiliário'], itens: [
+      ['Conferir procuração e contrato; pedir matrícula atualizada, certidões e contratos', 'Lillian', 3],
+      ['Análise da matrícula, dos ônus e da via (usucapião, adjudicação, locação, regularização) com a Direção', 'David', 7],
+      ['Minuta (petição, escritura, contrato ou requerimento ao cartório/prefeitura) aprovada pela Direção', 'Rafael', 12],
+      ['Protocolo (judicial, cartório ou prefeitura) e lançamento no Astrea', 'Mariana', 14],
+      ['Cadastrar honorários do contrato', 'Victor', 5]] },
+    'contencioso': { nome: 'Contencioso e consultivo', areas: ['Outra'], itens: [
       ['Conferir procuração, contrato e documentos recebidos', 'Lillian', 2],
       ['Preparar a minuta ou o parecer', 'David', 10],
       ['Revisão e aprovação da Direção', 'Rafael', 12],
@@ -58,6 +107,6 @@
   function resumo(tarefas, hoje) { const m = minhas(tarefas, { hoje }); const por = {};
     for (const t of m) { const r = por[t.resp] = por[t.resp] || { resp: t.resp, pendentes: 0, vencidas: 0, hoje: 0 }; if (t.status === 'feita') continue; r.pendentes++; if (t.situacao === 'vencida') r.vencidas++; if (t.situacao === 'hoje') r.hoje++; }
     return Object.values(por).sort((a, b) => b.vencidas - a.vencidas || b.pendentes - a.pendentes); }
-  const API = { EQUIPE, CHECKLISTS, tipoDaArea, gerar, minhas, resumo, somaUteis, versao: '1.0' };
+  const API = { EQUIPE, CHECKLISTS, tipoDaArea, gerar, minhas, resumo, somaUteis, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Tarefas = API;
 })(typeof window !== 'undefined' ? window : globalThis);

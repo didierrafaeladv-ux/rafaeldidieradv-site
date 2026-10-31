@@ -197,6 +197,9 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 .mt-card{all:unset;display:block;box-sizing:border-box;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;font:inherit;color:var(--ink)}
 .mt-card:hover{border-color:var(--petrol)}.mt-card[aria-pressed=true]{outline:2px solid var(--petrol);outline-offset:-1px}
 .mt-card b{color:var(--petrol);font-size:15px}
+#md-blocos label{align-items:center}#md-blocos input[type=checkbox]{flex:0 0 auto;width:auto;margin:0}
+
+#inss-box table.doc-tab td{vertical-align:top}#inss-box .orig{font-size:11.5px;color:var(--muted)}#inss-box input[type=checkbox]{flex:0 0 auto;width:auto;margin:0}
 </style>
 
 <div class="wrap">
@@ -534,6 +537,196 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   </footer>
 </div>
 
+<script>
+/* Leitor de documentos do INSS — RD Prev (v1.0, 31/10/2026).
+ * Lê, a partir do texto de cada página (PDF.js no navegador; OCR nas páginas sem texto legível):
+ *  - CNIS (Extrato Previdenciário e Relações Previdenciárias): identificação, vínculos, remunerações/contribuições, benefícios;
+ *  - cópia do processo administrativo (Meu INSS): protocolo, serviço, DER, NB, decisão, motivo, tempo apurado, APS.
+ * Cada dado vem com a origem (arquivo e página) para conferência. É leitura de apoio: a equipe confere antes de usar.
+ * Navegador (window.INSSLeitor) e node. */
+(function (root) {
+  'use strict';
+  const plano = s => String(s || '').replace(/\s+/g, ' ').trim();
+  const sem = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const MESES = { janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6, julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12 };
+  const iso = br => { const m = String(br || '').match(/(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
+  const br = s => s ? s.split('-').reverse().join('/') : '';
+  const fmtNB = d => { d = String(d || '').replace(/\D/g, ''); return d.length === 10 ? d.slice(0, 3) + '.' + d.slice(3, 6) + '.' + d.slice(6, 9) + '-' + d[9] : d; };
+  const num = v => +String(v || '').replace(/\./g, '').replace(',', '.') || 0;
+
+  /* texto de uma página a partir dos itens do PDF.js ({str, transform}) — o mesmo usado no navegador e nos testes */
+  function textoDaPagina(items) {
+    // remonta a página pelas coordenadas: linhas de cima para baixo, itens na ordem de leitura (a ordem do PDF não é confiável);
+    // considera a rotação (o CNIS vem em paisagem, com o texto girado 90°)
+    const it = (items || []).filter(x => x && x.str != null && String(x.str).trim() !== '').map(x => { const [a, b, c, d, e, f] = x.transform, h = Math.hypot(c, d) || 8;
+      let u, v; if (Math.abs(a) >= Math.abs(b)) { u = a >= 0 ? e : -e; v = a >= 0 ? -f : f; } else { u = b > 0 ? f : -f; v = b > 0 ? e : -e; }
+      return { s: String(x.str), u, v, w: x.width || 0, h }; });
+    it.sort((p, q) => p.v - q.v || p.u - q.u); const linhas = [];
+    it.forEach(x => { const l = linhas.find(l => Math.abs(l.v - x.v) <= Math.max(2, x.h * 0.3)); if (l) l.itens.push(x); else linhas.push({ v: x.v, itens: [x] }); });
+    linhas.sort((p, q) => p.v - q.v);
+    return linhas.map(l => { l.itens.sort((p, q) => p.u - q.u); let out = '', fim = null;
+      l.itens.forEach(x => { if (fim !== null) out += (x.u - fim > x.h * 0.9 ? '  ' : (x.u - fim > x.h * 0.15 ? ' ' : '')); out += x.s; fim = x.u + x.w; }); return out; }).join('\n'); }
+
+  // texto ilegível: fonte embaralhada (sem tabela de caracteres) — precisa de OCR
+  const PALAVRAS = /\b(de|do|da|dos|das|que|para|com|nao|não|por|em|no|na|ao|requerimento|beneficio|benefício|inss|data|nome|anos)\b/gi;
+  function legibilidade(texto) { const t = plano(texto);
+    const util = plano(t.replace(/P[aá]gina \d+ de \d+|Anexo ID: ?\d+|Emitido em:? ?[\d/ :]+|Autenticado por:? ?Sem dados de autentica[cç][aã]o/gi, '')), pal = (util.match(PALAVRAS) || []).length, tok = util.split(' ').length;
+    if (util.length < 80) return 'imagem';                 // página digitalizada (documento anexado)
+    const estranhos = (util.match(/[^A-Za-zÀ-ÿ0-9\s.,:;\/()\-–ºª°%?!"'#@&*+=_]/g) || []).length / util.length;
+    if (estranhos > 0.08 || (pal / Math.max(tok, 1) < 0.01 && util.length > 300)) return 'ilegivel';
+    return 'texto'; }
+  function tipo(texto) { const t = sem(plano(texto));
+    if (/CNIS - Cadastro Nacional de Informacoes Sociais/i.test(t)) return 'cnis';
+    if (/PROTOCOLO DE REQUERIMENTO/i.test(t)) return 'protocolo';
+    if (/Despacho \(\d+\)/i.test(t) && /requerimento solicitado foi/i.test(t)) return 'despacho';
+    if (/Relacoes Previdenciarias Declaradas/i.test(t)) return 'relacoes_declaradas';
+    if (/COMUNICA[CG]AO DE DEC/i.test(t)) return 'comunicacao_decisao';
+    if (/RESUMO DE BENEFICIO EM CONCESSAO/i.test(t)) return 'resumo_beneficio';
+    if (/Assunto:\s*Indeferimento/i.test(t)) return 'indeferimento';
+    if (/ANALISE DO DIREITO/i.test(t)) return 'analise_direito';
+    if (/Cumprimento de Exig/i.test(t)) return 'exigencia';
+    return legibilidade(texto) === 'texto' ? 'outro' : legibilidade(texto); }
+
+  // ---------- CNIS ----------
+  const TIPOS_FILIADO = ['Empregado ou Agente Público', 'Empregado ou Agente', 'Contribuinte Individual', 'Empregado Doméstico', 'Trabalhador Avulso', 'Segurado Especial', 'Facultativo', 'Empregado', 'Agente Público'];
+  const RE_DATA = '(\\d{2}\\/\\d{2}\\/\\d{4})', RE_COMP = '(\\d{2}\\/\\d{4})', RE_NIT = '(\\d{3}\\.\\d{5}\\.\\d{2}-\\d)';
+  function lerCNIS(paginas, arquivo) {
+    const pg = (paginas || []).map((t, i) => ({ n: i + 1, t: plano(t) })), tudo = pg.map(p => p.t).join(' ');
+    const at = (re, s) => { const m = (s || tudo).match(re); return m ? m[1].trim() : ''; };
+    const pagDe = trecho => { const p = pg.find(x => x.t.includes(trecho)); return p ? p.n : 1; };
+    const id = { nit: at(/NIT:\s*([\d.-]+)/), cpf: at(/CPF:\s*([\d.-]+)/), nome: at(/Nome:\s*(.+?)\s+(?:Data de nascimento|P[aá]gina|Identifica)/i),
+      nascimento: iso(at(/Data de nascimento:\s*(\d{2}\/\d{2}\/\d{4})/i)), mae: at(/Nome da m[aã]e:\s*(.+?)\s+(?:P[aá]gina|Identifica|Rela[cç]|C[oó]digo|Seq\.|Tipo|$)/i),
+      emitido: iso(at(/(?:Extrato Previdenci[aá]rio|Rela[cç][oõ]es Previdenci[aá]rias)\s+(\d{2}\/\d{2}\/\d{4})/i)), modelo: /Extrato Previdenci[aá]rio/i.test(tudo) ? 'Extrato Previdenciário' : 'Relações Previdenciárias' };
+    // limpa cabeçalhos e rodapés repetidos para não quebrar as listas de competências
+    let s = tudo.replace(/P[aá]gina \d+ de \d+/g, ' ').replace(/INSS CNIS - Cadastro Nacional de Informa[cç][oõ]es Sociais (?:Extrato Previdenci[aá]rio|Rela[cç][oõ]es Previdenci[aá]rias) [\d/ :]+/g, ' ')
+      .replace(/NIT: [\d.-]+ CPF: [\d.-]+ Nome: .+? Data de nascimento: \d{2}\/\d{2}\/\d{4} Nome da m[aã]e: [A-ZÀ-Ú ]+?(?= [A-Z][a-zà-ú]| \d|$)/g, ' ')
+      .replace(/O INSS poder[aá] rever.+?EC 103\/2019\./g, ' ');
+    s = plano(s);
+    const tiposRe = TIPOS_FILIADO.map(x => x.replace(/ /g, '\\s+')).join('|');
+    const vinc = []; let m;
+    // benefícios: "8 170.44793.52-3 2136408938 Benefício 41 - APOSENTADORIA POR IDADE [datas] 99 - INDEFERIDO" (Extrato) ou sem "Benefício" e sem situação (Relações)
+    const reBen = new RegExp('(?:^| )(\\d{1,3}) ' + RE_NIT + ' (\\d{10}) (?:Benef[ií]cio )?(\\d{2}) - ([A-ZÀ-Ú ]+?)(?: ' + RE_DATA + ')?(?: ' + RE_DATA + ')?(?: (\\d{2} - [A-ZÀ-Ú ]+?))?(?=\\s+(?:\\d{1,3} \\d{3}\\.\\d{5}|[A-Z][a-zà-ú]|O INSS|N[aã]o Informado)|$)', 'g');
+    while ((m = reBen.exec(s))) vinc.push({ seq: +m[1], nit: m[2], nb: m[3], especie: m[4] + ' - ' + plano(m[5]), inicio: iso(m[6]), fim: iso(m[7]), situacao: m[8] ? plano(m[8]) : '', categoria: 'beneficio', pos: m.index });
+    // recolhimentos (contribuinte individual/facultativo): o tipo pode vir antes, na linha ou depois
+    const reRec = new RegExp('(?:^| )(\\d{1,3}) ' + RE_NIT + ' RECOLHIMENTO (?:(' + tiposRe + '|Contribuinte|Facultativo) )?' + RE_DATA + '(?: ' + RE_DATA + ')?((?: (?:IREC|PREC|PSC|AVRC|IVIN|PEXT)-[A-Z0-9-]+,?)*)', 'g');
+    while ((m = reRec.exec(s))) { const perto = s.slice(Math.max(0, m.index - 30), m.index + m[0].length + 30), tp = m[3] && m[3] !== 'Contribuinte' ? m[3] : /Facultativo/.test(perto) ? 'Facultativo' : 'Contribuinte Individual';
+      vinc.push({ seq: +m[1], nit: m[2], origem: 'RECOLHIMENTO', tipo: plano(tp), inicio: iso(m[4]), fim: iso(m[5]), indicadores: plano(m[6]).split(/[ ,]+/).filter(Boolean), categoria: 'recolhimento', pos: m.index }); }
+    // empregos: NIT, código do empregador e tipo de filiação podem vir antes, na linha ou depois (células em duas linhas)
+    const RE_COD = '(\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}|\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\d{2}\\.\\d{3}\\.\\d{5}\\/\\d{2})';
+    const reEmp = new RegExp('(?:^| )(\\d{1,3}) (?:' + RE_NIT + ' )?(?:' + RE_COD + ' )?(?!RECOLHIMENTO|Benef)([A-ZÀ-Ú][^0-9]{2,90}?) ' + RE_DATA + '(?: (\\d{2}\\/\\d{2}\\/\\d{4}|\\d{2}\\/\\d{4}))?(?: (\\d{2}\\/\\d{4}))?', 'g');
+    while ((m = reEmp.exec(s))) { if (!m[2] && !m[3]) continue;
+      const antes = s.slice(Math.max(0, m.index - 70), m.index), depois = s.slice(m.index + m[0].length, m.index + m[0].length + 80);
+      const cod = m[3] || (antes.match(new RegExp(RE_COD + '(?!.*' + RE_COD + ')')) || [])[1] || ''; if (!cod) continue;
+      const nitDepois = (depois.match(/^\s*(?:P[uú]blico\s+|Agente P[uú]blico\s+)?(\d{3}\.\d{5}\.\d{2}-\d)/) || [])[1];
+      const ind = (s.slice(m.index + m[0].length, m.index + m[0].length + 260).match(/^[^]*?Indicadores:\s*([A-Z0-9-]+(?:,\s*[A-Z0-9-]+)*)/) || [])[1] || (depois.match(/^\s*(PRPPS|PEXT|IEAN|AVRC-DEF|PVIN-IRREG)\b/) || [])[1] || '';
+      let fim = m[6] || '', ult = m[7] || ''; if (/^\d{2}\/\d{4}$/.test(fim) && !ult) { ult = fim; fim = ''; }
+      const perto = antes.slice(-40) + ' ' + m[4] + ' ' + depois.slice(0, 40), tpm = perto.match(new RegExp(tiposRe));
+      let tp = tpm ? tpm[0] : ''; if (/^Empregado ou( Agente)?$/.test(tp) || /Empregado ou/.test(perto) && /Agente/.test(perto)) tp = 'Empregado ou Agente Público';
+      vinc.push({ seq: +m[1], nit: m[2] || nitDepois || '', codigo: cod, origem: plano(m[4].replace(new RegExp('\\s*(?:' + tiposRe + '|Empregado ou|Agente P[uú]blico|P[uú]blico)\\s*', 'g'), ' ')), tipo: plano(tp),
+        inicio: iso(m[5]), fim: iso(fim), ultRemun: ult, indicadores: ind ? ind.split(/[ ,]+/).filter(Boolean) : [], categoria: 'emprego', pos: m.index }); }
+    vinc.sort((a, b) => a.pos - b.pos || a.seq - b.seq);
+    // um mesmo seq pode ser casado duas vezes (Relações + Extrato na mesma leitura): fica o primeiro
+    const vistos = new Set(); const V = vinc.filter(v => { const k = v.seq + '|' + v.categoria; if (vistos.has(k)) return false; vistos.add(k); return true; });
+    // remunerações e contribuições: entre um vínculo e o seguinte
+    V.forEach((v, i) => { const trecho = s.slice(v.pos, i + 1 < V.length ? V[i + 1].pos : s.length); v.remuneracoes = []; v.contribuicoes = [];
+      if (v.categoria === 'recolhimento') { const re = new RegExp(RE_COMP + ' ' + RE_DATA + ' ([\\d.]+,\\d{2}) ([\\d.]+,\\d{2})((?: ?(?:IREC|PREC|PSC|AVRC|PEXT|IVIN)-[A-Z0-9-]+,?| MEI,?| [A-Z]{2,}-?[A-Z0-9-]*,)*)', 'g'); let c;
+        while ((c = re.exec(trecho))) v.contribuicoes.push({ comp: c[1], pgto: iso(c[2]), contribuicao: num(c[3]), salario: num(c[4]), indicadores: plano(c[5]).replace(/,\s*$/, '').split(/,\s*/).map(x => x.trim()).filter(Boolean).map(x => x === 'MEI' ? 'IREC-MEI' : x) }); }
+      else if (v.categoria === 'emprego') { const re = new RegExp(RE_COMP + ' ([\\d.]+,\\d{2})((?: [A-Z]{2,}-[A-Z0-9-]+)*)', 'g'); let c;
+        while ((c = re.exec(trecho))) v.remuneracoes.push({ comp: c[1], valor: num(c[2]), indicadores: plano(c[3]).split(' ').filter(Boolean) }); }
+      v.pagina = pagDe(v.categoria === 'beneficio' ? v.nb : v.inicio ? br(v.inicio) : String(v.seq)); v.arquivo = arquivo || ''; delete v.pos; });
+    return { tipo: 'cnis', arquivo: arquivo || '', identificacao: id, vinculos: V, paginas: pg.length };
+  }
+
+  // ---------- processo administrativo ----------
+  function campo(valor, pagina, arquivo, trecho) { return valor ? { valor, pagina, arquivo: arquivo || '', trecho: plano(trecho).slice(0, 220) } : null; }
+  function lerProcesso(paginas, arquivo) {
+    const out = { tipo: 'processo', arquivo: arquivo || '', paginas: [], campos: {}, pendentesOCR: [] };
+    const DEC = { indeferimento: 'indeferido', indeferido: 'indeferido', deferido: 'deferido', concedido: 'concedido', concessao: 'concedido' };
+    const put = (k, v) => { if (v && k === 'DECISAO') v.valor = DEC[sem(v.valor).toLowerCase()] || v.valor; if (v && !out.campos[k]) out.campos[k] = v; };
+    (paginas || []).forEach((texto, i) => { const n = i + 1, t = plano(texto), u = sem(t), tp = tipo(texto); out.paginas.push({ n, tipo: tp });
+      if (tp === 'ilegivel') out.pendentesOCR.push(n);
+      const at = (re, s) => { const m = (s || t).match(re); return m ? m : null; };
+      if (tp === 'protocolo') { let m;
+        if ((m = at(/(?:(\d{8,})\s+Informa[cç][oõ]es da Tarefa|Informa[cç][oõ]es da Tarefa\s+(\d{6,}))/))) put('PROTOCOLO_INSS', campo(m[1] || m[2], n, arquivo, m[0]));
+        if ((m = at(/Servi[cç]o\s+Status\s+Prioridade\s+(.+?)\s+(Conclu[ií]da|Em an[aá]lise|Pendente|Cancelada|Em exig[eê]ncia|Aguardando[^ ]*)\s/i))) { put('ESPECIE_BENEFICIO', campo(m[1], n, arquivo, m[0])); put('STATUS_INSS', campo(m[2], n, arquivo, m[0])); }
+        if ((m = at(/Data de entrada do requerimento.*?(\d{2}\/\d{2}\/\d{4})/i))) put('DER', campo(m[1], n, arquivo, m[0]));
+        if ((m = at(/\bNIT\s+(\d{11})/))) put('NIT', campo(m[1], n, arquivo, m[0]));
+        if ((m = at(/\bNB\s+(\d{10})/))) put('NB', campo(fmtNB(m[1]), n, arquivo, m[0]));
+        if ((m = at(/(\d{3}\.\d{3}\.\d{3}-\d{2})\s+([A-ZÀ-Ú][A-ZÀ-Ú ]+?)\s+(\d{2}\/\d{2}\/\d{4})/))) { put('CPF', campo(m[1], n, arquivo, m[0])); put('NOME', campo(m[2], n, arquivo, m[0])); put('DATA_NASCIMENTO', campo(m[3], n, arquivo, m[0])); }
+        if ((m = at(/alterar a data do pedido[^?]*\?\s*(SIM|NAO|NÃO)/i))) put('REAFIRMACAO_AUTORIZADA', campo(/SIM/i.test(m[1]) ? 'sim' : 'não', n, arquivo, m[0]));
+        if ((m = at(/Possui tempo especial\?\s*(SIM|NAO|NÃO)/i))) put('DECLAROU_TEMPO_ESPECIAL', campo(/SIM/i.test(m[1]) ? 'sim' : 'não', n, arquivo, m[0]));
+        if ((m = at(/Possui tempo rural\?\s*(SIM|NAO|NÃO)/i))) put('DECLAROU_TEMPO_RURAL', campo(/SIM/i.test(m[1]) ? 'sim' : 'não', n, arquivo, m[0])); }
+      if (tp === 'despacho') { let m;
+        if ((m = at(/Despacho \((\d+)\)\s+Enviado em (\d{2}\/\d{2}\/\d{4})/))) put('DATA_DECISAO', campo(m[2], n, arquivo, m[0]));
+        if ((m = at(/foi (INDEFERIDO|DEFERIDO|CONCEDIDO)/i))) put('DECISAO', campo(m[1].toLowerCase(), n, arquivo, m[0]));
+        if ((m = at(/NB:\s*(\d{3}\.\d{3}\.\d{3}-\d)/))) put('NB', campo(m[1], n, arquivo, m[0])); }
+      if (tp === 'comunicacao_decisao') { let m;   // texto de OCR: sem acentos confiáveis
+        if ((m = at(/MOTIVO:\s*(.+?)\s+FUNDAMENTA/i, u))) put('MOTIVO_INDEFERIMENTO', campo(m[1], n, arquivo, m[0]));
+        if ((m = at(/DECISAO:\s*(.+?)\s+MOTIVO/i, u))) put('DECISAO_TEXTO', campo(m[1], n, arquivo, m[0]));
+        if ((m = at(/,\s*(\d{1,2}) de ([a-z]+) de (\d{4})/i, u)) && MESES[m[2].toLowerCase()]) put('DATA_DECISAO', campo(String(m[1]).padStart(2, '0') + '/' + String(MESES[m[2].toLowerCase()]).padStart(2, '0') + '/' + m[3], n, arquivo, m[0]));
+        if ((m = at(/Ag[eê]ncia da Previd[eê]ncia Social:\s*(APS [A-Z ]+?)(?=\s+[A-Z][a-z]|\s{2,}|$)/, u))) put('APS', campo(m[1].trim(), n, arquivo, m[0]));
+        if ((m = at(/no prazo de 30 \(trinta\)\s*dias/i, u))) put('PRAZO_RECURSO', campo('30 dias da ciência (art. 305, § 1º, do Decreto 3.048/1999, citado na comunicação)', n, arquivo, m[0])); }
+      if (tp === 'resumo_beneficio') { let m;
+        if ((m = at(/DESPACHO\s*:\s*\d+\s+(\w+)\s+MOTIVO\s*:\s*(\d+\s*-\s*.+?)(?:\s+CONTA CORRENTE|\s+TITULAR)/i, u))) { put('DECISAO', campo(m[1].toLowerCase(), n, arquivo, m[0])); put('MOTIVO_CODIGO', campo(m[2], n, arquivo, m[0])); }
+        if ((m = at(/DER:\s*(\d{2}\/\d{2}\/\d{4})/, u))) put('DER', campo(m[1], n, arquivo, m[0]));
+        if ((m = at(/Tempo de Servi[cg]o\s+(\d{1,2}) anos (\d{1,2}) meses (\d{1,2}) dias/i, u))) put('TEMPO_APURADO_INSS', campo(+m[1] + ' anos, ' + +m[2] + ' meses e ' + +m[3] + ' dias', n, arquivo, m[0])); }
+      if (tp === 'indeferimento') { let m;
+        if ((m = at(/1\.\s*(Trata-se de .+?)\s+2\.\s/i, u))) put('FUNDAMENTO_DO_INDEFERIMENTO', campo(m[1], n, arquivo, m[0]));
+        if ((m = at(/E\/NB:\s*(\d{2})\/(\d{3}\.\d{3}\.\d{3}-\d)/, u))) put('NB', campo(m[2], n, arquivo, m[0])); }
+    });
+    return out;
+  }
+
+  // ---------- quadro de contribuições (estimativa) ----------
+  // carência estimada: competências do RGPS sem pendência de valor, sem duplicar meses; vínculos com indicador de regime próprio (PRPPS) ficam fora até a CTC
+  // salário mínimo mensal (para marcar competência abaixo do mínimo quando o indicador PSC-MEN-SM vier em outra linha)
+  const SM = { 2019: 998, 2020: 1045, 2021: 1100, 2022: 1212, 2023: 1320, 2024: 1412, 2025: 1518, 2026: 1621 };
+  const abaixoDoMinimo = r => { const [mm, aa] = r.comp.split('/').map(Number); const sm = aa === 2020 && mm === 1 ? 1039 : aa === 2023 && mm < 5 ? 1302 : SM[aa]; return sm && r.salario != null && r.salario > 0 && r.salario < sm - 0.01; };
+  function quadro(cnis, o) {
+    o = o || {}; const ate = o.ate ? o.ate.slice(0, 7) : '9999-99', comps = new Map(), linhas = [], alertas = [];
+    const k = c => { const [mm, aa] = c.split('/'); return aa + '-' + mm; };
+    (cnis.vinculos || []).forEach(v => { if (v.categoria === 'beneficio') { linhas.push({ seq: v.seq, periodo: '', origem: 'Benefício ' + fmtNB(v.nb) + ' (' + v.especie + ')', situacao: v.situacao || 'não informado', conta: 0 }); return; }
+      const rpps = (v.indicadores || []).includes('PRPPS'), lista = v.categoria === 'recolhimento' ? v.contribuicoes : v.remuneracoes; let conta = 0, pend = 0;
+      (lista || []).forEach(r => { const kk = k(r.comp); if (kk > ate) return; const pendencia = (r.indicadores || []).some(x => /PSC-MEN-SM|PREM-EXT|PEXT|AVRC/.test(x)) || (v.categoria === 'recolhimento' && abaixoDoMinimo(r));
+        if (rpps) return; if (pendencia) { pend++; return; } if (!comps.has(kk)) { comps.set(kk, v.seq); conta++; } });
+      const per = br(v.inicio) + ' a ' + (v.fim ? br(v.fim) : (v.ultRemun || 'sem data fim'));
+      const sit = rpps ? 'regime próprio (PRPPS): só conta com CTC' : pend ? pend + ' competência(s) com pendência' : (v.indicadores || []).includes('IREC-INDPEND') ? 'conta, com indicadores a conferir' : 'conta';
+      linhas.push({ seq: v.seq, periodo: per, origem: v.origem + (v.tipo ? ' · ' + v.tipo : ''), competencias: (lista || []).length, conta, situacao: sit, pagina: v.pagina, arquivo: v.arquivo });
+      if (rpps) alertas.push('Vínculo ' + v.seq + ' (' + v.origem + ', ' + per + ') tem indicador PRPPS (regime próprio): para contar no RGPS, é preciso certidão de tempo de contribuição (CTC) do ente.');
+      if (pend) alertas.push('Vínculo ' + v.seq + ': ' + pend + ' competência(s) abaixo do mínimo (PSC-MEN-SM), que podem ser complementadas.');
+      if ((lista || []).some(r => (r.indicadores || []).includes('IREC-LC123') || (r.indicadores || []).includes('IREC-MEI'))) alertas.push('Vínculo ' + v.seq + ': recolhimentos no plano simplificado (LC 123/MEI) contam para a aposentadoria por idade, não para a aposentadoria por tempo de contribuição sem complementação.');
+    });
+    const n = comps.size; return { carencia: n, tempo: (x => x[0] + (x[0] === 1 ? ' ano' : ' anos') + ' e ' + x[1] + (x[1] === 1 ? ' mês' : ' meses'))([Math.floor(n / 12), n % 12]), linhas, alertas: [...new Set(alertas)], ate: o.ate || '' };
+  }
+
+  /* campos para os modelos RDPREV a partir das leituras; cada um com a origem */
+  function campos(leituras, o) {
+    o = o || {}; const out = {}; const put = (k, c) => { if (c && c.valor && !out[k]) out[k] = c; };
+    const proc = leituras.filter(l => l.tipo === 'processo'), cn = leituras.filter(l => l.tipo === 'cnis');
+    proc.forEach(p => Object.entries(p.campos).forEach(([k, c]) => put(k, c)));
+    cn.forEach(c => { const id = c.identificacao, pg = { pagina: 1, arquivo: c.arquivo };
+      put('NIT', id.nit && Object.assign({ valor: id.nit.replace(/\D/g, ''), trecho: 'Identificação do Filiado' }, pg)); put('NOME', id.nome && Object.assign({ valor: id.nome, trecho: 'Identificação do Filiado' }, pg));
+      put('CPF', id.cpf && Object.assign({ valor: id.cpf, trecho: 'Identificação do Filiado' }, pg)); put('DATA_NASCIMENTO', id.nascimento && Object.assign({ valor: br(id.nascimento), trecho: 'Identificação do Filiado' }, pg)); });
+    if (out.DECISAO || out.MOTIVO_INDEFERIMENTO) { const dec = (out.DECISAO || {}).valor || 'indeferido', mot = (out.MOTIVO_INDEFERIMENTO || out.MOTIVO_CODIGO || {}).valor || '';
+      const quando = out.DATA_DECISAO ? ' em ' + out.DATA_DECISAO.valor : '';
+      const motivo = mot.replace(/^\d+\s*-\s*/, ''); put('RESULTADO_ADMINISTRATIVO', { valor: 'foi ' + dec + quando + (motivo ? ', por ' + motivo.charAt(0).toLowerCase() + motivo.slice(1) : ''), pagina: (out.DECISAO || out.MOTIVO_INDEFERIMENTO).pagina, arquivo: (out.DECISAO || out.MOTIVO_INDEFERIMENTO).arquivo, trecho: 'montado a partir da decisão e do motivo' });
+      put('DECISAO_RECORRIDA', { valor: (dec === 'indeferido' ? 'indeferiu' : dec === 'concedido' ? 'concedeu' : dec) + ' o pedido de ' + ((out.ESPECIE_BENEFICIO || {}).valor || 'benefício').toLowerCase() + ' (NB ' + ((out.NB || {}).valor || '') + ')' + quando, pagina: (out.DECISAO || out.MOTIVO_INDEFERIMENTO).pagina, arquivo: (out.DECISAO || out.MOTIVO_INDEFERIMENTO).arquivo, trecho: 'montado a partir da decisão' }); }
+    if (out.DATA_NASCIMENTO && out.DER) { const [d, m, a] = out.DATA_NASCIMENTO.valor.split('/').map(Number), [d2, m2, a2] = out.DER.valor.split('/').map(Number); const idade = a2 - a - ((m2 < m || (m2 === m && d2 < d)) ? 1 : 0);
+      put('IDADE_NA_DER', { valor: String(idade), pagina: out.DER.pagina, arquivo: out.DER.arquivo, trecho: 'calculada: nascimento ' + out.DATA_NASCIMENTO.valor + ', DER ' + out.DER.valor }); }
+    if (cn.length) { const q = quadro(cn[0], { ate: out.DER ? iso(out.DER.valor) : '' });
+      put('CARENCIA', { valor: String(q.carencia), pagina: 0, arquivo: cn[0].arquivo, trecho: 'estimativa: competências do RGPS sem pendência' + (q.ate ? ' até a DER' : ''), estimativa: true }); }
+    return out;
+  }
+  // ordem e rótulos para a tela
+  const ROTULOS = { NOME: 'Nome', CPF: 'CPF', NIT: 'NIT', DATA_NASCIMENTO: 'Nascimento', ESPECIE_BENEFICIO: 'Benefício requerido', NB: 'NB', DER: 'DER', PROTOCOLO_INSS: 'Protocolo do requerimento',
+    STATUS_INSS: 'Situação no INSS', DECISAO: 'Decisão', DATA_DECISAO: 'Data da decisão', MOTIVO_INDEFERIMENTO: 'Motivo', MOTIVO_CODIGO: 'Motivo (código)', FUNDAMENTO_DO_INDEFERIMENTO: 'Fundamento do indeferimento',
+    TEMPO_APURADO_INSS: 'Tempo apurado pelo INSS', CARENCIA: 'Carência estimada (contribuições)', IDADE_NA_DER: 'Idade na DER', APS: 'Agência', PRAZO_RECURSO: 'Prazo de recurso', REAFIRMACAO_AUTORIZADA: 'Autorizou reafirmação da DER',
+    DECLAROU_TEMPO_ESPECIAL: 'Declarou tempo especial', DECLAROU_TEMPO_RURAL: 'Declarou tempo rural', RESULTADO_ADMINISTRATIVO: 'Resultado administrativo (texto da peça)', DECISAO_RECORRIDA: 'Decisão recorrida (texto da peça)', DECISAO_TEXTO: 'Decisão (comunicação)' };
+  const API = { textoDaPagina, legibilidade, tipo, lerCNIS, lerProcesso, quadro, campos, ROTULOS, fmtNB, versao: '1.0' };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.INSSLeitor = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
 <script>
 /* Matérias do escritório — "escritório virtual por matéria" (v1.0, 30/10/2026).
  * Catálogo das áreas (RD Trib, RD EF, RD Prev, RD Consul, RD Trab, RD Cível, RD Adm, RD Emp, RD Imob): sigla, justiça habitual,
@@ -1819,7 +2012,7 @@ function renderFicha(){
    '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
    '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
    '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
-   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+painelMateria(c,f)+
+   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+painelMateria(c,f)+painelINSS(c,f)+
    '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
@@ -2004,6 +2197,7 @@ document.getElementById('tf-add').addEventListener('click',()=>{ const g=id=>doc
 function anonimizar(c){ const f=c.ficha||{}; c.nome='Titular (dados excluídos)'; c.tel=''; c.doc=''; c.dados={}; c.docs=[]; c.docsZip=[];
   c.msgs=(c.msgs||[]).map(m=>m.de==='cli'?Object.assign({},m,{tx:'[mensagem excluída a pedido do titular]',extraido:'',link:'',arquivo:'',midia:false}):m.de==='eq'?Object.assign({},m,{tx:'[resposta da equipe excluída]',anexo:''}):m);
   if(c.ficha){ f.doc=''; f.resumo='[pedido excluído a pedido do titular]'; f.log.push('Dados pessoais excluídos a pedido do titular (LGPD, art. 18, VI); mantidos protocolo, datas, número do processo e este registro (art. 16, I)'); }
+  if(c.ficha) delete c.ficha.inss; if(typeof INSS_UI!=='undefined') delete INSS_UI.leituras[c.id];
   c.anonimizadaEm=new Date().toISOString(); return c; }
 window.__tarefas={todas:()=>tarefasTodas(),nova:o=>novaTarefa(o),render:()=>renderTarefas(),anonimizar:c=>anonimizar(c)};
 
@@ -2059,6 +2253,56 @@ document.getElementById("mt-data").addEventListener("change",renderMtPrazos); do
 document.getElementById("mt-casos").addEventListener("click",ev=>{ const id=ev.target.getAttribute("data-abrir-mt"); if(!id) return; st.sel=id; salvar(); mostrar("mesa") });
 document.getElementById("pp-mt").addEventListener("click",()=>mostrar("materias"));
 window.__materias={render:()=>renderMaterias(),selecionar:a=>{ mtSel=a; renderMaterias() },cfg:()=>mtCfg,areaConv:c=>areaConv(c)};
+
+// ---------- RD Prev: leitura do processo do INSS e do CNIS (31/10/2026) ----------
+const INSS_UI={msg:"",ocupado:false,leituras:{}};   // leituras em memória (por conversa) até a equipe aplicar
+const DOC_PREV={cnis:0,decisao:1};                   // índices na lista "Documentos a pedir" do RD Prev
+function inssEhPrev(c,f){ return (f.area||Materia.daConversa(c))==="Previdenciário" }
+async function inssPDFJS(){ const pdfjs=await carregaScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js","pdfjsLib"); pdfjs.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; return pdfjs }
+async function inssOCR(doc,n){ if(window.__inssOCR) return window.__inssOCR(n);   // gancho de teste
+  const T=await carregaScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js","Tesseract"); const pg=await doc.getPage(n), vp=pg.getViewport({scale:2});
+  const cv=document.createElement("canvas"); cv.width=vp.width; cv.height=vp.height; await pg.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise; const r=await T.recognize(cv,"por"); return r.data.text }
+function inssMsg(t){ INSS_UI.msg=t; const el=document.getElementById("inss-msg"); if(el) el.textContent=t }
+async function inssLerArquivo(file,cid){ const pdfjs=await inssPDFJS(), doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise, pags=[];
+  for(let i=1;i<=doc.numPages;i++){ const pg=await doc.getPage(i), tc=await pg.getTextContent(); pags.push(INSSLeitor.textoDaPagina(tc.items)); if(i%10===0) inssMsg("Lendo "+file.name+": página "+i+" de "+doc.numPages+"…") }
+  if(pags.some(t=>INSSLeitor.tipo(t)==="cnis")){ const r=INSSLeitor.lerCNIS(pags,file.name); r.ocr=[]; return r }
+  const r=INSSLeitor.lerProcesso(pags,file.name); r.ocr=[]; r._doc=doc; r._pags=pags; await inssOCRPendentes(r,12); return r }
+// OCR das páginas com fonte embaralhada, do fim para o começo (a decisão costuma estar no fim), até achar decisão, motivo e tempo apurado
+async function inssOCRPendentes(r,limite){ const fila=r.pendentesOCR.filter(n=>!r.ocr.includes(n)).sort((a,b)=>b-a).slice(0,limite);
+  for(const n of fila){ const tem=k=>r.campos[k]; if(tem("DECISAO")&&tem("MOTIVO_INDEFERIMENTO")&&tem("TEMPO_APURADO_INSS")&&limite<20) break;
+    inssMsg("Lendo por imagem (OCR) a página "+n+" de "+r.arquivo+"… pode levar alguns segundos por página.");
+    try{ r._pags[n-1]=await inssOCR(r._doc,n); r.ocr.push(n); const novo=INSSLeitor.lerProcesso(r._pags,r.arquivo); r.campos=novo.campos; r.paginas=novo.paginas; }catch(e){ inssMsg("OCR indisponível aqui: "+e.message+". Os demais dados foram lidos."); break } }
+  r.pendentesOCR=r.pendentesOCR.filter(n=>!r.ocr.includes(n)) }
+function painelINSS(c,f){ if(!inssEhPrev(c,f)) return ""; const L=INSS_UI.leituras[c.id]||[], ap=f.inss;
+  let h='<div class="resumo" id="inss-box" style="display:grid;gap:6px"><div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;align-items:center"><span class="hint" style="font-weight:600">Documentos do INSS (RD Prev)</span>'+
+    '<label class="btn ghost small" for="inss-arq">📥 Ler processo do INSS / CNIS (PDF)</label></div><input type="file" id="inss-arq" accept=".pdf,application/pdf" multiple hidden>'+
+    '<div class="hint" id="inss-msg" role="status">'+esc(INSS_UI.msg||(L.length?"":"Baixe no Meu INSS a cópia do processo e o CNIS (extrato previdenciário) e importe aqui. A leitura é feita neste navegador; os PDFs não são guardados. O processo traz dados de saúde: confirme o termo LGPD com o bloco de dados de saúde."))+'</div>';
+  if(L.length){ const C=INSSLeitor.campos(L), chaves=Object.keys(INSSLeitor.ROTULOS).filter(k=>C[k]);
+    h+='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Usar</th><th>Campo</th><th>Valor lido</th><th>Origem</th></tr></thead><tbody>'+chaves.map(k=>{ const x=C[k], usar=!x.estimativa&&!/^(DECLAROU_|STATUS_INSS|PRAZO_RECURSO|DECISAO_TEXTO|MOTIVO_CODIGO|REAFIRMACAO)/.test(k);
+      return '<tr><td><input type="checkbox" data-inss="'+k+'"'+(usar?" checked":"")+' aria-label="Usar '+esc(INSSLeitor.ROTULOS[k])+'"></td><td>'+esc(INSSLeitor.ROTULOS[k])+'<div class="orig mono">{{'+k+'}}</div></td><td>'+esc(x.valor)+(x.estimativa?' <span class="pill warn">estimativa</span>':'')+'</td><td class="orig">'+esc(x.arquivo||"")+(x.pagina?', p. '+x.pagina:'')+(x.trecho?'<br>“'+esc(x.trecho.slice(0,120))+'”':'')+'</td></tr>' }).join("")+'</tbody></table></div>';
+    const cn=L.find(l=>l.tipo==="cnis"); if(cn){ const q=INSSLeitor.quadro(cn,{ate:C.DER?C.DER.valor.split("/").reverse().join("-"):""});
+      h+='<details><summary class="hint" style="cursor:pointer;font-weight:600">Quadro de contribuições do CNIS (estimativa): '+q.carencia+' competências ('+esc(q.tempo)+')'+(q.ate?' até a DER':'')+'</summary><div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Seq.</th><th>Período</th><th>Origem</th><th>Competências que contam</th><th>Situação</th></tr></thead><tbody>'+
+        q.linhas.map(l=>'<tr><td>'+l.seq+'</td><td>'+esc(l.periodo||"—")+'</td><td>'+esc(l.origem)+'</td><td>'+(l.conta||0)+(l.competencias!=null?' de '+l.competencias:'')+'</td><td>'+esc(l.situacao)+'</td></tr>').join("")+'</tbody></table></div>'+
+        (q.alertas.length?'<ul style="margin:4px 0;padding-left:18px">'+q.alertas.map(a=>'<li class="hint">'+esc(a)+'</li>').join("")+'</ul>':'')+'<div class="hint">Estimativa para orientar a análise; o cálculo oficial é o do INSS e o da peça, conferidos pelo advogado.</div></details>' }
+    const pend=L.reduce((s,l)=>s+(l.pendentesOCR||[]).length,0);
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn small" type="button" id="inss-aplica">Usar nos modelos (gravar na ficha)</button>'+(pend?'<button class="btn ghost small" type="button" id="inss-mais">Ler mais '+pend+' página(s) por OCR</button>':'')+'<button class="btn ghost small" type="button" id="inss-limpa">Descartar leitura</button></div>' }
+  if(ap) h+='<div class="hint">Aplicado em '+esc(ap.em.slice(0,10).split("-").reverse().join("/"))+' ('+esc(Object.keys(ap.campos).length+" campos")+', de '+esc(ap.arquivos.join(", "))+'). Os campos já preenchem os modelos RDPREV.</div>';
+  return h+'</div>' }
+document.getElementById("ficha").addEventListener("change",async ev=>{ if(ev.target.id!=="inss-arq") return; const c=conv(), f=c&&c.ficha, arqs=[...ev.target.files]; ev.target.value=""; if(!f||!arqs.length||INSS_UI.ocupado) return;
+  INSS_UI.ocupado=true; const L=INSS_UI.leituras[c.id]=INSS_UI.leituras[c.id]||[];
+  for(const a of arqs){ try{ inssMsg("Lendo "+a.name+"…"); const r=await inssLerArquivo(a,c.id); const i=L.findIndex(x=>x.arquivo===r.arquivo); if(i>=0) L[i]=r; else L.push(r); }catch(e){ inssMsg("Não foi possível ler "+a.name+": "+e.message) } }
+  INSS_UI.ocupado=false; const C=INSSLeitor.campos(L); inssMsg(Object.keys(C).length+" dado(s) lido(s) de "+L.length+" arquivo(s). Confira os valores e a origem antes de usar."); renderMesa() });
+document.getElementById("ficha").addEventListener("click",async ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return; const L=INSS_UI.leituras[c.id]||[];
+  if(ev.target.id==="inss-aplica"){ const C=INSSLeitor.campos(L), usados={}; document.querySelectorAll("#inss-box input[data-inss]:checked").forEach(i=>{ const k=i.dataset.inss, x=C[k]; if(!x) return;
+      if((k==="NOME"||k==="CPF")&&(c.dados&&c.dados[k])) return; c.dados=c.dados||{}; c.dados[k]=x.valor; usados[k]={valor:x.valor,arquivo:x.arquivo,pagina:x.pagina} });
+    const cn=L.find(l=>l.tipo==="cnis"), pr=L.find(l=>l.tipo==="processo");
+    f.docsMateria=Object.assign({},f.docsMateria); if(cn) f.docsMateria[DOC_PREV.cnis]=true; if(pr&&(C.DECISAO||C.MOTIVO_INDEFERIMENTO)) f.docsMateria[DOC_PREV.decisao]=true;
+    f.inss={em:new Date().toISOString(),arquivos:L.map(l=>l.arquivo),campos:usados,quadro:cn?(()=>{ const q=INSSLeitor.quadro(cn,{ate:C.DER?C.DER.valor.split("/").reverse().join("-"):""}); return {carencia:q.carencia,tempo:q.tempo,alertas:q.alertas} })():null};
+    f.log.push("Dados do INSS aplicados aos modelos ("+Object.keys(usados).join(", ")+"), lidos de "+f.inss.arquivos.join(", ")+"; conferidos pela equipe");
+    delete INSS_UI.leituras[c.id]; INSS_UI.msg=""; salvar(); renderMesa() }
+  if(ev.target.id==="inss-limpa"){ delete INSS_UI.leituras[c.id]; INSS_UI.msg=""; renderMesa() }
+  if(ev.target.id==="inss-mais"&&!INSS_UI.ocupado){ INSS_UI.ocupado=true; for(const r of L) if(r._doc&&(r.pendentesOCR||[]).length) await inssOCRPendentes(r,60); INSS_UI.ocupado=false; inssMsg("Leitura por OCR concluída."); renderMesa() } });
+window.__inss={leituras:()=>INSS_UI.leituras,ler:async(file)=>{ const c=conv(); const r=await inssLerArquivo(file,c.id); (INSS_UI.leituras[c.id]=INSS_UI.leituras[c.id]||[]).push(r); renderMesa(); return r }};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};

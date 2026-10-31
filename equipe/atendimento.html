@@ -2120,7 +2120,7 @@ function painelFluxo(c,f){ const a=f.astrea||{}, e=f.encerramento||{}, lx=f.lgpd
   return h+'</div>' }
 document.getElementById("ficha").addEventListener("click",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
   if(ev.target.id==="fx-conflito"){ f.status="Concluída"; f.encerramento=Object.assign({},f.encerramento,{motivo:"conflito de interesses impedido",em:new Date().toISOString(),resp:RESP_ENC}); f.log.push("Conflito impedido: atendimento encerrado (etapa 9)"); salvar(); renderMesa(); renderFila&&renderFila() }
-  if(ev.target.id==="fx-lgpd"){ f.lgpdExclusao.status="atendida"; f.lgpdExclusao.atendidaEm=hojeISO(); f.log.push("Exclusão de dados (LGPD) atendida"); anonimizar(c); salvar(); renderMesa(); renderFila&&renderFila() } });
+  if(ev.target.id==="fx-lgpd"){ if(!ev.target.dataset.ok){ ev.target.dataset.ok="1"; ev.target.textContent="Confirmar: apagar os dados pessoais deste titular"; ev.target.classList.remove("ghost"); return } f.lgpdExclusao.status="atendida"; f.lgpdExclusao.atendidaEm=hojeISO(); f.log.push("Exclusão de dados (LGPD) atendida"); anonimizar(c); salvar(); renderMesa(); renderFila&&renderFila() } });
 document.getElementById("ficha").addEventListener("change",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return;
   if(ev.target.id==="fx-cnj"){ const v=ev.target.value.trim(); f.astrea=Object.assign({},f.astrea,{cnj:v,protocoloEm:(f.astrea&&f.astrea.protocoloEm)||hojeISO()}); if(!v) delete f.astrea; f.log.push(v?"Processo protocolado: "+v+" (lançar no Astrea hoje)":"Número do processo removido"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
   if(ev.target.id==="fx-astrea"){ f.astrea.lancado=ev.target.checked?hojeISO():""; f.log.push(ev.target.checked?"Processo lançado no Astrea":"Lançamento no Astrea desmarcado"); salvar(); setTimeout(()=>{ renderMesa(); renderFila&&renderFila() },0) }
@@ -2194,10 +2194,16 @@ document.getElementById('tf-lista').addEventListener('click',e=>{ const b=e.targ
 document.getElementById('tf-add').addEventListener('click',()=>{ const g=id=>document.getElementById(id); const titulo=g('tf-titulo').value.trim(), resp=g('tf-quem').value; if(!titulo||!resp){ g('tf-msg').textContent='Informe a tarefa e o responsável.'; return }
   novaTarefa({titulo,resp,cliente:g('tf-cli').value.trim(),prazo:g('tf-prazo').value}); g('tf-titulo').value=''; g('tf-cli').value=''; g('tf-prazo').value=''; g('tf-msg').textContent='Tarefa criada.'; renderTarefas(); });
 // ---------- exclusão de dados (LGPD): anonimiza a conversa, mantendo a guarda mínima (art. 16, I) ----------
-function anonimizar(c){ const f=c.ficha||{}; c.nome='Titular (dados excluídos)'; c.tel=''; c.doc=''; c.dados={}; c.docs=[]; c.docsZip=[];
+function anonimizar(c){ const f=c.ficha||{}; c.__nomeAnterior=c.nome; c.nome='Titular (dados excluídos)'; c.tel=''; c.doc=''; c.dados={}; c.docs=[]; c.docsZip=[];
   c.msgs=(c.msgs||[]).map(m=>m.de==='cli'?Object.assign({},m,{tx:'[mensagem excluída a pedido do titular]',extraido:'',link:'',arquivo:'',midia:false}):m.de==='eq'?Object.assign({},m,{tx:'[resposta da equipe excluída]',anexo:''}):m);
   if(c.ficha){ f.doc=''; f.resumo='[pedido excluído a pedido do titular]'; f.log.push('Dados pessoais excluídos a pedido do titular (LGPD, art. 18, VI); mantidos protocolo, datas, número do processo e este registro (art. 16, I)'); }
   if(c.ficha) delete c.ficha.inss; if(typeof INSS_UI!=='undefined') delete INSS_UI.leituras[c.id];
+  // mensagens automáticas (resumo do pedido, avisos) também saem; ficam protocolo, datas e o registro da exclusão
+  c.msgs=(c.msgs||[]).map(m=>m.de==='sys'?Object.assign({},m,{tx:'[registro do sistema excluído a pedido do titular]'}):m);
+  if(c.ficha&&c.ficha.astrea) c.ficha.astrea=Object.assign({},c.ficha.astrea);
+  const nomeAnt=c.__nomeAnterior||''; delete c.__nomeAnterior;
+  try{ (typeof tarefasTodas==='function'?tarefasTodas():[]).filter(t=>t.leadId===c.id||(nomeAnt&&String(t.cliente||'').includes(nomeAnt))).forEach(t=>{ t.cliente='Titular (dados excluídos)'+(String(t.cliente||'').match(/ · \d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/)||[''])[0]; salvarTarefa(t) }); }catch(e){}
+  try{ (typeof pubsTodas==='function'?pubsTodas():[]).filter(p=>p.fichaId===c.id).forEach(p=>{ p.cliente='Titular (dados excluídos)'; salvarPub(p) }); }catch(e){}
   c.anonimizadaEm=new Date().toISOString(); return c; }
 window.__tarefas={todas:()=>tarefasTodas(),nova:o=>novaTarefa(o),render:()=>renderTarefas(),anonimizar:c=>anonimizar(c)};
 
@@ -2273,12 +2279,18 @@ async function inssOCRPendentes(r,limite){ const fila=r.pendentesOCR.filter(n=>!
     inssMsg("Lendo por imagem (OCR) a página "+n+" de "+r.arquivo+"… pode levar alguns segundos por página.");
     try{ r._pags[n-1]=await inssOCR(r._doc,n); r.ocr.push(n); const novo=INSSLeitor.lerProcesso(r._pags,r.arquivo); r.campos=novo.campos; r.paginas=novo.paginas; }catch(e){ inssMsg("OCR indisponível aqui: "+e.message+". Os demais dados foram lidos."); break } }
   r.pendentesOCR=r.pendentesOCR.filter(n=>!r.ocr.includes(n)) }
+function inssDivergencia(c,C){ const dg=s=>String(s||"").replace(/\D/g,""), nm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/\s+/g," ").trim();
+  const docF=dg(c.doc||(c.ficha&&c.ficha.doc)), docP=dg(C.CPF&&C.CPF.valor);
+  if(docF.length===11&&docP.length===11&&docF!==docP) return "Atenção: o CPF do documento do INSS ("+C.CPF.valor+") é diferente do CPF da ficha ("+(c.doc||c.ficha.doc)+").";
+  if(C.NOME&&c.nome&&!/^Titular/.test(c.nome)){ const a=nm(C.NOME.valor).split(" "), b=nm(c.nome).split(" "); if(a[0]!==b[0]||a[a.length-1]!==b[b.length-1]) return "Atenção: o nome no documento do INSS ("+C.NOME.valor+") é diferente do nome da ficha ("+c.nome+")."; }
+  return "" }
 function painelINSS(c,f){ if(!inssEhPrev(c,f)) return ""; const L=INSS_UI.leituras[c.id]||[], ap=f.inss;
   let h='<div class="resumo" id="inss-box" style="display:grid;gap:6px"><div style="display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;align-items:center"><span class="hint" style="font-weight:600">Documentos do INSS (RD Prev)</span>'+
     '<label class="btn ghost small" for="inss-arq">📥 Ler processo do INSS / CNIS (PDF)</label></div><input type="file" id="inss-arq" accept=".pdf,application/pdf" multiple hidden>'+
     '<div class="hint" id="inss-msg" role="status">'+esc(INSS_UI.msg||(L.length?"":"Baixe no Meu INSS a cópia do processo e o CNIS (extrato previdenciário) e importe aqui. A leitura é feita neste navegador; os PDFs não são guardados. O processo traz dados de saúde: confirme o termo LGPD com o bloco de dados de saúde."))+'</div>';
-  if(L.length){ const C=INSSLeitor.campos(L), chaves=Object.keys(INSSLeitor.ROTULOS).filter(k=>C[k]);
-    h+='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Usar</th><th>Campo</th><th>Valor lido</th><th>Origem</th></tr></thead><tbody>'+chaves.map(k=>{ const x=C[k], usar=!x.estimativa&&!/^(DECLAROU_|STATUS_INSS|PRAZO_RECURSO|DECISAO_TEXTO|MOTIVO_CODIGO|REAFIRMACAO)/.test(k);
+  if(L.length){ const C=INSSLeitor.campos(L), chaves=Object.keys(INSSLeitor.ROTULOS).filter(k=>C[k]), div=inssDivergencia(c,C);
+    if(div) h+='<div class="falta" id="inss-div">'+esc(div)+' Confira se o arquivo é deste cliente antes de usar; nome e CPF do documento ficam desmarcados.</div>';
+    h+='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Usar</th><th>Campo</th><th>Valor lido</th><th>Origem</th></tr></thead><tbody>'+chaves.map(k=>{ const x=C[k], usar=!x.estimativa&&!(div&&(k==="NOME"||k==="CPF"||k==="NIT"||k==="DATA_NASCIMENTO"))&&!/^(DECLAROU_|STATUS_INSS|PRAZO_RECURSO|DECISAO_TEXTO|MOTIVO_CODIGO|REAFIRMACAO)/.test(k);
       return '<tr><td><input type="checkbox" data-inss="'+k+'"'+(usar?" checked":"")+' aria-label="Usar '+esc(INSSLeitor.ROTULOS[k])+'"></td><td>'+esc(INSSLeitor.ROTULOS[k])+'<div class="orig mono">{{'+k+'}}</div></td><td>'+esc(x.valor)+(x.estimativa?' <span class="pill warn">estimativa</span>':'')+'</td><td class="orig">'+esc(x.arquivo||"")+(x.pagina?', p. '+x.pagina:'')+(x.trecho?'<br>“'+esc(x.trecho.slice(0,120))+'”':'')+'</td></tr>' }).join("")+'</tbody></table></div>';
     const cn=L.find(l=>l.tipo==="cnis"); if(cn){ const q=INSSLeitor.quadro(cn,{ate:C.DER?C.DER.valor.split("/").reverse().join("-"):""});
       h+='<details><summary class="hint" style="cursor:pointer;font-weight:600">Quadro de contribuições do CNIS (estimativa): '+q.carencia+' competências ('+esc(q.tempo)+')'+(q.ate?' até a DER':'')+'</summary><div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Seq.</th><th>Período</th><th>Origem</th><th>Competências que contam</th><th>Situação</th></tr></thead><tbody>'+
@@ -2298,6 +2310,7 @@ document.getElementById("ficha").addEventListener("click",async ev=>{ const c=co
     const cn=L.find(l=>l.tipo==="cnis"), pr=L.find(l=>l.tipo==="processo");
     f.docsMateria=Object.assign({},f.docsMateria); if(cn) f.docsMateria[DOC_PREV.cnis]=true; if(pr&&(C.DECISAO||C.MOTIVO_INDEFERIMENTO)) f.docsMateria[DOC_PREV.decisao]=true;
     f.inss={em:new Date().toISOString(),arquivos:L.map(l=>l.arquivo),campos:usados,quadro:cn?(()=>{ const q=INSSLeitor.quadro(cn,{ate:C.DER?C.DER.valor.split("/").reverse().join("-"):""}); return {carencia:q.carencia,tempo:q.tempo,alertas:q.alertas} })():null};
+    const dv=inssDivergencia(c,C); if(dv) f.log.push("Leitura do INSS com divergência de titular: "+dv);
     f.log.push("Dados do INSS aplicados aos modelos ("+Object.keys(usados).join(", ")+"), lidos de "+f.inss.arquivos.join(", ")+"; conferidos pela equipe");
     delete INSS_UI.leituras[c.id]; INSS_UI.msg=""; salvar(); renderMesa() }
   if(ev.target.id==="inss-limpa"){ delete INSS_UI.leituras[c.id]; INSS_UI.msg=""; renderMesa() }

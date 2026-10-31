@@ -2095,7 +2095,7 @@ function renderFicha(){
    '<div class="resumo"><div class="hint" style="font-weight:600;margin-bottom:2px">Pedido do cliente</div>'+esc(f.resumo)+'</div>'+
    '<label for="f-st" class="hint" style="font-weight:600">Status</label><select id="f-st">'+STATUS.map(s=>'<option'+(s===f.status?" selected":"")+'>'+s+'</option>').join("")+'</select>'+
    '<button class="btn ghost small" type="button" id="ir-docs">Gerar documentos para este cliente</button>'+
-   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+painelCadastro(c,f)+painelMateria(c,f)+painelINSS(c,f)+
+   '<button class="btn ghost small" type="button" id="ir-crm">Virar lead no CRM</button><div class="hint" id="crm-st" role="status"></div>'+painelFluxo(c,f)+painelControles(c,f)+painelCadastro(c,f)+painelMateria(c,f)+painelINSS(c,f)+
    '<div class="log">'+f.log.map(l=>'<span>· '+esc(l)+'</span>').join("")+'</div></div>';
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
@@ -2189,7 +2189,7 @@ var GUARDA_PADRAO="a definir", RESP_ENC="Coordenação Administrativa";
 function hojeISO(){ return new Date().toLocaleDateString("sv-SE") }
 function checaExcluir(c,f){ if(f.lgpdExclusao) return false; const m=(c.msgs||[]).find(x=>x.de==="cli"&&/^\s*excluir\s*[.!]?\s*$/i.test(x.tx||""));
   if(!m) return false; f.lgpdExclusao={status:"pendente",pedidoEm:m.em||new Date().toISOString(),resp:RESP_ENC}; f.log.push("Pedido de exclusão de dados (LGPD) recebido: "+RESP_ENC+" atende"); return true }
-function pendFluxo(f){ const p=[]; if(!f.area&&f.rota!=="fin"&&f.rota!=="agenda") p.push("Definir a matéria"); if(f.lgpdExclusao&&f.lgpdExclusao.status==="pendente") p.push("LGPD: exclusão pendente");
+function pendFluxo(f){ const p=[]; if(f.status==="Concluída"&&!f.licoes&&f.rota!=="fin"&&f.rota!=="agenda"&&!(f.encerramento&&/conflito/.test(f.encerramento.motivo||""))) p.push("Registrar lições do encerramento"); if(f.astrea&&f.astrea.cnj&&(f.rota==="urgencia"||f.rota==="processo")&&!(f.revisoes||[]).length) p.push("Revisão da peça não registrada"); if(!f.area&&f.rota!=="fin"&&f.rota!=="agenda") p.push("Definir a matéria"); if(f.lgpdExclusao&&f.lgpdExclusao.status==="pendente") p.push("LGPD: exclusão pendente");
   const a=f.astrea||{}; if(a.cnj&&!a.lancado) p.push("Lançar no Astrea"+(a.protocoloEm&&a.protocoloEm<hojeISO()?" (atrasado)":" hoje")); return p }
 function painelFluxo(c,f){ const a=f.astrea||{}, e=f.encerramento||{}, lx=f.lgpdExclusao; let h='<div class="resumo" id="fx-box" style="display:grid;gap:6px"><div class="hint" style="font-weight:600">Andamento do fluxo</div>';
   if(lx) h+='<div class="'+(lx.status==="pendente"?"falta":"hint")+'">Pedido de exclusão de dados (LGPD) em '+esc(String(lx.pedidoEm).slice(0,10).split("-").reverse().join("/"))+': '+(lx.status==="pendente"?'pendente com '+esc(lx.resp)+'. <button class="btn ghost small" type="button" id="fx-lgpd">Exclusão atendida</button>':'atendida em '+esc(lx.atendidaEm.split("-").reverse().join("/"))+'.')+'</div>';
@@ -2246,13 +2246,13 @@ function renderAcomp(){ const el=document.getElementById("ac-res"); if(!el) retu
     .concat((typeof carteiraTodos==='function'?carteiraTodos():[]).filter(x=>x.ativo!==false).map(x=>({cnj:x.cnj,cliente:x.cliente||'',desde:(x.importadoEm||'').slice(0,10)})));
   const movs={}; (procsDb||[]).forEach(p=>{ movs[p.cnj]={data:p.ultimaMov||'',nome:p.ultimaMovNome||'',carga:p.cargaDatajud||''} });
   const pubs=pubsTodas(), ac=Publicacao.acompanhados(pubs,fichas,hoje,lim,movs), br=s=>s?s.split("-").reverse().join("/"):"—";
-  if(!ac.length){ el.innerHTML='<div class="hint">Nenhum processo registrado ainda. Informe o número CNJ na ficha da demanda ou registre uma publicação.</div>'; return }
-  el.innerHTML='<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Processo</th><th>Cliente</th><th>Última publicação</th><th>Última movimentação (Datajud)</th><th>Próximo vencimento</th><th>Astrea</th><th>Situação</th></tr></thead><tbody>'+
+  if(!ac.length){ el.innerHTML=painelDupla()+'<div class="hint">Nenhum processo registrado ainda. Informe o número CNJ na ficha da demanda ou registre uma publicação.</div>'; return }
+  el.innerHTML=painelDupla()+'<div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Processo</th><th>Cliente</th><th>Última publicação</th><th>Última movimentação (Datajud)</th><th>Próximo vencimento</th><th>Astrea</th><th>Situação</th></tr></thead><tbody>'+
     ac.map(x=>'<tr><td class="mono">'+esc(x.cnj)+'</td><td>'+esc(x.cliente||"—")+'</td><td>'+br(x.ultima)+(x.tipoUltimo?'<div class="hint">'+esc(x.tipoUltimo)+'</div>':'')+'</td><td>'+(x.mov&&x.mov.data?br(x.mov.data)+'<div class="hint">'+esc(x.mov.nome||'')+(x.mov.carga?' · carga de '+esc(br(String(x.mov.carga).slice(0,10))):'')+'</div>':'<span class="hint">sem consulta</span>')+'</td><td>'+(x.proximo?'<b>'+br(x.proximo)+'</b>':'—')+'</td><td>'+(x.pendentes?'<span class="pill warn">'+x.pendentes+' a lançar</span>':'<span class="pill ok">em dia</span>')+'</td><td>'+(x.parado?'<span class="pill crit">parado há '+(x.diasSem==null?"?":x.diasSem)+' dias</span>':'<span class="hint">'+(x.diasSem==null?"—":x.diasSem+" dias sem publicação")+'</span>')+'</td></tr>').join("")+'</tbody></table></div>'+
     '<details style="margin-top:8px"><summary class="hint">Publicações registradas ('+pubs.length+')</summary><ul class="hint" style="margin:6px 0 0 16px">'+pubs.sort((a,b)=>a.disp<b.disp?1:-1).slice(0,50).map(p=>'<li><label><input type="checkbox" data-publanc="'+esc(p.id)+'"'+(p.status==="lancada"?" checked":"")+'> '+esc(br(p.disp))+' · '+esc(p.tipoNome)+' · <span class="mono">'+esc(p.cnj||"—")+'</span>'+(p.venc?' · vence '+esc(br(p.venc)):'')+' · lançada no Astrea</label></li>').join("")+'</ul></details>'; }
 document.getElementById("ac-dias").addEventListener("change",renderAcomp);
 document.getElementById("ac-res").addEventListener("change",e=>{ const id=e.target.getAttribute("data-publanc"); if(!id) return; const p=pubsTodas().find(x=>x.id===id); if(!p) return;
-  p.status=e.target.checked?"lancada":"nova"; p.lancadaEm=e.target.checked?hojeISO():""; salvarPub(p);
+  p.status=e.target.checked?"lancada":"nova"; p.lancadaEm=e.target.checked?hojeISO():""; p.lancadaPor=e.target.checked?(quemSou()||p.lancadaPor||""):""; if(!e.target.checked){ p.conferidaPor=""; p.conferidaEm="" } salvarPub(p);
   const c=st.convs.find(x=>x.id===p.fichaId); if(c&&c.ficha&&c.ficha.astrea&&e.target.checked){ c.ficha.astrea.lancado=hojeISO(); c.ficha.log.push("Prazo da publicação lançado no Astrea"); salvar(); renderMesa(); }
   setTimeout(renderAcomp,0); });
 window.__pubs={classificar:(t,o)=>Publicacao.lote(t,o),todas:()=>pubsTodas(),renderAcomp:()=>renderAcomp()};
@@ -2505,6 +2505,44 @@ document.getElementById("cart-grava").addEventListener("click",()=>{ const agora
   cartPrev.filter(x=>x.ativo).forEach(x=>{ const ant=carteiraTodos().find(y=>y.id===x.id)||{}; salvarCarteira(Object.assign({},ant,x,{fonte:"importação (Astrea)",importadoEm:ant.importadoEm||agora,atualizadoEm:agora,por})); n++ });
   salvarLocal(); document.getElementById("cart-msg").textContent=n+" processo(s) gravado(s) na carteira. A rotina diária do Datajud passa a consultá-los."; document.getElementById("cart-grava").hidden=true; document.getElementById("cart-tx").value=""; document.getElementById("cart-prev").innerHTML=""; renderAcomp() });
 window.__carteira={ler:t=>lerCarteira(t),todos:()=>carteiraTodos()};
+
+// ---------- controles de qualidade (31/10/2026) ----------
+function quemSou(){ return (document.getElementById("pub-por")&&document.getElementById("pub-por").value.trim())||"" }
+function prazosSemana(){ const hoje=hojeISO(), ate=Tarefas.somaUteis(hoje,5);
+  return pubsTodas().filter(p=>p.venc&&p.status!=="cumprida"&&p.venc<=ate&&!(p.venc<hoje&&p.conferidaPor)).sort((a,b)=>a.venc.localeCompare(b.venc)) }
+function painelDupla(){ const L=prazosSemana(), br=s=>s?s.split("-").reverse().join("/"):"—", hoje=hojeISO();
+  if(!L.length) return '<div class="hint" style="margin-bottom:8px">Nenhum prazo nos próximos 5 dias úteis.</div>';
+  return '<div style="margin-bottom:10px"><h4 style="margin:0 0 4px">Prazos dos próximos 5 dias úteis — dupla checagem</h4><div class="hint" style="margin-bottom:4px">Quem lança no Astrea não confere: a conferência é de outra pessoa (informe seu nome em “Conferido por”).</div><div style="overflow-x:auto"><table class="doc-tab"><thead><tr><th>Vence</th><th>Processo · ato</th><th>Lançado no Astrea</th><th>Conferido</th></tr></thead><tbody>'+
+    L.map(p=>{ const sit=p.conferidaPor?"ok":p.venc<=hoje?"crit":"warn";
+      return '<tr><td><span class="pill '+sit+'">'+br(p.venc)+'</span></td><td><span class="mono">'+esc(p.cnj||"—")+'</span><div class="hint">'+esc(p.tipoNome||"")+(p.cliente?' · '+esc(p.cliente):'')+'</div></td>'+
+        '<td>'+(p.status==="lancada"?'<span class="hint">'+esc(p.lancadaPor||"—")+' em '+br(p.lancadaEm)+'</span>':'<button class="btn small" type="button" data-dl="'+esc(p.id)+'">Marcar lançado</button>')+'</td>'+
+        '<td>'+(p.conferidaPor?'<span class="pill ok">'+esc(p.conferidaPor)+'</span> <span class="hint">'+br(p.conferidaEm)+'</span>':p.status==="lancada"?'<button class="btn ghost small" type="button" data-dc="'+esc(p.id)+'">Conferir</button>':'<span class="hint">aguarda lançamento</span>')+'</td></tr>' }).join("")+'</tbody></table></div><div class="hint" id="dup-msg" role="status"></div></div>' }
+document.getElementById("ac-res").addEventListener("click",e=>{ const l=e.target.closest("[data-dl]"), cf=e.target.closest("[data-dc]"); if(!l&&!cf) return; const eu=quemSou(), msg=t=>{ const m=document.getElementById("dup-msg"); if(m) m.textContent=t };
+  if(!eu){ msg("Informe seu nome em “Conferido por”, no painel Classificar publicação."); return }
+  const p=pubsTodas().find(x=>x.id===(l?l.dataset.dl:cf.dataset.dc)); if(!p) return;
+  if(l){ p.status="lancada"; p.lancadaEm=hojeISO(); p.lancadaPor=eu; }
+  else { if(p.lancadaPor&&p.lancadaPor.toLowerCase()===eu.toLowerCase()){ msg("A conferência precisa ser de outra pessoa, não de quem lançou ("+p.lancadaPor+")."); return } p.conferidaPor=eu; p.conferidaEm=hojeISO(); }
+  salvarPub(p); const c=st.convs.find(x=>x.id===p.fichaId); if(c&&c.ficha){ c.ficha.log.push(l?"Prazo lançado no Astrea por "+eu:"Prazo conferido por "+eu+" (dupla checagem)"); if(l&&c.ficha.astrea) c.ficha.astrea.lancado=hojeISO(); salvar() } renderAcomp(); renderMesa() });
+// escopo, revisão e encerramento na ficha
+function painelControles(c,f){ const e=f.escopo||{}, rv=f.revisoes||[], li=f.licoes;
+  let h='<details class="resumo" id="ctl-box" style="display:block"><summary class="hint" style="font-weight:600;cursor:pointer">Escopo, revisão e encerramento'+(e.dentro?'':' · escopo a definir')+(rv.length?' · '+rv.length+' revisão(ões)':'')+'</summary><div style="display:grid;gap:6px;margin-top:6px">'+
+    '<label class="hint">O que está dentro do contrato<textarea id="ctl-dentro" rows="2">'+esc(e.dentro||"")+'</textarea></label><label class="hint">O que está fora (exige aditivo)<textarea id="ctl-fora" rows="2">'+esc(e.fora||"")+'</textarea></label>'+
+    '<div><button class="btn ghost small" type="button" id="ctl-escopo">Salvar escopo</button>'+(e.em?' <span class="hint">salvo em '+esc(e.em.split("-").reverse().join("/"))+(e.por?' por '+esc(e.por):'')+'</span>':'')+'</div>'+
+    '<div class="hint" style="font-weight:600;margin-top:4px">Revisão da peça (segundo revisor)</div>'+(rv.length?'<ul style="margin:0;padding-left:18px">'+rv.map(r=>'<li class="hint">'+esc(r.peca)+' — revisada por '+esc(r.por)+' em '+esc(r.em.split("-").reverse().join("/"))+'</li>').join("")+'</ul>':'')+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap"><input id="ctl-peca" placeholder="Peça (ex.: contestação)" style="flex:1"><select id="ctl-rev" aria-label="Revisor"><option value="">revisor</option>'+Tarefas.EQUIPE.map(x=>'<option>'+x.nome+'</option>').join("")+'</select><button class="btn ghost small" type="button" id="ctl-revisa">Registrar revisão</button></div>';
+  if(f.status==="Concluída") h+='<div class="hint" style="font-weight:600;margin-top:4px">Encerramento: lições aprendidas</div>'+(li?'<div class="hint">Registrado em '+esc(li.em.split("-").reverse().join("/"))+(li.modelo?' · sugestão enviada para o modelo '+esc(li.modelo):'')+'</div>':
+    '<label class="hint">O que funcionou bem?<input id="ctl-ok"></label><label class="hint">O que mudar no modelo ou na rotina?<input id="ctl-mudar"></label><label class="hint">Modelo usado<select id="ctl-modelo"><option value="">nenhum</option>'+(typeof MODELOS!=="undefined"?MODELOS:[]).map(m=>'<option>'+esc(m.nome)+'</option>').join("")+'</select></label><div><button class="btn small" type="button" id="ctl-encerra">Registrar lições</button></div>');
+  return h+'<div class="hint" id="ctl-msg" role="status"></div></div></details>' }
+document.getElementById("ficha").addEventListener("click",ev=>{ const c=conv(), f=c&&c.ficha; if(!f) return; const g=id=>document.getElementById(id), msg=t=>{ const m=g("ctl-msg"); if(m) m.textContent=t };
+  if(ev.target.id==="ctl-escopo"){ f.escopo={dentro:g("ctl-dentro").value.trim(),fora:g("ctl-fora").value.trim(),em:hojeISO(),por:quemSou()}; f.log.push("Escopo do caso registrado"); salvar(); renderMesa() }
+  if(ev.target.id==="ctl-revisa"){ const peca=g("ctl-peca").value.trim(), por=g("ctl-rev").value; if(!peca||!por){ msg("Informe a peça e quem revisou."); return }
+    f.revisoes=(f.revisoes||[]).concat([{peca,por,em:hojeISO()}]); f.log.push("Peça revisada por "+por+": "+peca); salvar(); renderMesa() }
+  if(ev.target.id==="ctl-encerra"){ const ok=g("ctl-ok").value.trim(), mudar=g("ctl-mudar").value.trim(), modelo=g("ctl-modelo").value; if(!ok&&!mudar){ msg("Escreva ao menos uma lição."); return }
+    f.licoes={funcionou:ok,mudar,modelo,em:hojeISO(),por:quemSou()}; f.log.push("Lições do encerramento registradas"+(modelo?" (sugestão para o modelo "+modelo+")":""));
+    if(mudar&&modelo){ const s={id:"mel"+Date.now(),modelo,sugestao:mudar,caso:f.proto,materia:f.area||"",em:new Date().toISOString(),por:quemSou(),status:"nova"}; st.melhorias=(st.melhorias||[]).concat([s]); if(DBA) DBA.doc("melhorias/"+s.id).set(s).catch(()=>{});
+      novaTarefa({titulo:"Avaliar sugestão de melhoria no modelo "+modelo+": "+mudar.slice(0,120),resp:"David",cliente:c.nome+" · "+f.proto,prazo:Tarefas.somaUteis(hojeISO(),10),origem:"encerramento",leadId:c.id}) }
+    salvar(); renderMesa() } });
+window.__controles={prazosSemana:()=>prazosSemana()};
 window.__atend={estado:()=>st,render:()=>renderMesa(),pendFluxo:f=>pendFluxo(f)};
 // ---------- anexos de uma conversa exportada "com mídia" (.zip) ----------
 let ZIPMID=[]; const MIDIAS={};

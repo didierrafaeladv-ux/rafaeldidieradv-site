@@ -8,3 +8,6 @@ A página publicada é `equipe/atendimento.html`. As mudanças a partir de 02/11
 - `test/abas.smoke.js` — abre todas as abas e falha se houver erro de script.
 
 Rodar: `node dev/atendimento/test/automacoes.test.js` e `node dev/atendimento/test/<arquivo>.e2e.js equipe/atendimento.html`.
+- `test/modulos.test.js` — carrega todos os módulos de `equipe/js` e testa o básico de cada um.
+
+Os testes rodam sozinhos no GitHub a cada envio (`.github/workflows/testes.yml`, aba Actions do repositório).

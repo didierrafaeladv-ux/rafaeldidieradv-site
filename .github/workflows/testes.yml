@@ -1,0 +1,31 @@
+# Testes automáticos dos sistemas da equipe (Atendimento RD, módulos de equipe/js).
+# Rodam a cada envio ao GitHub; se algum falhar, o GitHub avisa por e-mail e a mudança deve ser corrigida antes de publicar.
+name: Testes da equipe
+on:
+  push:
+    paths: ['equipe/**', 'dev/**', '.github/workflows/testes.yml']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar Playwright
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Módulos (equipe/js)
+        run: |
+          node dev/atendimento/test/modulos.test.js
+          node dev/atendimento/test/automacoes.test.js
+      - name: Atendimento RD no navegador
+        run: |
+          node dev/atendimento/test/abas.smoke.js equipe/atendimento.html | tee smoke.txt
+          grep -q 'erros: \[\]' smoke.txt
+          node dev/atendimento/test/qualidade.e2e.js equipe/atendimento.html
+          node dev/atendimento/test/automacoes.e2e.js equipe/atendimento.html

@@ -23,9 +23,11 @@ jobs:
         run: |
           node dev/atendimento/test/modulos.test.js
           node dev/atendimento/test/automacoes.test.js
+          node dev/atendimento/test/financeiro.test.js
       - name: Atendimento RD no navegador
         run: |
           node dev/atendimento/test/abas.smoke.js equipe/atendimento.html | tee smoke.txt
           grep -q 'erros: \[\]' smoke.txt
           node dev/atendimento/test/qualidade.e2e.js equipe/atendimento.html
           node dev/atendimento/test/automacoes.e2e.js equipe/atendimento.html
+          node dev/atendimento/test/financeiro.e2e.js equipe/atendimento.html

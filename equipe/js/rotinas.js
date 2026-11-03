@@ -7,7 +7,7 @@
   // dias: dias da semana em que roda (0=domingo); hora/min no fuso de Fortaleza (UTC-3, sem horário de verão); folgaMin: tolerância após o horário
   const ROTINAS = [
     { id: 'publicacoes', nome: 'Publicações do dia', dias: [1, 2, 3, 4, 5], hora: 6, min: 53, folgaMin: 90 },
-    { id: 'ponte', nome: 'Ponte RD (Atendimento → CRM → Drive)', dias: [1, 2, 3, 4, 5], horas: [8, 9, 10, 11, 12, 13, 14, 15, 16], min: 7, folgaMin: 90 },
+    { id: 'ponte', nome: 'Ponte RD (Atendimento → CRM → Drive)', dias: [1, 2, 3, 4, 5], horas: [8, 12, 16], min: 7, folgaMin: 90 },
     { id: 'datajud', nome: 'Movimentações Datajud', dias: [0, 1, 2, 3, 4, 5, 6], hora: 19, min: 17, folgaMin: 120 },
     { id: 'backup', nome: 'Backup semanal', dias: [5], hora: 15, min: 56, folgaMin: 180 },
     { id: 'resumo', nome: 'Resumo semanal', dias: [5], hora: 16, min: 44, folgaMin: 180 },

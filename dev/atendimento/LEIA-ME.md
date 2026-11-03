@@ -6,6 +6,7 @@ A página publicada é `equipe/atendimento.html`. As mudanças a partir de 02/11
 - `patch_indicadores.py` — painel "Controles de qualidade" na aba Indicadores (teste: `test/qualidade.e2e.js`).
 - `patch_automacoes.py` — aba "Automações" com o motor de regras `equipe/js/automacoes.js` (testes: `test/automacoes.test.js`, `test/automacoes.e2e.js`).
 - `patch_financeiro.py` — aba "Financeiro" com o módulo `equipe/js/financeiro.js` (testes: `test/financeiro.test.js`, `test/financeiro.e2e.js`).
+- `patch_email.py` — painel "E-mails a triar" na Fila, alimentado pela rotina Entrada de e-mails (teste: `test/email.e2e.js`).
 - `test/abas.smoke.js` — abre todas as abas e falha se houver erro de script.
 
 Rodar: `node dev/atendimento/test/automacoes.test.js` e `node dev/atendimento/test/<arquivo>.e2e.js equipe/atendimento.html`.

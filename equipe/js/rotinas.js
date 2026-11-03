@@ -13,6 +13,7 @@
     { id: 'resumo', nome: 'Resumo semanal', dias: [5], hora: 16, min: 44, folgaMin: 180 },
     { id: 'sentencas', nome: 'Sentenças previdenciárias (JEF Sobral)', dias: [6], hora: 7, min: 41, folgaMin: 180 },
     { id: 'radar', nome: 'Radar de teses tributárias', diaDoMes: 1, hora: 15, min: 23, folgaMin: 240 },
+    { id: 'email', nome: 'Entrada de e-mails', dias: [1, 2, 3, 4, 5], horas: [8, 13], min: 13, folgaMin: 90 },
     { id: 'monitor', nome: 'Verificação das rotinas', dias: [0, 1, 2, 3, 4, 5, 6], hora: 20, min: 41, folgaMin: 120 }];
   const FUSO = -3 * 60;   // minutos em relação a UTC
   const local = d => new Date(d.getTime() + FUSO * 60000);   // "relógio" de Fortaleza em campos UTC

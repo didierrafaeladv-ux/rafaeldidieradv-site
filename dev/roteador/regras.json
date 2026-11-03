@@ -1,0 +1,13 @@
+{
+  "versao": "2.0",
+  "limites": { "caracteresPadrao": 1500, "caracteresCritico": 12000 },
+  "simples": ["resuma", "resumir", "resumo", "traduza", "traduzir", "agendar", "agende", "reuniao", "horario", "liste", "listar", "corrija a ortografia", "revise a gramatica", "bom dia", "boa tarde", "boa noite", "obrigado", "qual o prazo de recolhimento", "qual o vencimento"],
+  "padrao": ["analise", "analisar", "calcule", "calcular", "compare", "comparar", "simule", "simulacao", "script", "python", "sql", "codigo", "code", "planilha", "sped", "efd", "auditoria", "split payment", "ibs", "cbs", "reforma tributaria", "irrf", "inss", "icms", "iss", "pis", "cofins", "simples nacional", "lucro presumido", "lucro real", "retencao", "credito"],
+  "critico": ["parecer", "minuta", "peticao inicial", "elabore a peticao", "redija a peticao", "contestacao", "recurso", "apelacao", "agravo", "embargos", "mandado de seguranca", "excecao de pre-executividade", "tese", "estrategia", "contrato", "reestruturacao", "holding", "sucessao", "citacao", "penhora", "bloqueio", "sisbajud", "prazo fatal", "auto de infracao"],
+  "verbosProducao": ["elabore", "redija", "escreva", "prepare", "crie", "monte", "fundamente", "defenda", "impugne"],
+  "modelos": {
+    "SIMPLES": { "modelo": "claude-haiku-5-5", "maxTokens": 800 },
+    "PADRAO": { "modelo": "claude-sonnet-5-5", "maxTokens": 2500 },
+    "CRITICO": { "modelo": "claude-opus-5-5", "maxTokens": 6000 }
+  }
+}

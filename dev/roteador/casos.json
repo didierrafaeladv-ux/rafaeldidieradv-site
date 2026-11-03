@@ -1,0 +1,20 @@
+[
+  {"id": "TC01", "prompt": "Qual o prazo de recolhimento do DARF mensal?", "esperado": "SIMPLES"},
+  {"id": "TC02", "prompt": "Escreva um script Python para ler EFD Contribuições.", "esperado": "PADRAO"},
+  {"id": "TC03", "prompt": "Analise o impacto do Split Payment no caixa da empresa no regime IBS/CBS.", "esperado": "PADRAO"},
+  {"id": "TC04", "prompt": "Resuma este parágrafo sobre a petição inicial.", "esperado": "SIMPLES"},
+  {"id": "TC05", "prompt": "Elabore uma minuta de contrato de reorganização patrimonial.", "repetirA": 800, "esperado": "CRITICO"},
+  {"id": "TC06", "prompt": "Bom dia, gostaria de agendar uma reunião com o Dr. Rafael.", "esperado": "SIMPLES"},
+  {"id": "TC07", "prompt": "Verifique a retenção de IRRF no extrato do SIM/TCE-CE.", "esperado": "PADRAO"},
+  {"id": "TC08", "prompt": "A", "repetirA": 850, "esperado": "PADRAO"},
+  {"id": "TC09", "prompt": "Faça uma síntese sobre a prótese do paciente.", "esperado": "SIMPLES", "nota": "antes: 'tese' casava dentro de 'síntese' e 'prótese'"},
+  {"id": "TC10", "prompt": "Revise esse codigo em javascript", "esperado": "PADRAO", "nota": "antes: 'código' sem acento não era reconhecido"},
+  {"id": "TC11", "prompt": "Decode this base64 string", "esperado": "SIMPLES", "nota": "antes: 'code' casava dentro de 'decode'"},
+  {"id": "TC12", "prompt": "Recebi uma citação ontem, o que faço?", "esperado": "CRITICO", "nota": "prazo correndo vai ao modelo topo"},
+  {"id": "TC13", "prompt": "Redija o recurso inominado contra a sentença do JEF.", "esperado": "CRITICO"},
+  {"id": "TC14", "prompt": "Resuma o contrato em 5 linhas.", "esperado": "SIMPLES"},
+  {"id": "TC15", "prompt": "Elabore um parecer sobre a exclusão do ICMS da base do PIS.", "esperado": "CRITICO"},
+  {"id": "TC16", "prompt": "Qual o horário de funcionamento do escritório?", "esperado": "SIMPLES"},
+  {"id": "TC17", "prompt": "Houve penhora no SISBAJUD da conta da empresa.", "esperado": "CRITICO"},
+  {"id": "TC18", "prompt": "Compare Simples Nacional e Lucro Presumido para uma clínica.", "esperado": "PADRAO"}
+]

@@ -32,5 +32,9 @@ jobs:
           node dev/atendimento/test/automacoes.e2e.js equipe/atendimento.html
           node dev/atendimento/test/financeiro.e2e.js equipe/atendimento.html
           node dev/atendimento/test/email.e2e.js equipe/atendimento.html
+      - name: Roteador de modelos
+        run: |
+          python3 dev/roteador/roteador.py
+          node dev/roteador/teste_js.js
       - name: Site
         run: node dev/site/test/site.e2e.js index.html

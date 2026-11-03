@@ -32,6 +32,10 @@ jobs:
           node dev/atendimento/test/automacoes.e2e.js equipe/atendimento.html
           node dev/atendimento/test/financeiro.e2e.js equipe/atendimento.html
           node dev/atendimento/test/email.e2e.js equipe/atendimento.html
+      - name: Validação de dados fiscais
+        run: |
+          node dev/planejatrib/test/valida_sped.test.js
+          python3 dev/planejatrib/valida_retencoes.py
       - name: Roteador de modelos
         run: |
           python3 dev/roteador/roteador.py

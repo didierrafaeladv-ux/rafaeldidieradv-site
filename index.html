@@ -393,7 +393,8 @@ footer .wrap{display:grid;gap:.5rem}
         </label>
       </div>
       <label>Mensagem<textarea id="cMsg" name="mensagem" required></textarea></label>
-      <p class="note">Ao enviar, você concorda com o tratamento dos dados para retorno do contato (LGPD). Nenhuma informação é compartilhada com terceiros.</p>
+      <label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:400"><input type="checkbox" id="cLgpd" required style="width:auto;margin-top:.3rem"> Autorizo o uso destes dados para o escritório responder ao meu pedido (LGPD, art. 7º, V). Posso pedir a exclusão a qualquer momento.</label>
+      <p class="note">Nenhuma informação é vendida ou compartilhada com terceiros. Veja a <a href="#privacidade">política de privacidade</a>.</p>
       <button class="btn primary" type="submit">Enviar mensagem</button>
       <div id="contactDone" class="done" hidden></div>
     </form>
@@ -402,7 +403,12 @@ footer .wrap{display:grid;gap:.5rem}
 
 <section id="privacidade" class="wrap" style="padding-block:2.5rem">
   <details><summary>Política de privacidade</summary>
-  <p>Os dados informados nos formulários (nome, empresa, e-mail, telefone e a mensagem) são usados apenas para responder ao contato, enviar o material pedido e, se você marcar a opção, avisos por e-mail. Não são vendidos nem compartilhados com terceiros. A calculadora roda no seu navegador e não envia os valores digitados. Você pode pedir acesso, correção ou exclusão dos seus dados a qualquer momento pelo e-mail didierrafaeladv@gmail.com ou pelo WhatsApp (85) 98177-2100 (Lei 13.709/2018).</p></details>
+  <p>Os dados informados nos formulários (nome, empresa, e-mail, telefone e a mensagem) são usados apenas para responder ao contato, enviar o material pedido e, se você marcar a opção, avisos por e-mail. Não são vendidos nem compartilhados com terceiros. As calculadoras rodam no seu navegador e só enviam os valores se você tocar em “Pedir análise”, pelo WhatsApp ou pelo seu próprio e-mail, e nesse caso o escritório recebe os números digitados e a estimativa. Os dados ficam guardados enquanto durar o atendimento e pelo prazo exigido em lei. Você pode pedir acesso, correção ou exclusão dos seus dados a qualquer momento pelo e-mail didierrafaeladv@gmail.com ou pelo WhatsApp (85) 98177-2100 (Lei 13.709/2018).</p></details>
+</section>
+
+<section id="termos" class="wrap" style="padding-block:0 1.5rem">
+  <details><summary>Termos de uso</summary>
+  <p>O conteúdo e as calculadoras deste site são informativos e não substituem a análise do caso concreto por advogado. As estimativas são simplificadas e não representam promessa de resultado. O envio de mensagem pelo site, WhatsApp ou e-mail não cria relação de cliente com o escritório, que só existe com contrato de honorários assinado. Não envie documentos sigilosos pelo formulário: o escritório indica o canal seguro depois do primeiro contato.</p></details>
 </section>
 
 <section id="equipe" class="wrap" style="padding-block:1rem 2.5rem">
@@ -431,7 +437,7 @@ footer .wrap{display:grid;gap:.5rem}
     <span>Carlos Rafael Aguiar Didier · OAB/CE 24.502 · Sociedade individual de advocacia · Sobral/CE</span>
     <span>Rua Padre Fialho, 117, Centro, Sobral/CE · WhatsApp <a href="https://wa.me/5585981772100">(85) 98177-2100</a> · Telefone <a href="tel:+5588996936282">(88) 99693-6282</a> · E-mail <a href="mailto:didierrafaeladv@gmail.com">didierrafaeladv@gmail.com</a> · Atendimento de segunda a sexta, das 8h às 17h</span>
     <span>Conteúdo informativo, elaborado conforme o Provimento 205/2021 da OAB. Não constitui consulta jurídica nem promessa de resultado.</span>
-    <span>© <span id="ano"></span> · <a href="#privacidade">Política de privacidade</a> · <a href="#equipe">Área da equipe</a></span>
+    <span>© <span id="ano"></span> · <a href="#privacidade">Política de privacidade</a> · <a href="#termos">Termos de uso</a> · <a href="#equipe">Área da equipe</a></span>
   </div>
 </footer>
 
@@ -447,7 +453,8 @@ footer .wrap{display:grid;gap:.5rem}
       <label>E-mail<input id="mMail" type="email" required autocomplete="email"></label>
       <label>Você é<select id="mPerfil"><option>Empresário(a)</option><option>Contador(a)</option><option>Advogado(a)</option><option>Outro</option></select></label>
       <label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:400"><input type="checkbox" id="mNews" style="width:auto;margin-top:.3rem"> Quero receber, por e-mail, avisos de prazos e mudanças da reforma tributária (opcional).</label>
-      <p class="note">O guia é enviado por e-mail. Você pode pedir a exclusão dos dados a qualquer momento.</p>
+      <label style="display:flex;gap:.5rem;align-items:flex-start;font-weight:400"><input type="checkbox" id="mLgpd" required style="width:auto;margin-top:.3rem"> Autorizo o uso destes dados para o escritório responder ao meu pedido (LGPD, art. 7º, V). Posso pedir a exclusão a qualquer momento.</label>
+      <p class="note">O guia é enviado por e-mail.</p>
       <button class="btn primary" type="submit">Quero receber</button>
       <div id="matDone" class="done" hidden></div>
     </form>
@@ -506,10 +513,19 @@ footer .wrap{display:grid;gap:.5rem}
   const N8N_CONTATO='';
   function enviaN8N(dados){ if(!N8N_CONTATO) return Promise.resolve(false); return fetch(N8N_CONTATO,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(dados)}).then(r=>r.ok).catch(()=>false); }
   const enc=s=>encodeURIComponent(s);
+
+  // ---------- pacote padronizado de envio (RD-SITE v1, 03/11/2026) ----------
+  const EMAIL='didierrafaeladv@gmail.com', MARCA_INI='--- RD-SITE v1 (não apague) ---', MARCA_FIM='--- fim RD-SITE ---';
+  const PACOTES=[];
+  function pacote(tipo,contato,entrada,resultado,consent){ const p={formato:'rd-site',versao:1,tipo,em:new Date().toISOString(),pagina:location.pathname+location.hash,contato:contato||{},entrada:entrada||{},resultado:resultado||{},consentimento:{lgpd:!!consent,base:consent?'art. 7º, V (pedido do titular)':'',em:consent?new Date().toISOString():''}}; PACOTES.push(p); return p }
+  const ROT={contato:'Contato pelo site',simulacao_inss:'Simulação de INSS retido',simulacao_regime:'Simples × Presumido',material:'Pedido de material'};
+  function linkEmail(p,texto){ const assunto='[Site] '+(ROT[p.tipo]||p.tipo)+(p.contato.nome?' — '+p.contato.nome:'');
+    return 'mailto:'+EMAIL+'?subject='+enc(assunto)+'&body='+enc(texto+'\n\n'+MARCA_INI+'\n'+JSON.stringify(p)+'\n'+MARCA_FIM) }
+  function botoes(p,texto,rotulo){ return '<div class="cta"><a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/'+WA+'?text='+enc(texto)+'">'+(rotulo||'Enviar')+' pelo WhatsApp</a><a class="btn" href="'+linkEmail(p,texto)+'">'+(rotulo||'Enviar')+' por e-mail</a></div>' }
+  window.__site={pacotes:()=>PACOTES.slice(),MARCA_INI,MARCA_FIM};
   if(!N8N_CONTATO)document.querySelectorAll('[data-material]').forEach(b=>{const a=document.createElement('a');a.className='btn';a.target='_blank';a.rel='noopener';a.href='https://wa.me/'+WA+'?text='+enc('Olá, vim pelo site. Gostaria de receber o material: '+b.dataset.material+'.');a.textContent='Pedir pelo WhatsApp';b.replaceWith(a)});
-  function showDone(box,texto){
-    const url='https://wa.me/'+WA+'?text='+enc(texto);
-    box.innerHTML='<strong>Mensagem pronta.</strong><p class="note">Toque em "Enviar pelo WhatsApp" ou copie o texto e envie por e-mail.</p><code>'+texto.replace(/</g,'&lt;')+'</code><div class="cta"><a class="btn primary" target="_blank" rel="noopener" href="'+url+'">Enviar pelo WhatsApp</a><button type="button" class="btn copy">Copiar texto</button></div>';
+  function showDone(box,texto,p){
+    box.innerHTML='<strong>Mensagem pronta.</strong><p class="note">Escolha como enviar: pelo WhatsApp ou pelo seu e-mail.</p><code>'+texto.replace(/</g,'&lt;')+'</code>'+botoes(p,texto)+'<div class="cta"><button type="button" class="btn copy">Copiar texto</button></div>';
     box.hidden=false;
     box.querySelector('.copy').addEventListener('click',ev=>{
       const b=ev.currentTarget;
@@ -517,13 +533,14 @@ footer .wrap{display:grid;gap:.5rem}
     });
     box.scrollIntoView({block:'nearest'});
   }
-  function valid(form){let ok=true,first=null;form.querySelectorAll('[required]').forEach(i=>{const bad=!i.value.trim()||(i.type==='email'&&!/\S+@\S+\.\S+/.test(i.value));i.setAttribute('aria-invalid',bad);let m=i.parentElement.querySelector('.err');if(bad){if(!m){m=document.createElement('span');m.className='err note';m.style.color='#9b2c1f';i.after(m)}m.textContent=i.tagName==='SELECT'?'Escolha uma opção.':'Preencha este campo.';i.style.borderColor='#9b2c1f';ok=false;first=first||i}else{i.style.borderColor='';if(m)m.remove()}});if(first)first.focus();return ok}
+  function valid(form){let ok=true,first=null;form.querySelectorAll('[required]').forEach(i=>{const bad=(i.type==='checkbox'?!i.checked:!i.value.trim())||(i.type==='email'&&!/\S+@\S+\.\S+/.test(i.value));i.setAttribute('aria-invalid',bad);let m=i.parentElement.querySelector('.err');if(bad){if(!m){m=document.createElement('span');m.className='err note';m.style.color='#9b2c1f';i.after(m)}m.textContent=i.tagName==='SELECT'?'Escolha uma opção.':'Preencha este campo.';i.style.borderColor='#9b2c1f';ok=false;first=first||i}else{i.style.borderColor='';if(m)m.remove()}});if(first)first.focus();return ok}
 
   $('#contactForm').addEventListener('submit',e=>{
     e.preventDefault();const f=e.target;if(!valid(f))return;
     const t='Contato pelo site\nNome: '+$('#cNome').value+'\nEmpresa: '+$('#cEmp').value+'\nE-mail: '+$('#cMail').value+'\nWhatsApp: '+$('#cFone').value+'\nAssunto: '+$('#cAss').value+'\nRegime: '+$('#cReg').value+'\nUrgência: '+$('#cUrg').value+'\n\n'+$('#cMsg').value;
-    showDone($('#contactDone'),t);
-    enviaN8N({nome:$('#cNome').value,empresa:$('#cEmp').value,email:$('#cMail').value,fone:$('#cFone').value,assunto:$('#cAss').value,regime:$('#cReg').value,urgencia:$('#cUrg').value,mensagem:$('#cMsg').value}).then(ok=>{ if(ok){ const n=$('#contactDone .note'); if(n) n.textContent='Recebemos sua mensagem e o escritório retorna em dia útil. Se preferir, envie também pelo WhatsApp.'; } });
+    const pc=pacote('contato',{nome:$('#cNome').value.trim(),empresa:$('#cEmp').value.trim(),email:$('#cMail').value.trim(),fone:$('#cFone').value.trim()},{assunto:$('#cAss').value,regime:$('#cReg').value,urgencia:$('#cUrg').value,mensagem:$('#cMsg').value.trim()},{},$('#cLgpd').checked);
+    showDone($('#contactDone'),t,pc);
+    enviaN8N(pc).then(ok=>{ if(ok){ const n=$('#contactDone .note'); if(n) n.textContent='Recebemos sua mensagem e o escritório retorna em dia útil. Se preferir, envie também pelo WhatsApp.'; } });
   });
 
   // calculadora de INSS retido
@@ -537,8 +554,9 @@ footer .wrap{display:grid;gap:.5rem}
     if(!(num('#kMeses')>=1)){out.innerHTML='<p class="muted">Informe em quantos meses houve retenção (de 1 a 60).</p>';return}
     const retMes=notas*(1-mat/100)*.11, saldoMes=Math.max(0,retMes-devido), total=saldoMes*meses;
     const txt='Simulação de INSS retido (site)\nNotas/mês: '+brl(notas)+'\nMateriais: '+mat+'%\nMeses: '+meses+'\nINSS devido/mês: '+brl(devido)+'\nRetido/mês: '+brl(retMes)+'\nSaldo estimado no período: '+brl(total);
+    const pcI=pacote('simulacao_inss',{},{notasMes:notas,materialPct:mat,meses,inssDevidoMes:semDevido?null:devido},{retidoMes:Math.round(retMes),saldoMes:Math.round(saldoMes),totalPeriodo:Math.round(total),teto:semDevido},false);
     out.innerHTML=total>0
-      ? '<span class="eyebrow">Estimativa</span><h3>'+(semDevido?'até ':'')+brl(total)+'</h3>'+(semDevido?'<p class="note">Sem o INSS devido sobre a folha, este é o teto. Peça o valor ao seu contador para uma estimativa realista.</p>':'')+'<p class="muted">Retenção estimada de '+brl(retMes)+' por mês, contra '+brl(devido)+' devidos sobre a folha: saldo de '+brl(saldoMes)+' por mês, em '+meses+(meses===1?' mês':' meses')+'.</p>'+(devido===0?'<p class="note">Sem o INSS devido sobre a folha, o saldo fica superestimado. Peça o valor ao seu contador.</p>':'')+'<a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/'+WA+'?text='+enc(txt+'\n\nGostaria de uma análise.')+'">Enviar para análise pelo WhatsApp</a>'
+      ? '<span class="eyebrow">Estimativa</span><h3>'+(semDevido?'até ':'')+brl(total)+'</h3>'+(semDevido?'<p class="note">Sem o INSS devido sobre a folha, este é o teto. Peça o valor ao seu contador para uma estimativa realista.</p>':'')+'<p class="muted">Retenção estimada de '+brl(retMes)+' por mês, contra '+brl(devido)+' devidos sobre a folha: saldo de '+brl(saldoMes)+' por mês, em '+meses+(meses===1?' mês':' meses')+'.</p>'+(devido===0?'<p class="note">Sem o INSS devido sobre a folha, o saldo fica superestimado. Peça o valor ao seu contador.</p>':'')+botoes(pcI,txt+'\n\nGostaria de uma análise.','Enviar para análise')
       : '<p class="muted">Pelos valores informados, o INSS devido sobre a folha absorve a retenção e não sobra saldo a restituir. Se as retenções variaram ao longo dos meses, vale conferir competência por competência.</p>';
   });
 
@@ -558,7 +576,7 @@ footer .wrap{display:grid;gap:.5rem}
       +'<dt class="muted">IRPJ e adicional</dt><dd class="muted" style="margin:0;text-align:right">'+brl(P.irpj+P.adicional)+'</dd>'+'<dt class="muted">CSLL</dt><dd class="muted" style="margin:0;text-align:right">'+brl(P.csll)+'</dd>'+'<dt class="muted">PIS e Cofins</dt><dd class="muted" style="margin:0;text-align:right">'+brl(P.pisCofins)+'</dd>'+'<dt class="muted">ISS</dt><dd class="muted" style="margin:0;text-align:right">'+brl(P.iss)+'</dd>'+'<dt class="muted">INSS patronal</dt><dd class="muted" style="margin:0;text-align:right">'+brl(P.inss)+'</dd>'
       +'</dl>'
       +(S.anexo==='V'?'<p class="note">Com Fator R abaixo de 28%, o Simples cai no Anexo V. Ajustar o pró-labore pode mudar o resultado; avalie com o escritório.</p>':'')
-      +'<a class="btn primary" target="_blank" rel="noopener" href="https://wa.me/'+WA+'?text='+enc(txt+'\n\nGostaria de uma análise do regime.')+'">Pedir análise pelo WhatsApp</a>';
+      +botoes(pacote('simulacao_regime',{},{receitaMes:num('#sRec'),folhaMes:num('#sFol'),issPct:num('#sIss')||5},{melhor:r.melhor,simples:{anexo:S.anexo,total:Math.round(S.total)},presumido:{total:Math.round(P.total)},economiaMes:Math.round(r.economia)},false),txt+'\n\nGostaria de uma análise do regime.','Pedir análise');
   });
 
   // materiais
@@ -570,8 +588,9 @@ footer .wrap{display:grid;gap:.5rem}
   $('#matForm').addEventListener('submit',e=>{
     e.preventDefault();const f=e.target;if(!valid(f))return;
     const t='Pedido de material: '+material+'\nNome: '+$('#mNome').value+'\nE-mail: '+$('#mMail').value+'\nPerfil: '+$('#mPerfil').value+'\nAvisos por e-mail: '+($('#mNews').checked?'sim':'não');
-    showDone($('#matDone'),t);
-    enviaN8N({nome:$('#mNome').value,email:$('#mMail').value,assunto:'Pedido de material: '+material,mensagem:'Perfil: '+$('#mPerfil').value+' · Avisos por e-mail: '+($('#mNews').checked?'sim':'não')});
+    const pm=pacote('material',{nome:$('#mNome').value.trim(),email:$('#mMail').value.trim()},{material,perfil:$('#mPerfil').value,avisos:$('#mNews').checked},{},$('#mLgpd').checked);
+    showDone($('#matDone'),t,pm);
+    enviaN8N(pm);
   });
 })();
 </script>

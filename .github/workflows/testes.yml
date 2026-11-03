@@ -3,7 +3,7 @@
 name: Testes da equipe
 on:
   push:
-    paths: ['equipe/**', 'dev/**', '.github/workflows/testes.yml']
+    paths: ['index.html', 'equipe/**', 'dev/**', '.github/workflows/testes.yml']
   pull_request:
   workflow_dispatch:
 jobs:
@@ -32,3 +32,5 @@ jobs:
           node dev/atendimento/test/automacoes.e2e.js equipe/atendimento.html
           node dev/atendimento/test/financeiro.e2e.js equipe/atendimento.html
           node dev/atendimento/test/email.e2e.js equipe/atendimento.html
+      - name: Site
+        run: node dev/site/test/site.e2e.js index.html

@@ -28,11 +28,12 @@
       E110: { 13: 'num' }, E111: { 4: 'num' }, E210: { 7: 'num', 8: 'num', 13: 'num', 15: 'num' }, E310: { 4: 'num' }, G110: { 9: 'num' } },
     ecf: { '0000': {} }
   };
-  /* validar(texto, tipo) → { tipo, linhas, registros, problemas[], totalProblemas, integridade, gravidade: 'ok'|'atencao'|'bloqueante', resumo } */
+  /* v1.1 (04/11/2026): ponto decimal deixou de bloquear — o leitor usa numBR e lê o valor certo; continua como atenção.
+   validar(texto, tipo) → { tipo, linhas, registros, problemas[], totalProblemas, integridade, gravidade: 'ok'|'atencao'|'bloqueante', resumo } */
   function validar(txt, tipo) {
     const brutas = String(txt || '').replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() !== '');
     const esp = ESPEC[tipo] || {}, problemas = [], registros = {}; let total = 0, cortadas = 0, pontoDecimal = 0, comProblema = new Set();
-    const anota = (linha, reg, campo, valor, esperado) => { total++; comProblema.add(linha); if (problemas.length < 50) problemas.push({ linha, reg, campo, valor: String(valor).slice(0, 40), esperado }); };
+    const anota = (linha, reg, campo, valor, esperado, soPonto) => { total++; if (!soPonto) comProblema.add(linha); if (problemas.length < 50) problemas.push({ linha, reg, campo, valor: String(valor).slice(0, 40), esperado }); };
     brutas.forEach((l, i) => {
       const n = i + 1;
       if (!l.startsWith('|')) { anota(n, '?', 0, l.slice(0, 20), 'linha começando com |'); return; }
@@ -42,19 +43,19 @@
       for (const [pos, t] of Object.entries(campos)) {
         const v = (r[+pos] || '').trim();
         if (r.length <= +pos) { anota(n, reg, +pos, '(campo ausente)', ESPERADO[t]); continue; }
-        if (!T[t](v)) { if (t === 'num' && /^-?\d{1,3}(\.\d{3})*(,\d+)?$|^-?\d+\.\d+$/.test(v)) pontoDecimal++; anota(n, reg, +pos, v, ESPERADO[t]); }
+        if (!T[t](v)) { const pd = t === 'num' && /^-?\d{1,3}(\.\d{3})*(,\d+)?$|^-?\d+\.\d+$/.test(v); if (pd) pontoDecimal++; anota(n, reg, +pos, v, ESPERADO[t], pd); }
       }
     });
     const r9999 = brutas.map(l => l.split('|')).find(r => r[1] === '9999');
     const declarada = r9999 ? parseInt(r9999[2], 10) : null;
     const integridade = { tem9999: !!r9999, linhasDeclaradas: declarada, linhasLidas: brutas.length, confere: r9999 ? declarada === brutas.length : false };
     const pct = brutas.length ? comProblema.size / brutas.length : 0;
-    const bloqueante = !integridade.confere || pontoDecimal > 0 || cortadas > 0 || pct > 0.01;
+    const bloqueante = !integridade.confere || cortadas > 0 || pct > 0.01;
     const gravidade = total === 0 && integridade.confere ? 'ok' : bloqueante ? 'bloqueante' : 'atencao';
     const partes = [];
     if (!integridade.tem9999) partes.push('arquivo sem o registro final 9999 (pode estar incompleto)');
     else if (!integridade.confere) partes.push(`o arquivo declara ${declarada} linhas e tem ${brutas.length}`);
-    if (pontoDecimal) partes.push(`${pontoDecimal} valor(es) com ponto decimal, que seriam lidos multiplicados`);
+    if (pontoDecimal) partes.push(`${pontoDecimal} valor(es) com ponto decimal, fora do padrão do SPED (lidos como decimal; conferir o arquivo)`);
     if (cortadas) partes.push(`${cortadas} linha(s) cortada(s)`);
     if (total - pontoDecimal - cortadas > 0) partes.push(`${total - pontoDecimal - cortadas} campo(s) fora do formato esperado`);
     return { tipo, linhas: brutas.length, registros, problemas, totalProblemas: total, integridade, gravidade,

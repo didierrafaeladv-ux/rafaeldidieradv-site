@@ -9,9 +9,9 @@ const CONTRIB = ['|0000|006|0|||01102026|31102026|EMPRESA EXEMPLO LTDA|112223330
 t('arquivos corretos passam (EFD ICMS e EFD-Contribuições)', () => {
   const a = V.validar(fecha(ICMS), 'efd-icms'), b = V.validar(fecha(CONTRIB), 'efd-contrib');
   assert.equal(a.gravidade, 'ok', JSON.stringify(a.problemas)); assert.equal(b.gravidade, 'ok', JSON.stringify(b.problemas)); assert.equal(a.integridade.confere, true); assert.equal(a.registros.C190, 1); });
-t('ponto decimal é bloqueante (seria lido multiplicado)', () => {
+t('ponto decimal vira atenção (o leitor usa numBR e lê o valor certo)', () => {
   const L = ICMS.slice(); L[3] = '|C190|000|5102|18,00|1000.50|1000,00|180,00|0|0|0|0||'; const r = V.validar(fecha(L), 'efd-icms');
-  assert.equal(r.gravidade, 'bloqueante'); assert.match(r.resumo, /1 valor\(es\) com ponto decimal/); assert.deepEqual([r.problemas[0].reg, r.problemas[0].campo, r.problemas[0].valor], ['C190', 5, '1000.50']); });
+  assert.equal(r.gravidade, 'atencao'); assert.match(r.resumo, /1 valor\(es\) com ponto decimal/); assert.deepEqual([r.problemas[0].reg, r.problemas[0].campo, r.problemas[0].valor], ['C190', 5, '1000.50']); });
 t('campo deslocado (CFOP no lugar errado) aparece com linha e posição', () => {
   const L = ICMS.slice(); L[3] = '|C190|000|18,00|5102|1000,00|1000,00|180,00|0|0|0|0||'; const r = V.validar(fecha(L), 'efd-icms');
   assert.ok(r.problemas.some(p => p.linha === 4 && p.campo === 3 && /CFOP/.test(p.esperado))); });

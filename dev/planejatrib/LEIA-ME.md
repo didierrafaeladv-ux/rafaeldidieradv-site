@@ -9,3 +9,9 @@
 - `recupera_folha.js` + `patch_folha.py`: painel "Contribuição previdenciária sobre verbas da folha" na aba Recuperação (folha por rubrica em CSV, extrato de GPS do e-CAC, Selic desde 11/2005, perfis empresa e título judicial, status por verba definido pelo advogado). No cliente ficam só as bases agregadas.
 - Ordem de aplicação: `patch_valida.py` (já na página) → `patch_numeros.py` → `patch_folha.py`.
 - Testes: `node test/numero_br.test.js`, `node test/recupera_folha.test.js`, `node test/valida_sped.test.js`, `node test/integracao.test.js <página>`.
+
+## 05/11/2026 (versão 41 da página)
+- `valida_sped.js` v1.2: ignora a assinatura digital gravada depois do registro 9999 (arquivos assinados no PVA eram marcados como "leitura não confiável").
+- `patch_nfse_iss.py`: o leitor de NFS-e (ABRASF e padrão nacional) passa a ler ISS, ISS retido, alíquota e competência.
+- `tema118.js` + `patch_t118.py`: painel "ISS fora da base do PIS/Cofins (Tema 118/STF)" na aba Recuperação, com prescrição, Selic, teto pela EFD-Contribuições e cenário de modulação na data do julgamento (21/10/2026).
+- Ordem: `patch_numeros.py` → `patch_folha.py` → `patch_nfse_iss.py` → `patch_t118.py`. Teste: `node test/tema118.test.js`.

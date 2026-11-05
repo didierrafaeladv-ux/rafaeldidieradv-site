@@ -28,10 +28,14 @@
       E110: { 13: 'num' }, E111: { 4: 'num' }, E210: { 7: 'num', 8: 'num', 13: 'num', 15: 'num' }, E310: { 4: 'num' }, G110: { 9: 'num' } },
     ecf: { '0000': {} }
   };
-  /* v1.1 (04/11/2026): ponto decimal deixou de bloquear — o leitor usa numBR e lê o valor certo; continua como atenção.
+  /* v1.2 (05/11/2026): ignora a assinatura digital gravada depois do registro 9999 (arquivos assinados no PVA).
+   v1.1 (04/11/2026): ponto decimal deixou de bloquear — o leitor usa numBR e lê o valor certo; continua como atenção.
    validar(texto, tipo) → { tipo, linhas, registros, problemas[], totalProblemas, integridade, gravidade: 'ok'|'atencao'|'bloqueante', resumo } */
   function validar(txt, tipo) {
-    const brutas = String(txt || '').replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim() !== '');
+    let todas = String(txt || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+    const fimSped = todas.findIndex(l => l.startsWith('|9999|'));   // arquivo assinado no PVA: a assinatura digital (PKCS#7) vem depois do 9999 e não é SPED
+    if (fimSped >= 0) todas = todas.slice(0, fimSped + 1);
+    const brutas = todas.filter(l => l.trim() !== '');
     const esp = ESPEC[tipo] || {}, problemas = [], registros = {}; let total = 0, cortadas = 0, pontoDecimal = 0, comProblema = new Set();
     const anota = (linha, reg, campo, valor, esperado, soPonto) => { total++; if (!soPonto) comProblema.add(linha); if (problemas.length < 50) problemas.push({ linha, reg, campo, valor: String(valor).slice(0, 40), esperado }); };
     brutas.forEach((l, i) => {

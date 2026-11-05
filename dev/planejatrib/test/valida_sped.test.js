@@ -24,4 +24,6 @@ t('linha cortada e data impossível', () => {
 t('problema pequeno e isolado é "atenção", não bloqueante', () => {
   const L = ICMS.slice(); for (let i = 0; i < 150; i++) L.push('|0200|P' + i + '|ITEM|||UN|00|30049099||||||'); L[1] = '|0200|P1|PRODUTO|||UN|00|3004||||||';
   const r = V.validar(fecha(L), 'efd-icms'); assert.equal(r.gravidade, 'atencao'); assert.equal(r.totalProblemas, 1); });
+t('arquivo assinado no PVA: a assinatura depois do 9999 é ignorada', () => {
+  const r = V.validar(fecha(ICMS) + '\r\nSBRCAAEPDR0\u0006\t*H\r\nICP-Brasil1\u001f0\u001d', 'efd-icms'); assert.equal(r.gravidade, 'ok'); assert.ok(r.integridade.confere); });
 console.log(`\n${ok} ok, ${f} falha(s)`); process.exit(f ? 1 : 0);

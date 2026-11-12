@@ -1,4 +1,151 @@
-<!doctype html><html lang="pt-BR"><head><meta name="robots" content="noindex,nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="pt-BR"><head><meta name="robots" content="noindex,nofollow"><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><script>
+/* Ponte com o n8n (RDWebhookBridge) — Rafael Didier Advocacia (v1.0, 11/11/2026).
+ * Único caminho das páginas da equipe (GitHub Pages, estáticas) para fora: os webhooks do n8n. Nenhuma chave da Anthropic
+ * ou do Google fica no site. Cada pessoa da equipe tem um TOKEN próprio, guardado só no navegador dela (localStorage) e
+ * enviado no cabeçalho "x-rd-token"; o n8n confere o token antes de qualquer ação e recusa o que não conhece.
+ * Endpoints (o endereço do n8n é configurado na tela, nunca no código):
+ *   /webhook/rd-sync-base    { acao: 'ler'|'salvar'|'ping', modulo: 'atendimento'|'crm'|'orquestrador', dados }  → { ok, timestamp, dados }
+ *   /webhook/rd-pronto-drive { leadId, nome, cnpj, tipo: 'PlanejaTrib'|'Recupera'|..., arquivoDocxBase64?, nomeArquivo?, tarefa? } → { ok, folderUrl, fileId }
+ *   /webhook/rd-orquestrador { modo: 'auditoria'|'lote', contextoEnxuto, parametros } → { ok, agentes, consolidado, tokensUsados }
+ * Sem conexão: "salvar" e "pronto-drive" vão para uma fila no navegador e são reenviados depois; "ler" devolve a última cópia guardada.
+ * O orquestrador (que gasta API) nunca entra na fila: só roda quando a pessoa clica. Navegador (window.RDWebhookBridge) e node. */
+(function (root) {
+  'use strict';
+  const ROTAS = { syncBase: '/webhook/rd-sync-base', prontoDrive: '/webhook/rd-pronto-drive', orquestrador: '/webhook/rd-orquestrador' };
+  const K_CONF = 'rd-ponte-n8n', K_FILA = 'rd-ponte-fila', K_CACHE = 'rd-ponte-cache-';
+  const MAX_FILA_DOCX = 1500000;   // base64 acima disso não cabe com folga no localStorage: não entra na fila
+  const MODULOS = ['atendimento', 'crm', 'orquestrador'];
+
+  function criar(opt) {
+    opt = opt || {};
+    const S = opt.storage || (function () { try { return root.localStorage; } catch (e) { return null; } })();
+    const F = opt.fetch || (typeof root.fetch === 'function' ? root.fetch.bind(root) : null);
+    const agora = opt.agora || (() => new Date().toISOString());
+    const ler = (k, p) => { try { const v = S && S.getItem(k); return v ? JSON.parse(v) : p; } catch (e) { return p; } };
+    const grava = (k, v) => { try { if (!S) return false; S.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+
+    function config() { return Object.assign({ base: '', token: '', pessoa: '' }, ler(K_CONF, {})); }
+    // aceita o endereço do n8n com ou sem "/webhook/..." no fim; só https (ou localhost para teste)
+    function configurar(c) {
+      const x = Object.assign(config(), c || {});
+      x.base = String(x.base || '').trim().replace(/\/+$/, '').replace(/\/webhook(-test)?(\/.*)?$/, '');
+      x.token = String(x.token || '').trim(); x.pessoa = String(x.pessoa || '').trim();
+      if (x.base && !/^https:\/\/[^\s/]+/.test(x.base) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(x.base)) throw new Error('Use o endereço https do n8n (ex.: https://n8n.seudominio.com.br).');
+      if (x.token && x.token.length < 24) throw new Error('Token curto demais: use o token de 40+ caracteres gerado para você.');
+      if (!grava(K_CONF, x)) throw new Error('Este navegador não deixou guardar a configuração.');
+      return x;
+    }
+    function esquecer() { try { S && S.removeItem(K_CONF); } catch (e) {} }
+    const configurado = () => { const c = config(); return !!(c.base && c.token); };
+
+    async function post(rota, payload, ms) {
+      const c = config();
+      if (!c.base || !c.token) throw Object.assign(new Error('Conexão com o n8n não configurada (endereço e token).'), { semConfig: true });
+      if (!F) throw new Error('Este navegador não faz chamadas de rede.');
+      const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const t = ctl ? setTimeout(() => ctl.abort(), ms || 60000) : null;
+      try {
+        let r;
+        try {
+          r = await F(c.base + ROTAS[rota], { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-rd-token': c.token },
+            body: JSON.stringify(Object.assign({}, payload, { pessoa: c.pessoa || '', enviadoEm: agora() })), signal: ctl ? ctl.signal : undefined });
+        } catch (e) { throw new Error(e && e.name === 'AbortError' ? 'O n8n demorou demais para responder.' : 'Sem conexão com o n8n (' + ((e && e.message) || 'erro de rede') + ').'); }
+        let j = null; try { j = await r.json(); } catch (e) {}
+        if (r.status === 401 || r.status === 403) throw Object.assign(new Error('Token recusado pelo n8n: confira o token desta pessoa.'), { recusado: true });
+        if (!r.ok || !j || j.ok === false) throw new Error((j && j.erro) || ('O n8n respondeu ' + r.status + '.'));
+        return j;
+      } finally { if (t) clearTimeout(t); }
+    }
+
+    function fila() { return ler(K_FILA, []); }
+    // guarda para reenviar; de "salvar" do mesmo módulo fica só o mais recente
+    function enfileirar(rota, payload) {
+      let f = fila();
+      if (rota === 'syncBase') f = f.filter(x => !(x.rota === 'syncBase' && x.payload.modulo === payload.modulo));
+      f.push({ id: 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), rota, payload, em: agora() });
+      return grava(K_FILA, f);
+    }
+    async function enviar(rota, payload, o) {
+      o = o || {};
+      try { return await post(rota, payload, o.ms); }
+      catch (e) {
+        if (e.recusado || !o.fila) return { ok: false, erro: e.message, semConfig: !!e.semConfig, recusado: !!e.recusado };
+        const g = enfileirar(rota, payload);
+        return { ok: false, naFila: g, semConfig: !!e.semConfig, erro: e.message + (g ? ' Ficou na fila deste navegador e será reenviado.' : ' Sem espaço no navegador para guardar: tente de novo mais tarde.') };
+      }
+    }
+    async function reenviar() {
+      const f = fila(), resto = []; let enviados = 0, parou = '';
+      for (const it of f) {
+        if (parou) { resto.push(it); continue; }
+        try { await post(it.rota, it.payload); enviados++; }
+        catch (e) { resto.push(it); if (e.recusado || e.semConfig || /Sem conexão|demorou/.test(e.message)) parou = e.message; }
+      }
+      grava(K_FILA, resto);
+      return { enviados, pendentes: resto.length, erro: parou };
+    }
+
+    async function syncBase(acao, modulo, dados) {
+      if (!['ler', 'salvar'].includes(acao)) throw new Error('Ação inválida: use "ler" ou "salvar".');
+      if (!MODULOS.includes(modulo)) throw new Error('Módulo inválido: ' + modulo + '.');
+      if (acao === 'salvar') {
+        grava(K_CACHE + modulo, { timestamp: agora(), dados });
+        return enviar('syncBase', { acao, modulo, dados }, { fila: true });
+      }
+      try { const j = await post('syncBase', { acao, modulo }); grava(K_CACHE + modulo, { timestamp: j.timestamp || agora(), dados: j.dados }); return j; }
+      catch (e) { const c = ler(K_CACHE + modulo, null); return { ok: false, erro: e.message, recusado: !!e.recusado, cache: c }; }
+    }
+    function prontoDrive(d) {
+      d = d || {};
+      const falta = ['leadId', 'nome', 'tipo'].filter(k => !String(d[k] || '').trim());
+      if (falta.length) return Promise.resolve({ ok: false, erro: 'Faltam dados para a pasta: ' + falta.join(', ') + '.' });
+      const cnpj = String(d.cnpj || '').replace(/\D/g, '');
+      const p = Object.assign({}, d, { cnpj: cnpj ? (cnpj.length === 14 ? cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : cnpj) : '' });
+      return enviar('prontoDrive', p, { fila: !p.arquivoDocxBase64 || p.arquivoDocxBase64.length <= MAX_FILA_DOCX, ms: 120000 });
+    }
+    function orquestrador(modo, contextoEnxuto, parametros) {
+      if (!['auditoria', 'lote'].includes(modo)) return Promise.resolve({ ok: false, erro: 'Modo inválido.' });
+      return enviar('orquestrador', { modo, contextoEnxuto: contextoEnxuto || '', parametros: parametros || {} }, { fila: false, ms: 300000 });
+    }
+    const testar = () => post('syncBase', { acao: 'ping', modulo: 'orquestrador' }).then(j => ({ ok: true, pessoa: j.pessoa || '', timestamp: j.timestamp }), e => ({ ok: false, erro: e.message }));
+
+    // painel de configuração reaproveitado nas três páginas; cls = classes de botão da página
+    function painel(el, o) {
+      o = o || {}; const btn = o.btn || 'btn', d = root.document; if (!el || !d) return;
+      const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      function render(msg) {
+        const c = config(), n = fila().length;
+        el.innerHTML = '<div style="display:grid;gap:6px">' +
+          '<input data-rb="base" aria-label="Endereço do n8n" placeholder="Endereço do n8n (https://...)" autocomplete="off" value="' + esc(c.base) + '">' +
+          '<input data-rb="pessoa" aria-label="Seu nome" placeholder="Seu nome (ex.: Victor)" autocomplete="off" value="' + esc(c.pessoa) + '">' +
+          '<input data-rb="token" aria-label="Seu token" type="password" autocomplete="off" placeholder="' + (c.token ? 'Token guardado neste navegador (deixe em branco para manter)' : 'Seu token pessoal (fornecido pelo Rafael)') + '">' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="' + btn + '" data-rb="salvar">Salvar</button><button type="button" class="' + btn + ' ghost" data-rb="testar">Testar conexão</button>' +
+          (n ? '<button type="button" class="' + btn + ' ghost" data-rb="reenviar">Reenviar fila (' + n + ')</button>' : '') +
+          (c.token ? '<button type="button" class="' + btn + ' ghost" data-rb="esquecer">Apagar deste navegador</button>' : '') + '</div>' +
+          '<div role="status" data-rb="st" style="font-size:12.5px">' + esc(msg || (configurado() ? 'Conexão configurada' + (c.pessoa ? ' para ' + c.pessoa : '') + '.' : 'Sem conexão configurada: os dados ficam só neste navegador.') + (n ? ' ' + n + ' envio(s) na fila.' : '')) + '</div></div>';
+      }
+      el.addEventListener('click', async ev => {
+        const a = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-rb'); if (!a) return;
+        const v = k => el.querySelector('[data-rb="' + k + '"]').value;
+        try {
+          if (a === 'salvar') { const tk = v('token'); configurar(Object.assign({ base: v('base'), pessoa: v('pessoa') }, tk ? { token: tk } : {})); render('Configuração salva neste navegador.'); }
+          else if (a === 'testar') { render('Testando…'); const r = await testar(); render(r.ok ? 'Conexão ok: o n8n reconheceu o token' + (r.pessoa ? ' de ' + r.pessoa : '') + '.' : r.erro); }
+          else if (a === 'reenviar') { render('Reenviando…'); const r = await reenviar(); render(r.enviados + ' enviado(s); ' + r.pendentes + ' pendente(s).' + (r.erro ? ' ' + r.erro : '')); }
+          else if (a === 'esquecer') { esquecer(); render('Endereço e token apagados deste navegador.'); }
+          else return;
+          if (o.aoMudar) o.aoMudar();
+        } catch (e) { render(e.message); }
+      });
+      render();
+    }
+    return { ROTAS, MODULOS, config, configurar, esquecer, configurado, fila, reenviar, syncBase, prontoDrive, orquestrador, testar, painel, versao: '1.0' };
+  }
+  const API = criar(); API.criar = criar;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  if (root) root.RDWebhookBridge = API;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+</head><body>
 <title>Atendimento RD</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -250,6 +397,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 </dialog>
         <p class="hint" id="wa-msg" role="status" style="margin:4px 0 8px"><label class="btn small ghost" for="wa-arq" style="margin-right:6px">Importar do WhatsApp</label>Exporte em: conversa → Mais → Exportar conversa (com ou sem mídia; com mídia, os anexos entram para leitura).</p><span class="hint" id="base-info" style="display:block;margin:0 0 6px">Conversas guardadas só neste navegador.</span><input type="file" id="wa-arq" accept=".txt,.zip,text/plain,application/zip" multiple hidden>
         <details id="lv-box" style="margin:0 0 8px"><summary class="hint">Conexão ao vivo com o WhatsApp</summary><div style="display:grid;gap:6px;margin-top:6px"><input id="lv-url" aria-label="Endereço do n8n" placeholder="Endereço do n8n (…/webhook/atendimento-rd/mensagens)" autocomplete="off"><input id="lv-chave" aria-label="Chave da equipe" type="password" placeholder="Chave da equipe" autocomplete="off"><button class="btn small" type="button" id="lv-ok">Conectar</button><div class="hint" id="lv-st" role="status">Desconectado.</div></div></details>
+        <details id="rb-box" style="margin:0 0 8px"><summary class="hint">Conexão com o n8n e o Google Drive</summary><div id="rb-painel" style="margin-top:6px"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn small" type="button" id="rb-enviar">Enviar conversas ao Drive</button><button class="btn small ghost" type="button" id="rb-trazer">Trazer do Drive</button></div><div class="hint" id="rb-st" role="status"></div></details>
         <ul class="inbox" id="inbox"></ul>
       </div>
       <div class="col chat" aria-label="Conversa">
@@ -3153,7 +3301,10 @@ document.getElementById("cn-num").addEventListener("input",e=>{const c=CNPJ.limp
   el.innerHTML="Abrir consulta: "+CNPJ.fontes(c).slice(0,3).map(f=>'<a href="'+f.url+'" target="_blank" rel="noopener">'+esc(f.nome)+'</a>').join(" · ")});
 document.getElementById("cn-aplica").addEventListener("click",()=>{const msg=document.getElementById("cn-msg");let n;
   try{n=CNPJ.normalizar(document.getElementById("cn-cola").value)}catch(e){msg.textContent=e.message;return}
-  const dig=CNPJ.limpar(document.getElementById("cn-num").value); if(dig.length===14&&dig!==n.cnpj){msg.textContent="O resultado colado é de outro CNPJ ("+CNPJ.fmtCNPJ(n.cnpj)+").";return}
+  aplicaCNPJ(n) });
+/* aplicaCNPJ(n): leva à ficha da aba Documentos o resultado normalizado da consulta do CNPJ (colado ou buscado). Devolve true se aplicou. */
+function aplicaCNPJ(n){ const msg=document.getElementById("cn-msg");
+  const dig=CNPJ.limpar(document.getElementById("cn-num").value); if(dig.length===14&&dig!==n.cnpj){msg.textContent="O resultado é de outro CNPJ ("+CNPJ.fmtCNPJ(n.cnpj)+").";return false}
   const adm=n.socios.find(s=>/administrador/i.test(s.qualificacao))||n.socios[0]||{nome:"",qualificacao:""};
   const cep=(n.cep||"").replace(/^(\d{5})(\d{3})$/,"$1-$2"), fonte="consulta pública do CNPJ ("+n.fonte+")";
   CASOS.pj.nome=n.razao;
@@ -3164,13 +3315,12 @@ document.getElementById("cn-aplica").addEventListener("click",()=>{const msg=doc
     ["REP_CPF","CPF do representante","","baixa","não consta da base pública (CPF mascarado); usar documento pessoal"]];
   dcCliente(n.razao);
   escolherCaso("pj"); lido=true; renderExt(); document.getElementById("extracao").hidden=false; document.getElementById("cn-cola").value="";
-  msg.textContent=(/ATIVA/i.test(n.situacao||"")?"":"Atenção: situação cadastral "+n.situacao+". ")+"Ficha preenchida com dados da Receita. Confira o representante no contrato social e informe o CPF dele."});
+  msg.textContent=(/ATIVA/i.test(n.situacao||"")?"":"Atenção: situação cadastral "+n.situacao+". ")+"Ficha preenchida com dados da Receita. Confira o representante no contrato social e informe o CPF dele."; return true }
 function triagemConv(c){ const r={msgs:c.msgs.map(m=>({autor:m.de==="cli"?c.nome:"Escritório",tx:m.tx})),participantes:[c.nome,"Escritório"]}; return WAImport.triagem(r,c.nome) }
-function aplicaCNPJ(n){ document.getElementById("cn-cola").value=JSON.stringify(n.__bruto||{}); }
 document.getElementById("cn-auto").addEventListener("click",async()=>{ const msg=document.getElementById("cn-msg"), c=CNPJ.limpar(document.getElementById("cn-num").value);
   if(!CNPJ.valido(c)){msg.textContent="Digite um CNPJ válido.";return}
   msg.textContent="Consultando a Receita…";
-  for(const f of CNPJ.fontes(c)){ try{ const r=await fetch(f.url); if(!r.ok) continue; const tx=await r.text(); CNPJ.normalizar(tx); document.getElementById("cn-cola").value=tx; document.getElementById("cn-aplica").click(); return }catch(e){} }
+  for(const f of CNPJ.fontes(c)){ try{ const r=await fetch(f.url); if(!r.ok) continue; aplicaCNPJ(CNPJ.normalizar(await r.text())); return }catch(e){} }
   msg.textContent="A busca automática só funciona com o Atendimento hospedado no domínio do escritório. Aqui, use os links acima e cole o resultado."; });
 const LVK="rd-aovivo"; let lv={url:"",chave:"",desde:""}, lvTimer=null;
 try{ lv=Object.assign(lv,JSON.parse(localStorage.getItem(LVK)||"{}")) }catch(e){}
@@ -3189,6 +3339,18 @@ document.getElementById("lv-ok").addEventListener("click",()=>{ lv.url=document.
   if(!/^https:\/\//.test(lv.url)){ document.getElementById("lv-st").textContent="Informe o endereço https do n8n."; return }
   try{localStorage.setItem(LVK,JSON.stringify(lv))}catch(e){}; clearInterval(lvTimer); lvBusca(); lvTimer=setInterval(lvBusca,30000); });
 if(lv.url&&lv.chave){ lvBusca(); lvTimer=setInterval(lvBusca,30000) }
+/* Ponte com o n8n (11/11/2026): conversas reais (sem as de exemplo) vão ao JSON mestre no Drive; ao trazer, junta por conversa (a do Drive prevalece). */
+RDWebhookBridge.painel(document.getElementById("rb-painel"),{btn:"btn small"});
+document.getElementById("rb-enviar").addEventListener("click",async()=>{ const el=document.getElementById("rb-st"); el.textContent="Enviando…";
+  const dados={convs:st.convs.filter(c=>!EX_IDS.has(c.id)),seq:st.seq}; const r=await RDWebhookBridge.syncBase("salvar","atendimento",dados);
+  el.textContent=r.ok?"Enviado ao Drive: "+dados.convs.length+" conversa(s).":r.erro });
+document.getElementById("rb-trazer").addEventListener("click",async()=>{ const el=document.getElementById("rb-st"); el.textContent="Buscando no Drive…";
+  const r=await RDWebhookBridge.syncBase("ler","atendimento"), d=r.ok?r.dados:(r.cache&&r.cache.dados);
+  if(!d||!Array.isArray(d.convs)){ el.textContent=r.ok?"Ainda não há conversas salvas no Drive.":r.erro; return }
+  if(!confirm("Juntar "+d.convs.length+" conversa(s) do Drive"+(r.ok?"":" (última cópia guardada neste navegador)")+" com as deste navegador? Em conversa repetida, fica a do Drive.")){ el.textContent="Nada alterado."; return }
+  const pos=new Map(st.convs.map((c,i)=>[c.id,i])); let novas=0;
+  d.convs.forEach(c=>{ if(!c||!c.id) return; if(pos.has(c.id)) st.convs[pos.get(c.id)]=c; else { st.convs.push(c); novas++ } });
+  st.seq=Math.max(st.seq||0,+d.seq||0); salvar(); renderMesa(); el.textContent=d.convs.length+" conversa(s) do Drive; "+novas+" nova(s) neste navegador."+(r.ok?"":" "+r.erro) });
 function renderExt(){
   const c=CASOS[caso];
   document.getElementById("ext").innerHTML=c.campos.map(([k,l,v,conf,src])=>{

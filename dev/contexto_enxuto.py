@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Contexto enxuto do projeto para IA — Rafael Didier Advocacia (v2.0, 03/11/2026).
+"""Contexto enxuto do projeto para IA — Rafael Didier Advocacia (v2.1, 11/11/2026: MAX_ARQUIVO passa a valer; v2.0, 03/11/2026).
 
 Em vez de despejar o projeto inteiro (que custa dezenas ou centenas de milhares de tokens a cada uso),
 gera só o que a IA precisa, dentro de um orçamento de tokens:
@@ -7,7 +7,10 @@ gera só o que a IA precisa, dentro de um orçamento de tokens:
   python3 contexto_enxuto.py                      -> MAPA: árvore + resumo de cada arquivo (funções, tamanho)
   python3 contexto_enxuto.py equipe/js/rotinas.js  -> mapa + conteúdo integral só dos arquivos indicados
   python3 contexto_enxuto.py --mudancas            -> mapa + arquivos alterados no git (o que está sendo revisado)
-  opções: --orcamento 30000 (tokens, padrão)  --raiz <pasta>  --saida <arquivo>
+  opções: --orcamento 30000 (tokens, padrão)  --max-arquivo 40000 (caracteres)  --raiz <pasta>  --saida <arquivo>
+
+Arquivo grande (acima de MAX_ARQUIVO caracteres): se foi pedido pelo nome, entra inteiro; se entrou por --mudancas,
+entra só o diff do git (o que mudou), cortado em MAX_ARQUIVO; arquivo novo grande fica só no mapa.
 
 Proteções: respeita o .gitignore (usa git quando disponível), ignora binários, minificados, travas e dados grandes,
 mascara segredos (chaves de API, tokens, senhas) e nunca lê .env, chaves e credenciais. Sem dependências externas.
@@ -93,6 +96,18 @@ def arvore(arqs):
     return '\n'.join(linhas)
 
 
+def diff(raiz: Path, rel: Path, limite: int):
+    """Só o que mudou no arquivo (git diff contra o último commit), cortado no limite. None se não houver diff."""
+    try:
+        out = subprocess.run(['git', '-C', str(raiz), 'diff', 'HEAD', '--unified=2', '--', rel.as_posix()], capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    d = out.stdout if out.returncode == 0 else ''
+    if not d.strip(): return None
+    for padrao, troca in SEGREDOS: d = padrao.sub(troca, d)
+    return d if len(d) <= limite else d[:limite] + f'\n[... diff cortado em {fmt(limite)} caracteres]'
+
+
 def alterados(raiz: Path):
     try:
         out = subprocess.run(['git', '-C', str(raiz), 'status', '--porcelain'], capture_output=True, text=True, timeout=20).stdout
@@ -106,13 +121,15 @@ def main(argv=None):
     ap.add_argument('arquivos', nargs='*', help='arquivos a incluir por inteiro')
     ap.add_argument('--mudancas', action='store_true', help='incluir por inteiro os arquivos alterados no git')
     ap.add_argument('--orcamento', type=int, default=30_000, help='limite aproximado de tokens do arquivo gerado')
+    ap.add_argument('--max-arquivo', type=int, default=MAX_ARQUIVO, help='acima disso (caracteres), arquivo vindo de --mudancas entra só pelo diff')
     ap.add_argument('--raiz', default='.'); ap.add_argument('--saida', default='')
     a = ap.parse_args(argv)
     raiz = Path(a.raiz).resolve()
     saida = Path(a.saida) if a.saida else raiz.parent / f'contexto_{raiz.name}.md'   # fora da pasta: nunca se lê de novo
     todos = [p for p in listar(raiz) if p.suffix.lower() in EXTENSOES]
-    pedidos = [Path(x) for x in a.arquivos] + (alterados(raiz) if a.mudancas else [])
-    pedidos = [p if not p.is_absolute() else p.relative_to(raiz) for p in pedidos]
+    rel_ = lambda p: p if not p.is_absolute() else p.relative_to(raiz)
+    nomeados = {rel_(Path(x)) for x in a.arquivos}
+    pedidos = [rel_(p) for p in [Path(x) for x in a.arquivos] + (alterados(raiz) if a.mudancas else [])]
     partes = [f'# Contexto do projeto `{raiz.name}`\n', '> Gerado por contexto_enxuto.py. Mapa completo; conteúdo integral só dos arquivos pedidos. Segredos mascarados.\n',
               '## Estrutura\n', '```text\n' + arvore(todos) + '\n```\n', '## Mapa dos arquivos\n']
     textos = {}
@@ -123,7 +140,12 @@ def main(argv=None):
     for rel in dict.fromkeys(pedidos):
         t, motivo = textos.get(rel) or ler(raiz / rel)
         if t is None: cortados.append(f'{rel} ({motivo or "não encontrado"})'); continue
-        bloco = f'### `{rel}`\n```{EXTENSOES.get(rel.suffix.lower(), "")}\n{t}\n```\n'
+        if len(t) > a.max_arquivo and rel not in nomeados:   # grande e não pedido pelo nome: só o diff
+            d = diff(raiz, rel, a.max_arquivo)
+            if d is None: cortados.append(f'{rel} (acima de {fmt(a.max_arquivo)} caracteres e sem diff: ficou só no mapa; peça pelo nome para incluir)'); continue
+            bloco = f'### `{rel}` (só o diff: o arquivo tem {fmt(len(t))} caracteres)\n```diff\n{d}\n```\n'
+        else:
+            bloco = f'### `{rel}`\n```{EXTENSOES.get(rel.suffix.lower(), "")}\n{t}\n```\n'
         if usado + tok(bloco) > a.orcamento: cortados.append(f'{rel} (estouraria o orçamento: ~{fmt(tok(bloco))} tokens)'); continue
         partes.append(bloco); usado += tok(bloco); incluidos.append(str(rel))
     if cortados: partes.append('\n> Não incluídos: ' + '; '.join(cortados) + '. Peça trechos específicos ou aumente --orcamento.\n')

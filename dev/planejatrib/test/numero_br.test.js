@@ -1,6 +1,4 @@
-const assert = require('assert'); const { numBR } = require('../numero_br.js');
-const casos = [['1000,50',1000.5],['1.000,50',1000.5],['1000.50',1000.5],['1,000.50',1000.5],['1.000',1000],['1.234.567',1234567],
-  ['1.234.567,89',1234567.89],['0.125',0.125],['0,125',0.125],['12.5',12.5],['R$ 1.234,56',1234.56],['(1.234,56)',-1234.56],['-500,00',-500],
-  ['',0],[null,0],['abc',0],['1,234,567',1234567],[42,42],['100',100],['8,25',8.25],['1.65',1.65]];
+// Casos do leitor numBR. A mesma lista (casos_numero_br.json) testa as cópias em financeiro.js, recupera_folha.js e robo_previdenciario.py.
+const assert = require('assert'); const { numBR } = require('../numero_br.js'); const casos = require('./casos_numero_br.json');
 let ok = 0; for (const [e, s] of casos) { assert.strictEqual(numBR(e), s, `${e} → ${numBR(e)} (esperado ${s})`); ok++; }
 console.log(`numero_br: ${ok} casos ok`);

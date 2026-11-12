@@ -354,7 +354,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   <!-- DOCUMENTOS -->
   <section id="v-docs" hidden>
     <h2 class="sec">Gerador de documentos</h2>
-    <p class="sub">Os documentos que o cliente envia pelo WhatsApp são lidos, os campos são extraídos e alguém da equipe confere antes de gerar. Leitura simulada: em produção, a extração é feita por IA no n8n e os dados de CNPJ vêm de consulta pública pelo número.</p>
+    <p class="sub">Os documentos que o cliente envia pelo WhatsApp são lidos, os campos são extraídos e alguém da equipe confere antes de gerar. A leitura usa o mesmo leitor da conversa (PDF com texto, foto quando o reconhecimento de texto está disponível, .txt ou texto colado) e cada campo é conferido pela equipe; os dados de CNPJ vêm de consulta pública pelo número.</p>
     <div class="panel" id="mdl-painel" style="margin-bottom:16px">
       <h3>Modelos do escritório</h3>
       <p class="hint">Envie um modelo em Word (.docx) ou texto com os campos entre chaves duplas, por exemplo <span class="mono">{{NOME}}</span>, <span class="mono">{{CPF}}</span>, <span class="mono">{{Razão social}}</span>. A formatação do Word é mantida. Na conversa, use <b>Enviar modelo</b>: os campos são preenchidos com os dados do cliente e o que faltar é pedido antes de gerar.</p>
@@ -381,9 +381,15 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     <div class="docs">
       <div class="panel">
         <h3>1. Documentos recebidos</h3>
-        <div class="cases" role="group" aria-label="Escolha o caso">
-          <button type="button" class="case" data-case="pj" aria-pressed="true"><b>Comercial Serra Alta Ltda</b><span class="hint">Pessoa jurídica · protocolo RD-2026-0412</span><span class="files"><span class="pill line">cartao_cnpj.pdf</span><span class="pill line">contrato_social.pdf</span><span class="pill line">cnh_socio.jpg</span></span></button>
-          <button type="button" class="case" data-case="pf" aria-pressed="false"><b>Fernanda Lopes</b><span class="hint">Pessoa física · protocolo RD-2026-0411</span><span class="files"><span class="pill line">rg_frente.jpg</span><span class="pill line">rg_verso.jpg</span><span class="pill line">conta_luz.pdf</span></span></button>
+        <div class="cases" role="group" aria-label="Tipo de cliente">
+          <button type="button" class="case" data-case="pj" aria-pressed="true"><b>Pessoa jurídica</b><span class="hint">Cartão CNPJ, contrato social e documento do representante</span></button>
+          <button type="button" class="case" data-case="pf" aria-pressed="false"><b>Pessoa física</b><span class="hint">RG ou CNH e comprovante de endereço</span></button>
+        </div>
+        <div class="hint" id="dc-cliente" style="margin-top:6px"></div>
+        <div style="display:grid;gap:8px;margin-top:10px">
+          <label class="btn ghost small" style="cursor:pointer;justify-self:start">Escolher arquivos (PDF, foto ou .txt)<input type="file" id="dc-arq" accept=".pdf,image/*,.txt" multiple hidden></label>
+          <span class="hint" id="dc-arqs"></span>
+          <textarea id="dc-tx" rows="3" aria-label="Texto dos documentos" placeholder="…ou cole aqui o texto dos documentos"></textarea>
         </div>
         <details class="cnpjbox" style="margin:10px 0">
           <summary>Consultar CNPJ na Receita (dados reais)</summary>
@@ -397,7 +403,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
           </div>
         </details>
         <button class="btn" type="button" id="ler">Ler documentos</button>
-        <div class="scan" aria-hidden="true"><span id="scanbar"></span></div>
+        <div class="hint" id="dc-msg" role="status"></div>
 
         <div id="extracao" hidden>
           <h3 style="margin-top:16px">2. Conferência dos campos</h3>
@@ -407,7 +413,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
           </div>
           <div class="trava" id="trava-pj" hidden>
             <label><input type="checkbox" id="chk-poderes"> Conferi na última alteração do contrato social que o representante indicado tem poderes para outorgar procuração sozinho.</label>
-            <div class="hint" style="margin-top:4px;color:var(--crit)">A leitura encontrou a cláusula de administração, mas não determinou se a assinatura é isolada ou conjunta.</div>
+            <div class="hint" id="dc-adm" style="margin-top:4px;color:var(--crit)">Confira na cláusula de administração do contrato social se a assinatura é isolada ou conjunta.</div>
           </div>
 
           <h3 style="margin-top:16px">3. Modelo e opções</h3>
@@ -446,13 +452,14 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 
   <section id="v-prazos" hidden>
     <h2 class="sec">Prazos processuais</h2>
-    <p class="sub">Contagem em dias úteis (CPC, art. 219), com a suspensão de 20/12 a 20/1 (art. 220) e os feriados nacionais, do Ceará e de Sobral. Este cálculo não substitui a conferência no calendário do tribunal: os dias sem expediente do TJCE e da Justiça Federal já entram; informe abaixo os feriados extras do ano, os municipais da comarca e os dias de indisponibilidade do sistema (art. 224, § 1º).</p>
+    <p class="sub">Contagem em dias úteis (CPC, art. 219), com a suspensão de 20/12 a 20/1 (art. 220) e os feriados nacionais e do Ceará; o municipal de Sobral (5/7) só entra quando a comarca é Sobral. Este cálculo não substitui a conferência no calendário do tribunal: os dias sem expediente do TJCE e da Justiça Federal já entram; informe abaixo os feriados extras do ano, os municipais da comarca e os dias de indisponibilidade do sistema (art. 224, § 1º).</p>
     <div class="panel" style="display:grid;gap:12px;max-width:760px">
       <div class="grid2">
         <div class="fld"><label for="pp-tipo">A data informada é</label><select id="pp-tipo"><option value="disponibilizacao">Disponibilização no DJe/DJEN</option><option value="intimacao">Intimação ou ciência (portal, oficial, carga)</option></select></div>
         <div class="fld"><label for="pp-data">Data</label><input id="pp-data" type="date"></div>
         <div class="fld"><label for="pp-dias">Prazo (dias)</label><input id="pp-dias" type="number" min="1" max="365" value="15"></div>
         <div class="fld"><label for="pp-trib">Justiça</label><select id="pp-trib"><option value="tjce">Estadual do Ceará (TJCE)</option><option value="jf">Federal (JFCE/TRF5)</option><option value="">Outra (informe os feriados abaixo)</option></select></div>
+        <div class="fld"><label for="pp-comarca">Comarca</label><select id="pp-comarca"><option value="">Outra (sem feriado municipal)</option><option value="sobral">Sobral (feriado de 5/7)</option></select></div>
         <div class="fld"><label for="pp-proc">Processo (opcional)</label><input id="pp-proc" placeholder="0000000-00.0000.0.00.0000"></div>
       </div>
       <label style="display:flex;gap:8px;align-items:center;font-size:13.5px"><input type="checkbox" id="pp-dobro"> Prazo em dobro (Fazenda Pública, art. 183; Defensoria, art. 186)</label>
@@ -585,14 +592,31 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 </div>
 
 <script>
-/* Financeiro mínimo do escritório (v1.0, 02/11/2026): contrato → parcelas → pagamentos → cobrança → indicadores.
+/* Financeiro mínimo do escritório (v1.1, 11/11/2026: leitura de valores pela regra do numBR; v1.0, 02/11/2026): contrato → parcelas → pagamentos → cobrança → indicadores.
  * Política padrão do escritório: êxito de 30% LÍQUIDO do proveito econômico, com gross-up pela carga tributária estimada de 14,33%.
  * Valores em centavos (inteiros) para não errar arredondamento. Navegador (window.Financeiro) e node. */
 (function (root) {
   'use strict';
   const POLITICA = { exitoPct: 30, carga: 14.33 };
   const TIPOS = { parcelado: 'Valor fixo parcelado', mensal: 'Mensalidade (assessoria)', exito: 'Só êxito', misto: 'Fixo + êxito' };
-  const cent = v => Math.round((typeof v === 'string' ? +String(v).replace(/\./g, '').replace(',', '.') : +v) * 100) || 0;
+  // leitura de valores: mesma regra do numBR (dev/planejatrib/numero_br.js); o teste confere as duas com os mesmos casos.
+  // "1.000,50" e "1000.50" = 1000,5; "1.000" = 1000; "0.125" = 0,125. Antes, "1000.50" virava 100050.
+  function numBR(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    let s = String(v == null ? '' : v).replace(/R\$|\s| /g, '');
+    if (!s) return 0;
+    let neg = false;
+    if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+    if (/^-/.test(s)) { neg = !neg; s = s.slice(1); }
+    if (!/^[\d.,]+$/.test(s)) return 0;
+    const iv = s.lastIndexOf(','), ip = s.lastIndexOf('.');
+    if (iv >= 0 && ip >= 0) s = iv > ip ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+    else if (iv >= 0) s = (s.match(/,/g).length > 1) ? s.replace(/,/g, '') : s.replace(',', '.');
+    else if (ip >= 0) { const pontos = s.match(/\./g).length; if (pontos > 1) s = s.replace(/\./g, ''); else if (/^[1-9]\d{0,2}\.\d{3}$/.test(s)) s = s.replace('.', ''); }
+    const x = parseFloat(s);
+    return isFinite(x) ? (neg ? -x : x) : 0;
+  }
+  const cent = v => Math.round(numBR(v) * 100) || 0;
   const reais = c => (c < 0 ? '-' : '') + 'R$ ' + (Math.abs(c) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const iso = d => d.toISOString().slice(0, 10);
   // soma meses mantendo o dia (31/01 + 1 mês = 28 ou 29/02)
@@ -636,7 +660,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     if (c.tipo !== 'exito') { if (!(cent(c.valorFixo) > 0)) e.push('Informe o valor ' + (c.tipo === 'mensal' ? 'da mensalidade.' : 'fixo total.')); if (!(+c.nParcelas >= 1 && +c.nParcelas <= 120)) e.push('Número de parcelas entre 1 e 120.'); if (!/^\d{4}-\d{2}-\d{2}$/.test(c.primeiroVenc || '')) e.push('Informe o 1º vencimento.'); }
     if ((c.tipo === 'exito' || c.tipo === 'misto') && !(+c.exitoPct > 0 && +c.exitoPct <= 100)) e.push('Percentual de êxito entre 0 e 100.');
     return e; }
-  const API = { POLITICA, TIPOS, cent, reais, maisMeses, gerarParcelas, exito, situacao, resumo, cobrancas, validarContrato, versao: '1.0' };
+  const API = { POLITICA, TIPOS, numBR, cent, reais, maisMeses, gerarParcelas, exito, situacao, resumo, cobrancas, validarContrato, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Financeiro = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1229,18 +1253,18 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   const soma = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12);
   const pp = () => root.PrazoProcessual || null;
   const utilSimples = d => d.getDay() !== 0 && d.getDay() !== 6;
-  const ehUtil = (d, trib) => { const P2 = pp(); return P2 ? P2.util(iso(d), [], trib) : utilSimples(d); };
+  const ehUtil = (d, trib, com) => { const P2 = pp(); return P2 ? P2.util(iso(d), [], trib, com) : utilSimples(d); };
   const tribunalDe = area => { const j = de(area).justica[0]; return j === 'jf' ? 'jf' : j === 'tjce' ? 'tjce' : ''; };
-  /* vencimentos(area, dataBase, { hoje, tribunal }) → prazos da matéria com a data-limite calculada a partir de dataBase (ciência, intimação, fato ou pagamento).
+  /* vencimentos(area, dataBase, { hoje, tribunal, comarca: 'sobral'|'' }) → prazos da matéria com a data-limite calculada a partir de dataBase (ciência, intimação, fato ou pagamento).
    * Dias úteis pela calculadora de prazos (feriados do tribunal e recesso); corridos com prorrogação para o dia útil seguinte; anos/meses pelo calendário. É estimativa a conferir. */
   function vencimentos(area, dataBase, o) {
-    o = o || {}; const m = de(area), trib = o.tribunal != null ? o.tribunal : tribunalDe(area), hoje = o.hoje || iso(new Date()), base = dataBase ? dia(dataBase) : null;
+    o = o || {}; const com = o.comarca || '', m = de(area), trib = o.tribunal != null ? o.tribunal : tribunalDe(area), hoje = o.hoje || iso(new Date()), base = dataBase ? dia(dataBase) : null;
     return m.prazos.map(p => { let venc = '', como = '';
       if (base && p.n != null) {
         if (p.contagem === 'anos' || p.contagem === 'meses') { const d = new Date(base); if (p.contagem === 'anos') d.setFullYear(d.getFullYear() + p.n); else d.setMonth(d.getMonth() + p.n); venc = iso(d); como = p.n + ' ' + (p.contagem === 'anos' ? (p.n === 1 ? 'ano' : 'anos') : 'meses') + ' pelo calendário'; }
-        else if (p.contagem === 'uteis') { const P2 = pp(); if (P2) { try { venc = P2.calcular({ intimacao: iso(base), dias: p.n, tribunal: trib }).vencimento; } catch (e) { venc = ''; } }
+        else if (p.contagem === 'uteis') { const P2 = pp(); if (P2) { try { venc = P2.calcular({ intimacao: iso(base), dias: p.n, tribunal: trib, comarca: com }).vencimento; } catch (e) { venc = ''; } }
           if (!venc) { let d = base, c = 0; while (c < p.n) { d = soma(d, 1); if (utilSimples(d)) c++; } venc = iso(d); } como = p.n + ' dias úteis' + (P2 ? ' (calendário ' + (trib || 'nacional') + ')' : ' (só fins de semana excluídos)'); }
-        else { let d = soma(base, p.n); while (!ehUtil(d, trib)) d = soma(d, 1); venc = iso(d); como = p.n + ' dias corridos' + (p.contagem === 'conferir' ? ' — contagem a conferir' : ', prorrogado para o dia útil se cair em dia sem expediente'); }
+        else { let d = soma(base, p.n); while (!ehUtil(d, trib, com)) d = soma(d, 1); venc = iso(d); como = p.n + ' dias corridos' + (p.contagem === 'conferir' ? ' — contagem a conferir' : ', prorrogado para o dia útil se cair em dia sem expediente'); }
       }
       return Object.assign({}, p, { vencimento: venc, como, vencido: !!(venc && venc < hoje), diasAte: venc ? Math.round((dia(venc) - dia(hoje)) / 864e5) : null }); });
   }
@@ -1381,7 +1405,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 
 </script>
 <script>
-/* Classificador de publicações (DJEN/DJe) com prazo sugerido e tarefa (v1.0, 30/10/2026).
+/* Classificador de publicações (DJEN/DJe) com prazo sugerido e tarefa (v1.1, 11/11/2026: comarca pelo CNJ para o feriado municipal; v1.0, 30/10/2026).
  * Regras objetivas, sem IA: identifica tipo, processo (CNJ), tribunal, prazo expresso no texto, dobro e audiência;
  * calcula o vencimento com PrazoProcessual (dias úteis, CPC arts. 219/224) e monta o bloco "Para lançar no Astrea".
  * Aponta; não decide: a Controladoria confere antes de lançar. Prazos sem número expresso recebem o prazo legal
@@ -1441,9 +1465,10 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     let prazoDias = exp && exp.unidade === 'dias' ? exp.dias : tipo.prazo, contagem = exp ? exp.contagem : (tipo.contagem || 'úteis'), dobro = !!(exp && exp.dobro);
     const origemPrazo = exp && exp.unidade === 'dias' ? 'expresso no texto' : prazoDias ? 'prazo legal presumido: confirmar' : 'sem prazo';
     let venc = '', memoria = '', erro = '';
+    const comarca = pp() && pp().comarcaDoCNJ ? pp().comarcaDoCNJ(cnj) : '';   // feriado municipal só na comarca do processo (Sobral)
     if (prazoDias && disp) {
       if (contagem === 'corridos') { venc = somaCorridos(disp, prazoDias * (dobro ? 2 : 1)); memoria = `${prazoDias} dias corridos${dobro ? ' em dobro' : ''} a partir da disponibilização em ${br(disp)} (confira se a contagem é mesmo em dias corridos).`; }
-      else if (pp()) { try { const r = pp().calcular({ disponibilizacao: disp, dias: prazoDias, dobro, tribunal: trib.k }); venc = r.vencimento; memoria = r.memoria; } catch (e) { erro = e.message; } }
+      else if (pp()) { try { const r = pp().calcular({ disponibilizacao: disp, dias: prazoDias, dobro, tribunal: trib.k, comarca }); venc = r.vencimento; memoria = r.memoria; } catch (e) { erro = e.message; } }
       else erro = 'calculadora de prazos indisponível';
     }
     const hoje = o.hoje || new Date().toLocaleDateString('sv-SE');
@@ -1456,7 +1481,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       `Observação: ${memoria || tipo.base}${exp ? '' : prazoDias ? ' · prazo presumido pelo tipo da publicação, confirmar no texto' : ''}`,
       `Fonte: publicação${disp ? ' disponibilizada em ' + br(disp) : ''}${trib.nome ? ' · ' + trib.nome : ''}`].filter(Boolean).join('\n');
     return { cnj, cnjs, tribunal: trib.k, tribunalNome: trib.nome, tipo: tipo.k, tipoNome: tipo.nome, urgente, rota: urgente ? 'urgencia' : tipo.rota,
-      prazoDias, contagem, dobro, origemPrazo, base: tipo.base, disponibilizacao: disp, vencimento: venc, diasAteVencimento: diasAte(venc), memoria, erro,
+      prazoDias, contagem, dobro, origemPrazo, comarca, base: tipo.base, disponibilizacao: disp, vencimento: venc, diasAteVencimento: diasAte(venc), memoria, erro,
       audiencia: aud, execucaoFiscal: ef, resumo, titulo, astrea, texto: t };
   }
   /* lote(texto, o): várias publicações coladas de uma vez; separa pelo início de cada número de processo */
@@ -1482,16 +1507,18 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     return [...M.values()].map(x => { const ref = [x.ultima, x.mov && x.mov.data].filter(Boolean).sort().pop() || ''; return Object.assign(x, { referencia: ref, diasSem: dias(ref), parado: ref ? dias(ref) > limite : true }); })
       .sort((a, b) => (b.parado - a.parado) || ((a.proximo || '9') < (b.proximo || '9') ? -1 : 1));
   }
-  const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.0' };
+  const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Publicacao = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
 <script>
-/* Prazos processuais em dias úteis (CPC, arts. 219, 220 e 224) (v1.0, 30/10/2026).
+/* Prazos processuais em dias úteis (CPC, arts. 219, 220 e 224) (v1.1, 11/11/2026; v1.0, 30/10/2026).
  * Separado do prazo de atendimento (horas úteis, 8h–17h), que não deve ser usado para prazo processual.
- * Feriados: nacionais, Carnaval (seg/ter), Sexta-feira Santa, Corpus Christi, Data Magna do CE (25/3), Sobral (5/7)
- * + feriadosExtras do calendário do tribunal [CONFIRMAR o calendário anual do TJCE/TRF5]. */
+ * Feriados: nacionais, Carnaval (seg/ter), Sexta-feira Santa, Corpus Christi e Data Magna do CE (25/3), todos os anos;
+ * o municipal (5/7, Sobral) só quando a comarca é Sobral; os dias sem expediente do tribunal: os da lei (JF, Lei 5.010/1966)
+ * todos os anos e os do TJCE só nos anos com portaria cadastrada em TRIBUNAIS.tjce.anos (ano sem portaria = aviso);
+ * + feriadosExtras informados para o caso. */
 (function (root) {
   'use strict';
   const pad = n => String(n).padStart(2, '0');
@@ -1501,42 +1528,48 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function pascoa(a) { const b = a % 19, c = Math.floor(a / 100), d = a % 100, e = Math.floor(c / 4), f = c % 4, g = Math.floor((c + 8) / 25), h = Math.floor((c - g + 1) / 3),
       i = (19 * b + c - e - h + 15) % 30, k = Math.floor(d / 4), l = d % 4, m = (32 + 2 * f + 2 * k - i - l) % 7, n = Math.floor((b + 11 * i + 22 * m) / 451),
       mes = Math.floor((i + m - 7 * n + 114) / 31), dd = ((i + m - 7 * n + 114) % 31) + 1; return new Date(a, mes - 1, dd, 12); }
-  // dias sem expediente próprios de cada justiça (conferir a portaria anual do tribunal)
+  // dias sem expediente próprios de cada justiça. fixos/pascoa = todos os anos (previstos em lei);
+  // anos = calendário de cada ano (portaria): para um ano novo, acrescente { AAAA: { fonte, fixos, pascoa } }
   const TRIBUNAIS = {
-    tjce: { nome: 'Justiça Estadual do Ceará (TJCE)', fonte: 'Portaria TJCE nº 2.924/2025 (calendário de 2026)', fixos: [[3, 19], [10, 28], [12, 8]], pascoa: [-3] },
-    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3], natal: true }
+    tjce: { nome: 'Justiça Estadual do Ceará (TJCE)', fixos: [], pascoa: [],
+      anos: { 2026: { fonte: 'Portaria TJCE nº 2.924/2025 (calendário de 2026)', fixos: [[3, 19], [10, 28], [12, 8]], pascoa: [-3] } } },
+    jf: { nome: 'Justiça Federal (JFCE/TRF5)', fonte: 'Lei nº 5.010/1966, art. 62', fixos: [[8, 11], [11, 1], [12, 8]], pascoa: [-4, -3], natal: true, anos: {} }
   };
-  function feriados(ano, extras, tribunal) {
-    const t = TRIBUNAIS[tribunal] || { fixos: [], pascoa: [] };
-    const f = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...t.fixos].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
-    const p = pascoa(ano); [-48, -47, -2, 60, ...t.pascoa].forEach(n => f.push(iso(soma(p, n))));
+  // feriados municipais da comarca (só entram quando a comarca é informada)
+  const COMARCAS = { sobral: { nome: 'Sobral', fonte: 'feriado municipal de Sobral (5/7)', fixos: [[7, 5]] } };
+  const calendarioDoAno = (tribunal, ano) => { const t = TRIBUNAIS[tribunal]; return t && t.anos ? t.anos[ano] || null : null; };
+  function feriados(ano, extras, tribunal, comarca) {
+    const t = TRIBUNAIS[tribunal] || { fixos: [], pascoa: [] }, a = calendarioDoAno(tribunal, ano) || { fixos: [], pascoa: [] }, c = COMARCAS[comarca] || { fixos: [] };
+    const f = [[1, 1], [3, 25], [4, 21], [5, 1], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...t.fixos, ...a.fixos, ...c.fixos].map(([m, d]) => iso(new Date(ano, m - 1, d, 12)));
+    const p = pascoa(ano); [-48, -47, -2, 60, ...t.pascoa, ...a.pascoa].forEach(n => f.push(iso(soma(p, n))));
     if (t.natal) { for (let d = 20; d <= 31; d++) f.push(iso(new Date(ano, 11, d, 12))); for (let d = 1; d <= 6; d++) f.push(iso(new Date(ano, 0, d, 12))); }   // Lei 5.010/1966, art. 62, I
     return new Set(f.concat((extras || []).filter(x => String(x).startsWith(String(ano)))));
   }
   // art. 220: suspensão de 20/12 a 20/1, inclusive
   const recesso = d => (d.getMonth() === 11 && d.getDate() >= 20) || (d.getMonth() === 0 && d.getDate() <= 20);
-  const expediente = (d, extras, tribunal) => d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal).has(iso(d));
-  function util(d, extras, tribunal) { return expediente(d, extras, tribunal) && !recesso(d); }
-  let TRIB = '';
-  const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras, TRIB)) x = soma(x, 1); return x; };
-  /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), feriadosExtras: ['AAAA-MM-DD'] }
+  const expediente = (d, extras, tribunal, comarca) => d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear(), extras, tribunal, comarca).has(iso(d));
+  function util(d, extras, tribunal, comarca) { return expediente(d, extras, tribunal, comarca) && !recesso(d); }
+  let TRIB = '', COM = '';
+  const proximoUtil = (d, extras) => { let x = d; while (!util(x, extras, TRIB, COM)) x = soma(x, 1); return x; };
+  /* entrada: { disponibilizacao | intimacao (AAAA-MM-DD), dias, dobro (art. 183/186), tribunal: 'tjce'|'jf'|'', comarca: 'sobral'|'', feriadosExtras: ['AAAA-MM-DD'] }
    * - disponibilizacao no DJe/DJEN: publicação = 1º dia útil seguinte (art. 224, § 2º); início = 1º dia útil após a publicação (§ 3º)
    * - intimacao (data da ciência): início = 1º dia útil seguinte (art. 224, caput: exclui o dia do começo) */
   function calcular(o) {
-    const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1); TRIB = o.tribunal || '';
+    const ex = o.feriadosExtras || [], n = (+o.dias || 0) * (o.dobro ? 2 : 1); TRIB = o.tribunal || ''; COM = COMARCAS[o.comarca] ? o.comarca : '';
     if (!(n > 0)) throw new Error('Informe o número de dias do prazo.');
     let publicacao = null, inicio;
     // a publicação ocorre no 1º dia com expediente (a suspensão do art. 220 atinge a contagem, não a publicação):
     // leitura conservadora, que antecipa o início da contagem
-    if (o.disponibilizacao) { let pb = soma(dia(o.disponibilizacao), 1); while (!expediente(pb, ex, TRIB)) pb = soma(pb, 1); publicacao = pb; inicio = proximoUtil(soma(publicacao, 1), ex); }
+    if (o.disponibilizacao) { let pb = soma(dia(o.disponibilizacao), 1); while (!expediente(pb, ex, TRIB, COM)) pb = soma(pb, 1); publicacao = pb; inicio = proximoUtil(soma(publicacao, 1), ex); }
     else if (o.intimacao) inicio = proximoUtil(soma(dia(o.intimacao), 1), ex);
     else throw new Error('Informe a data de disponibilização ou de intimação.');
     let d = inicio, c = 1; while (c < n) { d = proximoUtil(soma(d, 1), ex); c++; }
     // memória de cálculo: cada dia não contado entre o marco e o vencimento, com o motivo
     const br = x => iso(x).split('-').reverse().join('/'), saltos = [];
     for (let x = soma(dia(o.disponibilizacao || o.intimacao), 1); x <= d; x = soma(x, 1)) {
-      if (util(x, ex, TRIB)) continue;
-      const m = x.getDay() === 6 ? 'sábado' : x.getDay() === 0 ? 'domingo' : !expediente(x, ex, TRIB) ? (ex.includes(iso(x)) ? 'feriado informado' : (TRIBUNAIS[TRIB] && TRIBUNAIS[TRIB].natal && ((x.getMonth() === 11 && x.getDate() >= 20) || (x.getMonth() === 0 && x.getDate() <= 6))) ? 'recesso da Justiça Federal, Lei 5.010/1966, art. 62, I' : 'feriado') : 'suspensão do art. 220 do CPC';
+      if (util(x, ex, TRIB, COM)) continue;
+      const municipal = COM && COMARCAS[COM].fixos.some(([m, dd]) => x.getMonth() === m - 1 && x.getDate() === dd);
+      const m = x.getDay() === 6 ? 'sábado' : x.getDay() === 0 ? 'domingo' : !expediente(x, ex, TRIB, COM) ? (ex.includes(iso(x)) ? 'feriado informado' : (TRIBUNAIS[TRIB] && TRIBUNAIS[TRIB].natal && ((x.getMonth() === 11 && x.getDate() >= 20) || (x.getMonth() === 0 && x.getDate() <= 6))) ? 'recesso da Justiça Federal, Lei 5.010/1966, art. 62, I' : municipal ? COMARCAS[COM].fonte : 'feriado') : 'suspensão do art. 220 do CPC';
       saltos.push({ data: iso(x), motivo: m }); }
     // agrupa dias seguidos (ignorando fins de semana no meio) com o mesmo motivo
     const faixas = l => { const out = []; let ini = null, fim = null, mot = '';
@@ -1547,11 +1580,19 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
     const memoria = (o.disponibilizacao ? 'Disponibilizado em ' + br(dia(o.disponibilizacao)) + '; publicação em ' + br(publicacao) + ' (art. 224, § 2º); ' : 'Intimação em ' + br(dia(o.intimacao)) + '; ') +
       'início em ' + br(inicio) + ' (art. 224, § 3º); ' + n + ' dias úteis' + (o.dobro ? ' (em dobro, arts. 183/186)' : '') + '; ' +
       (fora.length ? 'não contados além dos fins de semana: ' + faixas(fora).join(', ') : 'só fins de semana excluídos') + '; vencimento em ' + br(d) + '.';
+    // anos da contagem sem portaria cadastrada (só para tribunal que usa calendário anual)
+    const anos = []; for (let a = dia(o.disponibilizacao || o.intimacao).getFullYear(); a <= d.getFullYear(); a++) anos.push(a);
+    const semPortaria = TRIBUNAIS[TRIB] && TRIB === 'tjce' ? anos.filter(a => !calendarioDoAno(TRIB, a)) : [];
+    const fontes = TRIBUNAIS[TRIB] ? [TRIBUNAIS[TRIB].fonte].concat(anos.map(a => (calendarioDoAno(TRIB, a) || {}).fonte)).filter(Boolean) : [];
     return { memoria, saltos, publicacao: publicacao && iso(publicacao), inicio: iso(inicio), vencimento: iso(d), diasUteis: n,
-      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + ' (' + TRIBUNAIS[TRIB].fonte + (TRIB === 'tjce' && d.getFullYear() > 2026 ? '; o calendário de ' + d.getFullYear() + ' ainda precisa ser conferido' : '') + ')' : 'sem calendário de tribunal',
+      tribunal: TRIBUNAIS[TRIB] ? TRIBUNAIS[TRIB].nome + (fontes.length ? ' (' + fontes.join('; ') + ')' : '') + (semPortaria.length ? ' — calendário de ' + semPortaria.join(' e ') + ' não cadastrado: considerados só os feriados nacionais' + (COM ? ', estaduais e municipais' : ' e estaduais') + '; confira a portaria' : '') : 'sem calendário de tribunal',
+      comarca: COM ? COMARCAS[COM].nome : 'não informada (sem feriado municipal)', semPortaria,
       aviso: 'Confira o calendário do tribunal (feriados forenses e indisponibilidade do sistema, art. 224, § 1º) antes de lançar no Astrea.' };
   }
-  const API = { TRIBUNAIS, calcular, util: (s, ex, t) => util(dia(s), ex, t), feriados, versao: '1.0' };
+  // comarca pelo número CNJ: TJCE (8.06) origem 0167 e JF da 5ª Região (4.05) subseção 8103 = Sobral
+  function comarcaDoCNJ(cnj) { const d = String(cnj || '').replace(/\D/g, ''); if (d.length !== 20) return ''; const j = d[13], tr = d.slice(14, 16), o = d.slice(16);
+    return (j === '8' && tr === '06' && o === '0167') || (j === '4' && tr === '05' && o === '8103') ? 'sobral' : ''; }
+  const API = { TRIBUNAIS, COMARCAS, calcular, comarcaDoCNJ, util: (s, ex, t, c) => util(dia(s), ex, t, c), feriados, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PrazoProcessual = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1871,10 +1912,11 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
 
 </script>
 <script>
-/* Atendimento RD — prazos em horas úteis (v1.0, 30/10/2026).
+/* Atendimento RD — prazos em horas úteis (v1.1, 11/11/2026; v1.0, 30/10/2026).
  * Expediente: segunda a sexta, das 8h às 17h (horário de Brasília, o do navegador). Não conta feriados nacionais
- * (inclusive Carnaval, Sexta-feira Santa e Corpus Christi, calculados pela Páscoa), a Data Magna do Ceará (25/3)
- * e o aniversário de Sobral (5/7). Navegador (window.Prazo) e node. */
+ * (inclusive Carnaval, Sexta-feira Santa e Corpus Christi, calculados pela Páscoa, ano a ano), a Data Magna do Ceará (25/3)
+ * e o feriado do município do expediente (MUNICIPAIS; padrão: Sobral, 5/7 — Prazo.configurar({ municipio: '' }) tira).
+ * Navegador (window.Prazo) e node. */
 (function (root) {
   'use strict';
   const ABRE = 8, FECHA = 17, H = 3600000;
@@ -1883,11 +1925,15 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
       mes = Math.floor((i + m - 7 * n + 114) / 31), dia = ((i + m - 7 * n + 114) % 31) + 1; return new Date(a, mes - 1, dia); }
   const chave = d => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   const cache = {};
-  function feriados(ano) {
-    if (cache[ano]) return cache[ano];
-    const fixos = [[1, 1], [3, 25], [4, 21], [5, 1], [7, 5], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25]].map(([m, d]) => new Date(ano, m - 1, d));
+  const MUNICIPAIS = { sobral: [[7, 5]] };   // feriados municipais por município
+  let MUNICIPIO = 'sobral';                    // sede do expediente do escritório
+  function configurar(o) { if (o && 'municipio' in o) { MUNICIPIO = MUNICIPAIS[o.municipio] ? o.municipio : ''; Object.keys(cache).forEach(k => delete cache[k]); } return { municipio: MUNICIPIO }; }
+  function feriados(ano, municipio) {
+    const mun = municipio === undefined ? MUNICIPIO : (MUNICIPAIS[municipio] ? municipio : ''), k = ano + '|' + mun;
+    if (cache[k]) return cache[k];
+    const fixos = [[1, 1], [3, 25], [4, 21], [5, 1], [9, 7], [10, 12], [11, 2], [11, 15], [11, 20], [12, 25], ...(MUNICIPAIS[mun] || [])].map(([m, d]) => new Date(ano, m - 1, d));
     const p = pascoa(ano), mais = n => new Date(p.getFullYear(), p.getMonth(), p.getDate() + n);
-    return (cache[ano] = new Set([...fixos, mais(-48), mais(-47), mais(-2), mais(60)].map(chave)));
+    return (cache[k] = new Set([...fixos, mais(-48), mais(-47), mais(-2), mais(60)].map(chave)));
   }
   const diaUtil = d => d.getDay() !== 0 && d.getDay() !== 6 && !feriados(d.getFullYear()).has(chave(d));
   const abertura = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), ABRE), fechamento = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), FECHA);
@@ -1903,7 +1949,7 @@ footer{margin-top:24px;font-size:12.5px;color:var(--muted);border-top:1px solid 
   function entre(a, b) { a = new Date(a); b = new Date(b); if (b < a) return -entre(b, a); let t = proximo(a), ms = 0;
     while (t < b) { const fim = fechamento(t); if (b <= fim) { ms += b - t; break; } ms += fim - t; t = proximo(new Date(fim.getTime() + 1)); }
     return ms / H; }
-  const API = { somar, entre, proximo, feriados, pascoa, diaUtil, ABRE, FECHA, versao: '1.0' };
+  const API = { somar, entre, proximo, feriados, pascoa, diaUtil, configurar, MUNICIPAIS, ABRE, FECHA, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Prazo = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -2262,7 +2308,7 @@ function prio(f){const s=score(f);return s>=9?"P1":s>=6?"P2":"P3"}
 const PCLS={P1:"crit",P2:"warn",P3:"info"};
 function novaFicha(c,rota,doc,resumo,origem){
   st.seq++; const r=ROTAS[rota];
-  const f={proto:"RD-2026-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:(()=>{const u=(c.msgs||[]).filter(m=>m.de==="cli").map(m=>m.em).filter(Boolean).sort().pop(); return u&&Date.parse(u)<=Date.now()?new Date(u).toISOString():new Date().toISOString()})(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
+  const f={proto:"RD-"+new Date().getFullYear()+"-"+String(st.seq).padStart(4,"0"),rota,doc,resumo,status:"Nova",em:(()=>{const u=(c.msgs||[]).filter(m=>m.de==="cli").map(m=>m.em).filter(Boolean).sort().pop(); return u&&Date.parse(u)<=Date.now()?new Date(u).toISOString():new Date().toISOString()})(),primeiraResp:null,log:["Ficha aberta pelo "+origem,"Encaminhada a "+r.setor+" ("+r.resp+")"]};
   if(rota==="nova"&&!c.cliente){f.status="Aguardando checagem de conflito";f.log.push("Checagem de conflito pedida à Administração")}
   if(rota==="urgencia")f.log.push("Alerta imediato enviado à Direção e à Controladoria");
   const fl=faltando(f); f.completoEntrada=fl.length===0;
@@ -2336,7 +2382,6 @@ function renderFicha(){
   document.getElementById("f-st").addEventListener("change",e=>{f.status=e.target.value;f.log.push("Status alterado para "+e.target.value);salvar();renderMesa()});
   document.getElementById("ir-crm").addEventListener("click",()=>viraLead(c));
   document.getElementById("ir-docs").addEventListener("click",()=>{ const dg=String(c.doc||f.doc||"").replace(/\D/g,""); docsConvId=c.id;
-    if(c.nome==="Fernanda Lopes"||c.nome==="Comercial Serra Alta Ltda"){ escolherCaso(c.nome==="Fernanda Lopes"?"pf":"pj"); mostrar("docs"); return }
     const d=c.dados||{}, j=c.cnpj||{}, x=(k,v)=>d[k]||v||"", fonte=v=>v?"dados da conversa":"não informado";
     if(dg.length===11){ CASOS.pf={tipo:"PF",nome:c.nome,campos:[["NOME","Nome completo",x("NOME",c.nome),"media",fonte(1)],["NACIONALIDADE","Nacionalidade",x("NACIONALIDADE"),"baixa",fonte(d.NACIONALIDADE)],
         ["ESTADO_CIVIL","Estado civil",x("ESTADO_CIVIL"),"baixa",fonte(d.ESTADO_CIVIL)],["PROFISSAO","Profissão",x("PROFISSAO"),"baixa",fonte(d.PROFISSAO)],["RG","RG e órgão emissor",x("RG"),"baixa",fonte(d.RG)],
@@ -2346,8 +2391,8 @@ function renderFicha(){
         ["ENDERECO","Endereço da sede",j.endereco?j.endereco+", "+(j.municipio||"")+"/"+(j.uf||"")+(j.cep?", CEP "+j.cep:""):x("ENDERECO"),j.endereco?"alta":"baixa",j.endereco?"consulta pública do CNPJ":"consultar o CNPJ"],
         ["REP_NOME","Representante",j.representante||x("REPRESENTANTE"),"media","conferir no contrato social"],["REP_CARGO","Cargo",j.cargo||x("CARGO"),"media","conferir no contrato social"],
         ["REP_CPF","CPF do representante",x("REP_CPF"),"baixa","documento pessoal do representante"]]};
-      const b0=document.querySelector('.case[data-case="pj"] b'); if(b0) b0.textContent=c.nome; }
-    escolherCaso(dg.length===11?"pf":"pj"); mostrar("docs"); lido=true; renderExt(); document.getElementById("extracao").hidden=false;
+    }
+    escolherCaso(dg.length===11?"pf":"pj"); dcCliente(c.nome); mostrar("docs"); lido=true; renderExt(); document.getElementById("extracao").hidden=false;
     const n=document.getElementById("cn-num"), m=document.getElementById("cn-msg");
     if(dg.length===14&&!j.razao){ n.value=Modelos.fmtDoc(dg); n.dispatchEvent(new Event("input")); n.closest("details").open=true; m.textContent="Dados de "+c.nome+". Clique em “Buscar automaticamente” para completar endereço e representante pela Receita."; }
     else m.textContent="Dados de "+c.nome+" carregados da conversa. Confira e complete os campos em vermelho."; });
@@ -3065,35 +3110,42 @@ document.getElementById("fsite").addEventListener("submit",ev=>{
   renderFila(); contador();
 });
 
-// documentos
-const CASOS={
-  pj:{tipo:"PJ",nome:"Comercial Serra Alta Ltda",campos:[
-    ["RAZAO","Razão social","COMERCIAL SERRA ALTA LTDA","alta","consulta pública do CNPJ"],
-    ["CNPJ","CNPJ","12.345.678/0001-90","alta","consulta pública do CNPJ"],
-    ["ENDERECO","Endereço da sede","Rua Exemplo, 100, Centro, Sobral/CE, CEP 62010-000","alta","consulta pública do CNPJ"],
-    ["REP_NOME","Representante","JOÃO EXEMPLO DA SILVA","alta","contrato social, cláusula 7ª"],
-    ["REP_CARGO","Cargo","sócio-administrador","media","contrato social, cláusula 7ª"],
-    ["REP_CPF","CPF do representante","123.456.789-0?","baixa","CNH (foto com reflexo)"]
-  ]},
-  pf:{tipo:"PF",nome:"Fernanda Lopes",campos:[
-    ["NOME","Nome completo","FERNANDA EXEMPLO LOPES","alta","RG, frente"],
-    ["NACIONALIDADE","Nacionalidade","brasileira","media","RG, naturalidade"],
-    ["ESTADO_CIVIL","Estado civil","","baixa","não consta do RG"],
-    ["PROFISSAO","Profissão","","baixa","não consta dos documentos"],
-    ["RG","RG e órgão emissor","2000000000000 SSPDS/CE","alta","RG, verso"],
-    ["CPF","CPF","123.456.789-09","alta","RG, verso"],
-    ["ENDERECO","Endereço","Av. Exemplo, 250, apto 3, Centro, Sobral/CE, CEP 62011-000","media","conta de luz de setembro"]
-  ]}
-};
+// documentos: leitura real dos arquivos (11/11/2026; antes, campos de exemplo fixos e barra de leitura simulada)
+const CAMPOS_DOC={
+  PJ:[["RAZAO","Razão social"],["CNPJ","CNPJ"],["ENDERECO","Endereço da sede"],["REP_NOME","Representante"],["REP_CARGO","Cargo"],["REP_CPF","CPF do representante"]],
+  PF:[["NOME","Nome completo"],["NACIONALIDADE","Nacionalidade"],["ESTADO_CIVIL","Estado civil"],["PROFISSAO","Profissão"],["RG","RG e órgão emissor"],["CPF","CPF"],["ENDERECO","Endereço"]]};
+function casoVazio(tipo,nome){ return {tipo,nome:nome||"",campos:CAMPOS_DOC[tipo].map(([k,l])=>[k,l,"","baixa","não lido: leia os documentos ou preencha"])} }
+const CASOS={pj:casoVazio("PJ"),pf:casoVazio("PF")};
+// campo lido pelo Leitura.extrair → campo do documento (na PJ, nome e CPF de RG/CNH são do representante: confiança no máximo média)
+const DE_PARA={PJ:{RAZAO:["RAZAO_SOCIAL"],CNPJ:["CNPJ"],ENDERECO:["ENDERECO"],REP_NOME:["NOME"],REP_CPF:["CPF"]},PF:{NOME:["NOME"],RG:["RG"],CPF:["CPF"],ENDERECO:["ENDERECO"]}};
+function dcCliente(nome){ const el=document.getElementById("dc-cliente"); if(el) el.textContent=nome?"Cliente: "+nome:"" }
+function camposDosDocumentos(tipo,lidos){ const novo=casoVazio(tipo,CASOS[tipo==="PJ"?"pj":"pf"].nome); let adm="";
+  novo.campos=novo.campos.map(([k,l,v,conf])=>{ for(const {nome,r} of lidos) for(const ch of (DE_PARA[tipo][k]||[])){ const x=r.campos.find(c=>c.chave===ch&&c.valor); if(!x) continue;
+      let val=x.valor; if(k==="ENDERECO"){ const cep=r.campos.find(c=>c.chave==="CEP"&&c.valor); if(cep&&!val.includes(cep.valor)) val+=", CEP "+cep.valor }
+      const cf=/^REP_/.test(k)&&x.conf==="alta"?"media":x.conf;
+      return [k,l,val,cf,r.tipo.nome+" ("+nome+")"+(x.obs?" · "+x.obs:"")+(/^REP_/.test(k)?" · conferir se é do representante":"")] }
+    return [k,l,v,conf,lidos.length?"não encontrado nos documentos lidos":"não lido: leia os documentos ou preencha"] });
+  lidos.forEach(({r})=>{ const a=r.campos.find(c=>c.chave==="ADMINISTRACAO"&&c.valor); if(a&&!adm) adm=a.valor });
+  return {novo,adm} }
 const PODERES=["receber citação","confessar","reconhecer a procedência do pedido","transigir","desistir","renunciar ao direito sobre o qual se funda a ação","receber e dar quitação","firmar compromisso"];
 document.getElementById("poderes").innerHTML=PODERES.map((p,i)=>'<label><input type="checkbox" id="pod-'+i+'" value="'+esc(p)+'"> '+p[0].toUpperCase()+p.slice(1)+'</label>').join("");
 let caso="pj", lido=false, gerado="";
-function escolherCaso(k){caso=k;lido=false;document.querySelectorAll(".case").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.case===k)));document.getElementById("extracao").hidden=true;document.getElementById("scanbar").style.width="0";limparPrevia()}
+function escolherCaso(k){caso=k;lido=false;document.querySelectorAll(".case").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.case===k)));document.getElementById("extracao").hidden=true;limparPrevia()}
 document.querySelectorAll(".case").forEach(b=>b.addEventListener("click",()=>escolherCaso(b.dataset.case)));
 function limparPrevia(){const p=document.getElementById("paper");p.className="paper blank";p.textContent="A prévia do documento aparece aqui depois da conferência.";document.getElementById("docacoes").hidden=true;document.getElementById("rfb-aviso").hidden=true;document.getElementById("acao-msg").textContent="";document.getElementById("g-toast").textContent="";gerado=""}
-document.getElementById("ler").addEventListener("click",()=>{
-  const bar=document.getElementById("scanbar"); bar.style.width="0"; void bar.offsetWidth; bar.style.width="100%";
-  setTimeout(()=>{lido=true;renderExt();document.getElementById("extracao").hidden=false},650);
+document.getElementById("dc-arq").addEventListener("change",e=>{ document.getElementById("dc-arqs").textContent=[...e.target.files].map(f=>f.name).join(" · ") });
+document.getElementById("ler").addEventListener("click",async()=>{ const msg=document.getElementById("dc-msg"), btn=document.getElementById("ler"), arqs=[...document.getElementById("dc-arq").files], tx=document.getElementById("dc-tx").value;
+  if(!arqs.length&&!tx.trim()){ msg.textContent="Escolha os arquivos ou cole o texto dos documentos. Para preencher à mão, use a tabela abaixo."; lido=true; renderExt(); document.getElementById("extracao").hidden=false; return }
+  const lidos=[], falhas=[]; btn.disabled=true;
+  try{ for(const f of arqs){ msg.textContent="Lendo "+f.name+"…"; try{ lidos.push({nome:f.name,r:Leitura.extrair(await extrairTexto(f,m=>{msg.textContent=m}))}) }catch(err){ falhas.push(f.name+": "+err.message) } }
+    if(tx.trim()) lidos.push({nome:"texto colado",r:Leitura.extrair(tx)}); }
+  finally{ btn.disabled=false }
+  const tipo=caso==="pf"?"PF":"PJ", res=camposDosDocumentos(tipo,lidos); CASOS[caso]=res.novo;
+  document.getElementById("dc-adm").textContent=res.adm?"Trecho lido da cláusula de administração: “"+res.adm.slice(0,300)+"…”. Confira se a assinatura é isolada ou conjunta.":"Confira na cláusula de administração do contrato social se a assinatura é isolada ou conjunta.";
+  lido=true; renderExt(); document.getElementById("extracao").hidden=false;
+  const achados=res.novo.campos.filter(c=>c[2]).length, alertas=[].concat(...lidos.map(x=>x.r.alertas));
+  msg.textContent=(lidos.length?lidos.length+" documento(s) lido(s): "+lidos.map(x=>x.r.tipo.nome+" ("+x.nome+")").join("; ")+". ":"")+achados+" de "+res.novo.campos.length+" campo(s) preenchido(s) pela leitura; confira cada um."+(falhas.length?" Não lidos: "+falhas.join("; ")+".":"")+(alertas.length?" "+alertas.join(" "):"");
+  const cn=res.novo.campos.find(c=>c[0]==="CNPJ"&&c[2]); if(cn){ const n=document.getElementById("cn-num"); n.value=cn[2]; n.dispatchEvent(new Event("input")) }
 });
 document.getElementById("cn-num").addEventListener("input",e=>{const c=CNPJ.limpar(e.target.value),el=document.getElementById("cn-links");
   if(c.length<14){el.textContent="Digite o CNPJ para abrir a consulta.";return}
@@ -3110,7 +3162,7 @@ document.getElementById("cn-aplica").addEventListener("click",()=>{const msg=doc
     ["REP_NOME","Representante",adm.nome,"media","quadro de sócios da Receita; conferir no contrato social"],
     ["REP_CARGO","Cargo",(adm.qualificacao||"").toLowerCase(),"media","quadro de sócios da Receita; conferir no contrato social"],
     ["REP_CPF","CPF do representante","","baixa","não consta da base pública (CPF mascarado); usar documento pessoal"]];
-  const b=document.querySelector('.case[data-case="pj"] b'); if(b)b.textContent=n.razao;
+  dcCliente(n.razao);
   escolherCaso("pj"); lido=true; renderExt(); document.getElementById("extracao").hidden=false; document.getElementById("cn-cola").value="";
   msg.textContent=(/ATIVA/i.test(n.situacao||"")?"":"Atenção: situação cadastral "+n.situacao+". ")+"Ficha preenchida com dados da Receita. Confira o representante no contrato social e informe o CPF dele."});
 function triagemConv(c){ const r={msgs:c.msgs.map(m=>({autor:m.de==="cli"?c.nome:"Escritório",tx:m.tx})),participantes:[c.nome,"Escritório"]}; return WAImport.triagem(r,c.nome) }
@@ -3372,16 +3424,18 @@ async function textoDoPDF(buf){ const pdfjs=await carregaScript("https://cdnjs.c
   for(let i=1;i<=Math.min(doc.numPages,30);i++){ const pg=await doc.getPage(i), tc=await pg.getTextContent(); let linha="", y=null;
     tc.items.forEach(it=>{ const yy=Math.round(it.transform[5]); if(y!==null&&Math.abs(yy-y)>2){ out.push(linha); linha="" } linha+=(linha&&!/\s$/.test(linha)?" ":"")+it.str; y=yy }); out.push(linha) }
   return out.join("\n") }
-async function textoDaImagem(file){ const T=await carregaScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js","Tesseract");
-  docMsg("Lendo a imagem (pode levar até 1 minuto)…"); const r=await T.recognize(file,"por"); return r.data.text }
+async function textoDaImagem(file,aviso){ const T=await carregaScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js","Tesseract");
+  (aviso||docMsg)("Lendo a imagem (pode levar até 1 minuto)…"); const r=await T.recognize(file,"por"); return r.data.text }
+// texto de um arquivo (PDF com texto, foto por reconhecimento de texto, .txt): usado pela conversa e pela aba Documentos
+async function extrairTexto(f,aviso){
+  if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){ const tx=await textoDoPDF(await f.arrayBuffer()); if(tx.replace(/\s/g,"").length<30) throw new Error("o PDF parece ser uma digitalização (imagem), sem texto. Copie o texto da imagem e cole no campo de texto"); return tx }
+  if(/^image\//.test(f.type)){ try{ return await textoDaImagem(f,aviso) }catch(err){ throw new Error("a leitura de foto não está disponível aqui. Copie o texto da foto no celular e cole no campo de texto") } }
+  return await f.text() }
 document.getElementById("doc-abre").addEventListener("click",()=>{ const b=document.getElementById("doc-box"); b.hidden=!b.hidden; if(!b.hidden){ document.getElementById("doc-res").innerHTML=""; docMsg("") } });
 document.getElementById("doc-fecha").addEventListener("click",()=>{document.getElementById("doc-box").hidden=true});
 document.getElementById("doc-arq").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; docAtual={nome:f.name,origem:"arquivo"};
   document.getElementById("doc-nome").textContent=f.name; docMsg("Extraindo o texto…");
-  try{ let tx="";
-    if(/\.pdf$/i.test(f.name)||f.type==="application/pdf"){ tx=await textoDoPDF(await f.arrayBuffer()); if(tx.replace(/\s/g,"").length<30) throw new Error("o PDF parece ser uma digitalização (imagem), sem texto. Copie o texto da imagem e cole abaixo") }
-    else if(/^image\//.test(f.type)){ try{ tx=await textoDaImagem(f) }catch(err){ throw new Error("a leitura de foto não está disponível aqui. Copie o texto da foto no celular e cole abaixo") } }
-    else tx=await f.text();
+  try{ const tx=await extrairTexto(f,docMsg);
     document.getElementById("doc-tx").value=tx; lerDocumento() }catch(err){ docMsg("Não foi possível ler: "+err.message+".") } });
 document.getElementById("doc-ler").addEventListener("click",()=>{ if(!docAtual.nome) docAtual={nome:"texto colado",origem:"colado"}; lerDocumento() });
 const CONF={alta:["info","alta"],media:["warn","média"],baixa:["crit","baixa"]};
@@ -3425,13 +3479,14 @@ document.getElementById("msgs").addEventListener("click",e=>{ const b=e.target.c
   $("pp-calc").addEventListener("click",()=>{ const el=$("pp-res"), proc=$("pp-proc").value.trim();
     try{ const extras=$("pp-extras").value.split(/\s+/).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)); try{ localStorage.setItem("rd-feriados-forenses",extras.join("\n")) }catch(e){}
       if(proc&&!Leitura.cnjValido(proc)) throw new Error("O número do processo não confere (dígito verificador). Use o número CNJ completo.");
-      const o={dias:+$("pp-dias").value,dobro:$("pp-dobro").checked,feriadosExtras:extras,tribunal:$("pp-trib").value}; o[$("pp-tipo").value]=$("pp-data").value;
+      const o={dias:+$("pp-dias").value,dobro:$("pp-dobro").checked,feriadosExtras:extras,tribunal:$("pp-trib").value,comarca:$("pp-comarca").value}; o[$("pp-tipo").value]=$("pp-data").value;
       const r=PrazoProcessual.calcular(o);
       const tx=(proc?"Processo "+Modelos.fmtCNJ(proc)+"\n":"")+(r.publicacao?"Publicação: "+br(r.publicacao)+"\n":"")+"Início da contagem: "+br(r.inicio)+"\nPrazo: "+r.diasUteis+" dias úteis"+(o.dobro?" (em dobro)":"")+"\nVencimento: "+br(r.vencimento)+"\nMemória de cálculo: "+r.memoria;
-      el.innerHTML='<div style="font-size:15px;color:var(--fg)"><b>Vence em '+br(r.vencimento)+'</b></div><pre style="white-space:pre-wrap;margin:6px 0">'+esc(tx)+'</pre><div>Calendário: '+esc(r.tribunal)+'. '+esc(r.aviso)+'</div><button class="btn ghost small" type="button" id="pp-copia" style="margin-top:6px">Copiar para o Astrea</button>';
+      el.innerHTML='<div style="font-size:15px;color:var(--fg)"><b>Vence em '+br(r.vencimento)+'</b></div><pre style="white-space:pre-wrap;margin:6px 0">'+esc(tx)+'</pre><div>Calendário: '+esc(r.tribunal)+'. Comarca: '+esc(r.comarca)+'. '+esc(r.aviso)+'</div><button class="btn ghost small" type="button" id="pp-copia" style="margin-top:6px">Copiar para o Astrea</button>';
       $("pp-copia").onclick=()=>{ try{ navigator.clipboard.writeText(tx).then(()=>toastPP("Copiado."),()=>toastPP("Selecione o texto e copie.")) }catch(e){ toastPP("Selecione o texto e copie.") } };
     }catch(err){ el.textContent=err.message } });
   function toastPP(t){ const b=$("pp-copia"); if(b) b.textContent=t }
+  $("pp-proc").addEventListener("change",()=>{ const cnj=$("pp-proc").value; if(Leitura.cnjValido(cnj)) $("pp-comarca").value=PrazoProcessual.comarcaDoCNJ(cnj) });   // TJCE 0167 e JF 8103 = Sobral
 })();
 
 // ---------- cópia de segurança (30/10/2026) ----------

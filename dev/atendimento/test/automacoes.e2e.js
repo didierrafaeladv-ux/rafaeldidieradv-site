@@ -32,10 +32,10 @@ const { chromium } = require('playwright'); const assert = require('node:assert/
   assert.equal(f.status, 'Em andamento'); assert.match(f.log.join(' '), /\[Automação “Urgência vai para andamento”\] Direção avisada da urgência/); assert.match(await pg.textContent('#au-msg'), /agiu em 1/); p('regra criada no editor: simulação, histórico e mudança de situação nos existentes');
   // publicação urgente
   await pg.click('[data-au-mod="pub-urgente"]'); await pg.click('[data-au-ed="m-pub-urgente"]'); await pg.check('#au-exist'); await pg.click('#au-salva');
-  await pg.click('#tab-prazos'); await pg.fill('#pub-data', hoje); await pg.fill('#pub-tx', 'Processo 3011867-07.2025.8.06.0167 - Execução Fiscal. Fica a parte executada CITADA para pagar a dívida no prazo de 5 (cinco) dias.'); await pg.click('#pub-class'); await pg.waitForTimeout(150);
+  await pg.click('#tab-prazos'); await pg.fill('#pub-data', hoje); await pg.fill('#pub-tx', 'Processo 0001234-85.2025.8.06.0167 - Execução Fiscal. Fica a parte executada CITADA para pagar a dívida no prazo de 5 (cinco) dias.'); await pg.click('#pub-class'); await pg.waitForTimeout(150);
   await pg.$eval('[data-pubreg="0"]', e => e.click()); await pg.click('#tab-auto'); await pg.click('[data-au-on="m-pub-urgente"]'); await pg.waitForTimeout(300);
   const tu = await pg.evaluate(() => window.__tarefas.todas().find(t => t.origem === 'automacao' && /Publicação urgente/.test(t.titulo)));
-  assert.equal(tu.resp, 'Rafael'); assert.match(tu.titulo, /3011867-07\.2025\.8\.06\.0167/); assert.equal(tu.prazo, hoje); p('publicação urgente vira tarefa da Direção para hoje');
+  assert.equal(tu.resp, 'Rafael'); assert.match(tu.titulo, /0001234-85\.2025\.8\.06\.0167/); assert.equal(tu.prazo, hoje); p('publicação urgente vira tarefa da Direção para hoje');
   assert.match(await pg.textContent('#au-log'), /Publicação urgente avisa a Direção/); await pg.click('[data-au-del="' + rid + '"]'); await pg.click('[data-au-del="' + rid + '"]');
   assert.ok(!(await pg.evaluate(id => window.__auto.regras().some(r => r.id === id), rid))); p('registro mostra os disparos; excluir pede confirmação');
   assert.deepEqual(erros, []); console.log(ok + ' ok'); await b.close(); })().catch(e => { console.error('FALHA', e.message); process.exit(1); });

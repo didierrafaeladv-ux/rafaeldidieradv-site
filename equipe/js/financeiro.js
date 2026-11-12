@@ -1,11 +1,28 @@
-/* Financeiro mínimo do escritório (v1.0, 02/11/2026): contrato → parcelas → pagamentos → cobrança → indicadores.
+/* Financeiro mínimo do escritório (v1.1, 11/11/2026: leitura de valores pela regra do numBR; v1.0, 02/11/2026): contrato → parcelas → pagamentos → cobrança → indicadores.
  * Política padrão do escritório: êxito de 30% LÍQUIDO do proveito econômico, com gross-up pela carga tributária estimada de 14,33%.
  * Valores em centavos (inteiros) para não errar arredondamento. Navegador (window.Financeiro) e node. */
 (function (root) {
   'use strict';
   const POLITICA = { exitoPct: 30, carga: 14.33 };
   const TIPOS = { parcelado: 'Valor fixo parcelado', mensal: 'Mensalidade (assessoria)', exito: 'Só êxito', misto: 'Fixo + êxito' };
-  const cent = v => Math.round((typeof v === 'string' ? +String(v).replace(/\./g, '').replace(',', '.') : +v) * 100) || 0;
+  // leitura de valores: mesma regra do numBR (dev/planejatrib/numero_br.js); o teste confere as duas com os mesmos casos.
+  // "1.000,50" e "1000.50" = 1000,5; "1.000" = 1000; "0.125" = 0,125. Antes, "1000.50" virava 100050.
+  function numBR(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    let s = String(v == null ? '' : v).replace(/R\$|\s| /g, '');
+    if (!s) return 0;
+    let neg = false;
+    if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+    if (/^-/.test(s)) { neg = !neg; s = s.slice(1); }
+    if (!/^[\d.,]+$/.test(s)) return 0;
+    const iv = s.lastIndexOf(','), ip = s.lastIndexOf('.');
+    if (iv >= 0 && ip >= 0) s = iv > ip ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+    else if (iv >= 0) s = (s.match(/,/g).length > 1) ? s.replace(/,/g, '') : s.replace(',', '.');
+    else if (ip >= 0) { const pontos = s.match(/\./g).length; if (pontos > 1) s = s.replace(/\./g, ''); else if (/^[1-9]\d{0,2}\.\d{3}$/.test(s)) s = s.replace('.', ''); }
+    const x = parseFloat(s);
+    return isFinite(x) ? (neg ? -x : x) : 0;
+  }
+  const cent = v => Math.round(numBR(v) * 100) || 0;
   const reais = c => (c < 0 ? '-' : '') + 'R$ ' + (Math.abs(c) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   const iso = d => d.toISOString().slice(0, 10);
   // soma meses mantendo o dia (31/01 + 1 mês = 28 ou 29/02)
@@ -49,6 +66,6 @@
     if (c.tipo !== 'exito') { if (!(cent(c.valorFixo) > 0)) e.push('Informe o valor ' + (c.tipo === 'mensal' ? 'da mensalidade.' : 'fixo total.')); if (!(+c.nParcelas >= 1 && +c.nParcelas <= 120)) e.push('Número de parcelas entre 1 e 120.'); if (!/^\d{4}-\d{2}-\d{2}$/.test(c.primeiroVenc || '')) e.push('Informe o 1º vencimento.'); }
     if ((c.tipo === 'exito' || c.tipo === 'misto') && !(+c.exitoPct > 0 && +c.exitoPct <= 100)) e.push('Percentual de êxito entre 0 e 100.');
     return e; }
-  const API = { POLITICA, TIPOS, cent, reais, maisMeses, gerarParcelas, exito, situacao, resumo, cobrancas, validarContrato, versao: '1.0' };
+  const API = { POLITICA, TIPOS, numBR, cent, reais, maisMeses, gerarParcelas, exito, situacao, resumo, cobrancas, validarContrato, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Financeiro = API;
 })(typeof window !== 'undefined' ? window : globalThis);

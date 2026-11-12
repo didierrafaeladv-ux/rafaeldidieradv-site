@@ -1,4 +1,4 @@
-/* Classificador de publicações (DJEN/DJe) com prazo sugerido e tarefa (v1.0, 30/10/2026).
+/* Classificador de publicações (DJEN/DJe) com prazo sugerido e tarefa (v1.1, 11/11/2026: comarca pelo CNJ para o feriado municipal; v1.0, 30/10/2026).
  * Regras objetivas, sem IA: identifica tipo, processo (CNJ), tribunal, prazo expresso no texto, dobro e audiência;
  * calcula o vencimento com PrazoProcessual (dias úteis, CPC arts. 219/224) e monta o bloco "Para lançar no Astrea".
  * Aponta; não decide: a Controladoria confere antes de lançar. Prazos sem número expresso recebem o prazo legal
@@ -58,9 +58,10 @@
     let prazoDias = exp && exp.unidade === 'dias' ? exp.dias : tipo.prazo, contagem = exp ? exp.contagem : (tipo.contagem || 'úteis'), dobro = !!(exp && exp.dobro);
     const origemPrazo = exp && exp.unidade === 'dias' ? 'expresso no texto' : prazoDias ? 'prazo legal presumido: confirmar' : 'sem prazo';
     let venc = '', memoria = '', erro = '';
+    const comarca = pp() && pp().comarcaDoCNJ ? pp().comarcaDoCNJ(cnj) : '';   // feriado municipal só na comarca do processo (Sobral)
     if (prazoDias && disp) {
       if (contagem === 'corridos') { venc = somaCorridos(disp, prazoDias * (dobro ? 2 : 1)); memoria = `${prazoDias} dias corridos${dobro ? ' em dobro' : ''} a partir da disponibilização em ${br(disp)} (confira se a contagem é mesmo em dias corridos).`; }
-      else if (pp()) { try { const r = pp().calcular({ disponibilizacao: disp, dias: prazoDias, dobro, tribunal: trib.k }); venc = r.vencimento; memoria = r.memoria; } catch (e) { erro = e.message; } }
+      else if (pp()) { try { const r = pp().calcular({ disponibilizacao: disp, dias: prazoDias, dobro, tribunal: trib.k, comarca }); venc = r.vencimento; memoria = r.memoria; } catch (e) { erro = e.message; } }
       else erro = 'calculadora de prazos indisponível';
     }
     const hoje = o.hoje || new Date().toLocaleDateString('sv-SE');
@@ -73,7 +74,7 @@
       `Observação: ${memoria || tipo.base}${exp ? '' : prazoDias ? ' · prazo presumido pelo tipo da publicação, confirmar no texto' : ''}`,
       `Fonte: publicação${disp ? ' disponibilizada em ' + br(disp) : ''}${trib.nome ? ' · ' + trib.nome : ''}`].filter(Boolean).join('\n');
     return { cnj, cnjs, tribunal: trib.k, tribunalNome: trib.nome, tipo: tipo.k, tipoNome: tipo.nome, urgente, rota: urgente ? 'urgencia' : tipo.rota,
-      prazoDias, contagem, dobro, origemPrazo, base: tipo.base, disponibilizacao: disp, vencimento: venc, diasAteVencimento: diasAte(venc), memoria, erro,
+      prazoDias, contagem, dobro, origemPrazo, comarca, base: tipo.base, disponibilizacao: disp, vencimento: venc, diasAteVencimento: diasAte(venc), memoria, erro,
       audiencia: aud, execucaoFiscal: ef, resumo, titulo, astrea, texto: t };
   }
   /* lote(texto, o): várias publicações coladas de uma vez; separa pelo início de cada número de processo */
@@ -99,6 +100,6 @@
     return [...M.values()].map(x => { const ref = [x.ultima, x.mov && x.mov.data].filter(Boolean).sort().pop() || ''; return Object.assign(x, { referencia: ref, diasSem: dias(ref), parado: ref ? dias(ref) > limite : true }); })
       .sort((a, b) => (b.parado - a.parado) || ((a.proximo || '9') < (b.proximo || '9') ? -1 : 1));
   }
-  const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.0' };
+  const API = { TIPOS: TIPOS.map(t => ({ k: t.k, nome: t.nome })), classificar, lote, acompanhados, prazoExpresso, tribunalDe, versao: '1.1' };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.Publicacao = API;
 })(typeof window !== 'undefined' ? window : globalThis);

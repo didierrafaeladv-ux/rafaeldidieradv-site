@@ -32,10 +32,18 @@ jobs:
           node dev/atendimento/test/automacoes.e2e.js equipe/atendimento.html
           node dev/atendimento/test/financeiro.e2e.js equipe/atendimento.html
           node dev/atendimento/test/email.e2e.js equipe/atendimento.html
+          node dev/atendimento/test/documentos.e2e.js equipe/atendimento.html
       - name: Validação de dados fiscais
         run: |
           node dev/planejatrib/test/valida_sped.test.js
+          node dev/planejatrib/test/numero_br.test.js
+          node dev/planejatrib/test/recupera_folha.test.js
+          node dev/planejatrib/test/tema118.test.js
           python3 dev/planejatrib/valida_retencoes.py
+      - name: Robô previdenciário
+        run: |
+          pip install --quiet openpyxl
+          python3 dev/recuperacao_previdenciaria/test/test_robo.py
       - name: Roteador de modelos
         run: |
           python3 dev/roteador/roteador.py

@@ -7,6 +7,12 @@ CASO = json.load(open(os.path.join(os.path.dirname(AQUI), 'caso_modelo_aprece.js
 
 
 class Testes(unittest.TestCase):
+    def test_leitura_de_valores(self):
+        casos = json.load(open(os.path.join(AQUI, '..', '..', 'planejatrib', 'test', 'casos_numero_br.json'), encoding='utf-8'))
+        for entrada, esperado in casos:
+            with self.subTest(entrada=entrada): self.assertEqual(R.num(entrada), esperado)
+        self.assertEqual(R.num('1000.50'), 1000.5); self.assertEqual(R.num('1.000,50'), 1000.5); self.assertEqual(R.num('0.125'), 0.125)
+
     def test_classificacao(self):
         c = lambda d: R.classificar(d, '', CASO)[0]
         self.assertEqual(c('AUXILIO DOENCA 15 DIAS'), 'quinze_dias')

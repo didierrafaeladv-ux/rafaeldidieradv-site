@@ -1,6 +1,9 @@
 // Testes do módulo de recuperação pela folha (dados fictícios). Uso: node test/recupera_folha.test.js
 const assert = require('node:assert/strict'); require('../numero_br.js'); const R = require('../recupera_folha.js'); let ok = 0;
 const t = (nome, f) => { f(); ok++; console.log('ok  ', nome); };
+t('leitor reserva (sem numero_br.js) segue a regra do numBR: 1000.50, 1.000,50 e 0.125', () => { const casos = require('./casos_numero_br.json'), g = globalThis.numBR;
+  delete globalThis.numBR; const caminho = require.resolve('../recupera_folha.js'); delete require.cache[caminho]; const R2 = require(caminho); globalThis.numBR = g; delete require.cache[caminho];
+  casos.forEach(([e, esperado]) => assert.equal(R2.numBR(e), esperado, String(e))); assert.deepEqual(R2.lerGps('01/2025;1000.50\n02/2025;1.000,50'), { '2025-01': 1000.5, '2025-02': 1000.5 }); });
 t('classificação por palavra-chave e por código', () => {
   const c = d => R.classificar(d).verba;
   assert.equal(c('AUX. DOENÇA 15 DIAS'), 'quinze'); assert.equal(c('API - AVISO PREV. IND.'), 'aviso'); assert.equal(c('AVISO PREVIO TRABALHADO'), '');
@@ -19,7 +22,7 @@ t('leitura do extrato de GPS copiado do e-CAC', () => {
 t('Selic: mês seguinte ao pagamento até o anterior à compensação, + 1%; 13º pago em dezembro', () => {
   assert.deepEqual(R.mesPagamento('2015-12'), [2016, 1]); assert.deepEqual(R.mesPagamento('2015-13'), [2015, 12]);
   const T = { '2015-03': 1, '2015-04': 2 }; assert.deepEqual(R.selicAcumulada('2015-01', '2015-05', T), { pct: 4, faltam: [] });
-  assert.equal(R.selicAcumulada('2005-11', '2026-11').pct, 207.97);   // mesmo valor do robô em Python (Milhã)
+  assert.equal(R.selicAcumulada('2005-11', '2026-11').pct, 207.97);   // mesmo valor do robô em Python (caso-modelo fictício)
 });
 t('cálculo: status por verba, teto do GPS, alertas e totais', () => {
   const base = { '2015-01': { aviso: 1000, salmat: 5000, terco: 3000 }, '2015-02': { quinze: 100000 } };

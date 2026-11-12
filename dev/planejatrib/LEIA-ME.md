@@ -15,3 +15,8 @@
 - `patch_nfse_iss.py`: o leitor de NFS-e (ABRASF e padrão nacional) passa a ler ISS, ISS retido, alíquota e competência.
 - `tema118.js` + `patch_t118.py`: painel "ISS fora da base do PIS/Cofins (Tema 118/STF)" na aba Recuperação, com prescrição, Selic, teto pela EFD-Contribuições e cenário de modulação na data do julgamento (21/10/2026).
 - Ordem: `patch_numeros.py` → `patch_folha.py` → `patch_nfse_iss.py` → `patch_t118.py`. Teste: `node test/tema118.test.js`.
+
+## 11/11/2026
+- `recupera_folha.js` v1.1: o leitor reserva (usado só se o `numero_br.js` não estiver na página) segue a mesma regra do `numBR`; antes, "1000.50" virava 100050.
+- `test/casos_numero_br.json`: a mesma lista de casos testa o `numBR`, o `financeiro.js` do Atendimento, o `recupera_folha.js` e o `num()` do robô em Python.
+- `sincroniza_modulos.py pagina.html`: troca na página do PlanejaTrib as cópias antigas dos módulos (numero_br, valida_sped, recupera_folha, tema118) pela versão atual. Rodar na página depois desta atualização.

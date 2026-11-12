@@ -5,7 +5,7 @@ const { chromium } = require('playwright'); const assert = require('node:assert/
   await pg.$eval('#pub-por', e => { e.value = 'Lillian'; });
   await pg.evaluate(() => window.__email.definir([
     { id: 'gm-1', status: 'nova', tipo: 'cliente', deNome: 'Fulana Exemplo', deEmail: 'fulana@exemplo.com', assunto: 'Fui citada numa execução fiscal', trecho: 'Bom dia, recebi hoje um mandado de citação. Meu CPF é 123.456.789-09.', doc: '123.456.789-09', recebidoEm: '2026-11-03T11:00:00Z' },
-    { id: 'gm-2', status: 'nova', tipo: 'tribunal', deNome: 'TJCE', deEmail: 'naoresponda@tjce.jus.br', assunto: 'Intimação', trecho: 'Fica a parte intimada para se manifestar no prazo de 15 (quinze) dias.', cnj: '3011867-07.2025.8.06.0167', recebidoEm: '2026-11-03T12:00:00Z' },
+    { id: 'gm-2', status: 'nova', tipo: 'tribunal', deNome: 'TJCE', deEmail: 'naoresponda@tjce.jus.br', assunto: 'Intimação', trecho: 'Fica a parte intimada para se manifestar no prazo de 15 (quinze) dias.', cnj: '0001234-85.2025.8.06.0167', recebidoEm: '2026-11-03T12:00:00Z' },
     { id: 'gm-3', status: 'nova', tipo: 'outro', deNome: 'Loja', deEmail: 'ofertas@loja.com', assunto: 'Promoção', trecho: 'Compre já', recebidoEm: '2026-11-02T12:00:00Z' }]));
   await pg.click('#tab-fila'); assert.equal(await pg.$eval('#em-panel', e => e.hidden), false); assert.equal(await pg.textContent('#em-cnt'), '3'); p('painel mostra os e-mails pendentes na Fila');
   // abrir demanda: formulário preenchido, rota sugerida urgência, registra e marca o e-mail
@@ -17,7 +17,7 @@ const { chromium } = require('playwright'); const assert = require('node:assert/
   // cancelar não marca
   await pg.click('#tab-fila'); await pg.click('[data-em-abre="gm-3"]'); await pg.click('#nm-cancela'); assert.equal(await pg.evaluate(() => window.__email.todos().find(x => x.id === 'gm-3').status), 'nova'); p('cancelar o formulário mantém o e-mail pendente');
   // tribunal vai para Prazos
-  await pg.click('#tab-fila'); await pg.click('[data-em-pub="gm-2"]'); assert.equal(await pg.$eval('#v-prazos', e => e.hidden), false); assert.match(await pg.inputValue('#pub-tx'), /^Processo 3011867-07\.2025\.8\.06\.0167 - Intimação/); assert.equal(await pg.inputValue('#pub-data'), '2026-11-03');
+  await pg.click('#tab-fila'); await pg.click('[data-em-pub="gm-2"]'); assert.equal(await pg.$eval('#v-prazos', e => e.hidden), false); assert.match(await pg.inputValue('#pub-tx'), /^Processo 0001234-85\.2025\.8\.06\.0167 - Intimação/); assert.equal(await pg.inputValue('#pub-data'), '2026-11-03');
   assert.equal(await pg.evaluate(() => window.__email.todos().find(x => x.id === 'gm-2').status), 'em Prazos'); p('intimação por e-mail vai para Prazos com o texto e a data');
   // descartar pede confirmação
   await pg.click('#tab-fila'); await pg.click('[data-em-desc="gm-3"]'); assert.equal(await pg.evaluate(() => window.__email.todos().find(x => x.id === 'gm-3').status), 'nova'); await pg.click('[data-em-desc="gm-3"]');

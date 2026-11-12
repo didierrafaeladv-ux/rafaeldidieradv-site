@@ -2,6 +2,9 @@
 const assert = require('node:assert/strict'); const F = require('../../../equipe/js/financeiro.js');
 let ok = 0, f = 0; const t = (n, fn) => { try { fn(); ok++; console.log('ok  ', n); } catch (e) { f++; console.log('FALHA', n, '\n     ', e.message); } };
 t('valores em centavos e formato brasileiro', () => { assert.equal(F.cent('1.234,56'), 123456); assert.equal(F.cent(10), 1000); assert.equal(F.reais(123456789), 'R$ 1.234.567,89'); });
+t('leitura de valores pela regra do numBR: 1000.50, 1.000,50 e 0.125', () => { const casos = require('../../planejatrib/test/casos_numero_br.json');
+  casos.forEach(([e, esperado]) => assert.equal(F.numBR(e), esperado, String(e)));
+  assert.equal(F.cent('1000.50'), 100050); assert.equal(F.cent('1.000,50'), 100050); assert.equal(F.cent('0.125'), 13); assert.equal(F.exito('1000.50').proveito, 100050); });
 t('parcelado: divide e põe os centavos que sobram na última; meses curtos', () => {
   const P = F.gerarParcelas({ id: 'c1', tipo: 'parcelado', valorFixo: '1000,00', nParcelas: 3, primeiroVenc: '2026-01-31', cliente: 'Empresa Exemplo' });
   assert.deepEqual(P.map(p => p.valor), [33333, 33333, 33334]); assert.deepEqual(P.map(p => p.venc), ['2026-01-31', '2026-02-28', '2026-03-31']); assert.equal(P[2].id, 'c1-p3'); });

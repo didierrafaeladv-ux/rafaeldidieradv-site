@@ -83,8 +83,8 @@ class TestRoteador(unittest.TestCase):
         self.assertEqual(avaliar('Redija o parecer')['modelo'], 'claude-opus-5-5')
 
     def test_mascarar(self):
-        t = mascarar('CPF 123.456.789-09, CNPJ 11.222.333/0001-81, fulana@exemplo.com, (88) 9 9693-6282, processo 3011867-07.2025.8.06.0167')
-        self.assertEqual(t, 'CPF [CPF], CNPJ [CNPJ], [E-MAIL], [TELEFONE], processo 3011867-07.2025.8.06.0167')
+        t = mascarar('CPF 123.456.789-09, CNPJ 11.222.333/0001-81, fulana@exemplo.com, (88) 9 9693-6282, processo 0001234-85.2025.8.06.0167')
+        self.assertEqual(t, 'CPF [CPF], CNPJ [CNPJ], [E-MAIL], [TELEFONE], processo 0001234-85.2025.8.06.0167')
 
 
 if __name__ == '__main__':

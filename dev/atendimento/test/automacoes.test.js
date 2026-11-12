@@ -19,16 +19,16 @@ t('"desde": casos antigos ficam fora, salvo "aplicar também aos existentes"', (
   assert.deepEqual(A.planejar([ativa(M('prev-docs'), { desde: '2026-11-01T00:00:00Z' })], { casos }, hoje).map(p => p.alvoId), ['0002']);
   assert.equal(A.planejar([ativa(M('prev-docs'), { desde: '2026-11-01T00:00:00Z', existentes: true })], { casos }, hoje).length, 2); });
 t('publicações: urgente e prazo perto sem conferência (dias para vencer)', () => {
-  const pubs = [{ id: 'p1', cnj: '3011867-07.2025.8.06.0167', tipoNome: 'Citação', urgente: true, venc: '2026-11-09' }, { id: 'p2', cnj: '0069535-76.2026.4.05.8100', tipoNome: 'Intimação', venc: '2026-11-03', status: 'lancada' },
+  const pubs = [{ id: 'p1', cnj: '0001234-85.2025.8.06.0167', tipoNome: 'Citação', urgente: true, venc: '2026-11-09' }, { id: 'p2', cnj: '0009012-98.2026.4.05.8100', tipoNome: 'Intimação', venc: '2026-11-03', status: 'lancada' },
     { id: 'p3', cnj: '0000001-00.2026.8.06.0167', tipoNome: 'Intimação', venc: '2026-11-04', conferidaPor: 'David' }, { id: 'p4', tipoNome: 'Despacho' }];
   const P = A.planejar([ativa(M('pub-urgente')), ativa(M('prazo-sem-conf'))], { publicacoes: pubs }, hoje);
   assert.deepEqual(P.map(p => p.regra.id + ':' + p.alvoId), ['pub-urgente:p1', 'prazo-sem-conf:p2']);
-  assert.equal(P[0].acoes[0].titulo, 'Publicação urgente: Citação · 3011867-07.2025.8.06.0167 · vence 09/11/2026'); });
+  assert.equal(P[0].acoes[0].titulo, 'Publicação urgente: Citação · 0001234-85.2025.8.06.0167 · vence 09/11/2026'); });
 t('dias desde a abertura e histórico + tarefa (duas ações)', () => {
   const casos = [caso('0001', { status: 'Aguardando cliente', em: '2026-10-20T10:00:00Z' }), caso('0002', { status: 'Aguardando cliente', em: '2026-10-30T10:00:00Z' }), caso('0003', { rota: 'urgencia' })];
   assert.deepEqual(A.planejar([ativa(M('cliente-parado'))], { casos }, hoje).map(p => p.alvoId), ['0001']);
   const P = A.planejar([ativa(M('urgencia-processo'))], { casos }, hoje); assert.equal(P.length, 1); assert.deepEqual(P[0].acoes.map(a => a.tipo), ['historico', 'tarefa']);
-  assert.equal(A.planejar([ativa(M('urgencia-processo'))], { casos: [caso('0004', { rota: 'urgencia', processo: '3011867-07.2025.8.06.0167' })] }, hoje).length, 0); });
+  assert.equal(A.planejar([ativa(M('urgencia-processo'))], { casos: [caso('0004', { rota: 'urgencia', processo: '0001234-85.2025.8.06.0167' })] }, hoje).length, 0); });
 t('descrição em português e validação', () => {
   assert.equal(A.descrever(M('cliente-parado')), 'Quando um caso tiver situação é “Aguardando cliente” e dias desde a abertura é maior ou igual a 7 dia(s), criar a tarefa “Cobrar retorno do cliente — {cliente} ({protocolo})” para o responsável do setor (prazo: 1 dia(s) útil(eis)).');
   assert.match(A.descrever(M('pub-urgente')), /prazo: hoje/);

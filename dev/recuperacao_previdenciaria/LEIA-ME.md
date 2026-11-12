@@ -12,6 +12,8 @@ Como o cálculo é feito:
 - **Teto:** o indébito de cada competência fica limitado ao que foi recolhido em GPS.
 - **Atualização:** SELIC acumulada do mês seguinte ao pagamento até o mês anterior à compensação, mais 1% no mês da compensação.
 
-O modelo de caso é `caso_modelo_aprece.json`, do MS coletivo APRECE 0001242-10.2010.4.05.8102. Os dados de clientes não ficam no repositório.
+O modelo de caso é `caso_modelo_aprece.json`, com o título do MS coletivo APRECE 0001242-10.2010.4.05.8102 (processo público) e dados do município FICTÍCIOS. Os dados de clientes não ficam no repositório.
+
+Leitura de valores (v1.1, 11/11/2026): `num()` segue a regra do `numBR` (dev/planejatrib/numero_br.js): "1000.50" e "1.000,50" = 1000,5; "0.125" = 0,125.
 
 Testes, com dados fictícios: `python3 test/test_robo.py`.

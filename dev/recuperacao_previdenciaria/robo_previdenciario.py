@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Robô de levantamento de contribuições previdenciárias patronais a recuperar — Rafael Didier Advocacia (v1.0, 03/11/2026).
+"""Robô de levantamento de contribuições previdenciárias patronais a recuperar — Rafael Didier Advocacia (v1.1, 11/11/2026: leitura de valores pela regra do numBR; v1.0, 03/11/2026).
 
 Recebe:
   - caso.json            parâmetros do título judicial (teses deferidas, período, alíquotas, data da compensação)
@@ -19,7 +19,7 @@ Uso:  python3 robo_previdenciario.py caso.json  [--saida planilha.xlsx]
       python3 robo_previdenciario.py --modelo-folha folha_modelo.csv     (gera o modelo para o município preencher)
 Depende só de openpyxl para gravar o .xlsx (o cálculo não depende de nada).
 """
-import argparse, csv, json, os, re, sys, unicodedata
+import argparse, csv, json, math, os, re, sys, unicodedata
 from collections import defaultdict
 from datetime import date
 
@@ -33,13 +33,28 @@ def norm(t):
 
 
 def num(v):
-    """Aceita 1.234,56 · 1234,56 · 1234.56 (só se houver um único ponto e 1-2 decimais)."""
-    if isinstance(v, (int, float)): return float(v)
-    s = str(v or '').strip().replace('R$', '').replace(' ', '')
+    """Leitura de valores pela mesma regra do numBR (dev/planejatrib/numero_br.js), conferida pelos mesmos casos nos testes.
+    Com vírgula e ponto, o último separador é o decimal; só vírgula → decimal; um único ponto seguido de exatamente 3 dígitos
+    (parte inteira de 1 a 3 dígitos, sem zero à esquerda) é milhar ("1.000"); qualquer outro ponto único é decimal ("1000.50",
+    "0.125"); vários pontos → milhar. Aceita "R$", espaços, sinal e parênteses contábeis. Inválido → 0."""
+    if isinstance(v, bool): return 0.0
+    if isinstance(v, (int, float)): return float(v) if math.isfinite(v) else 0.0
+    s = re.sub(r'R\$|\s', '', str(v or ''))
     if not s: return 0.0
-    if ',' in s: return float(s.replace('.', '').replace(',', '.'))
-    if re.fullmatch(r'-?\d+\.\d{1,2}', s): return float(s)
-    return float(s.replace('.', ''))
+    neg = False
+    if re.fullmatch(r'\(.*\)', s): neg, s = True, s[1:-1]
+    if s.startswith('-'): neg, s = not neg, s[1:]
+    if not re.fullmatch(r'[\d.,]+', s): return 0.0
+    iv, ip = s.rfind(','), s.rfind('.')
+    if iv >= 0 and ip >= 0: s = s.replace('.', '').replace(',', '.') if iv > ip else s.replace(',', '')
+    elif iv >= 0: s = s.replace(',', '') if s.count(',') > 1 else s.replace(',', '.')
+    elif ip >= 0:
+        if s.count('.') > 1: s = s.replace('.', '')
+        elif re.fullmatch(r'[1-9]\d{0,2}\.\d{3}', s): s = s.replace('.', '')
+    m = re.match(r'\d*\.?\d+|\d+\.?', s)   # como o parseFloat do JS: lê o início numérico
+    if not m: return 0.0
+    x = float(m.group(0))
+    return -x if neg else x
 
 
 def comp(v):

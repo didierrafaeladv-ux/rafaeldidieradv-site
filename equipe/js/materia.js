@@ -188,18 +188,18 @@
   const soma = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n, 12);
   const pp = () => root.PrazoProcessual || null;
   const utilSimples = d => d.getDay() !== 0 && d.getDay() !== 6;
-  const ehUtil = (d, trib) => { const P2 = pp(); return P2 ? P2.util(iso(d), [], trib) : utilSimples(d); };
+  const ehUtil = (d, trib, com) => { const P2 = pp(); return P2 ? P2.util(iso(d), [], trib, com) : utilSimples(d); };
   const tribunalDe = area => { const j = de(area).justica[0]; return j === 'jf' ? 'jf' : j === 'tjce' ? 'tjce' : ''; };
-  /* vencimentos(area, dataBase, { hoje, tribunal }) → prazos da matéria com a data-limite calculada a partir de dataBase (ciência, intimação, fato ou pagamento).
+  /* vencimentos(area, dataBase, { hoje, tribunal, comarca: 'sobral'|'' }) → prazos da matéria com a data-limite calculada a partir de dataBase (ciência, intimação, fato ou pagamento).
    * Dias úteis pela calculadora de prazos (feriados do tribunal e recesso); corridos com prorrogação para o dia útil seguinte; anos/meses pelo calendário. É estimativa a conferir. */
   function vencimentos(area, dataBase, o) {
-    o = o || {}; const m = de(area), trib = o.tribunal != null ? o.tribunal : tribunalDe(area), hoje = o.hoje || iso(new Date()), base = dataBase ? dia(dataBase) : null;
+    o = o || {}; const com = o.comarca || '', m = de(area), trib = o.tribunal != null ? o.tribunal : tribunalDe(area), hoje = o.hoje || iso(new Date()), base = dataBase ? dia(dataBase) : null;
     return m.prazos.map(p => { let venc = '', como = '';
       if (base && p.n != null) {
         if (p.contagem === 'anos' || p.contagem === 'meses') { const d = new Date(base); if (p.contagem === 'anos') d.setFullYear(d.getFullYear() + p.n); else d.setMonth(d.getMonth() + p.n); venc = iso(d); como = p.n + ' ' + (p.contagem === 'anos' ? (p.n === 1 ? 'ano' : 'anos') : 'meses') + ' pelo calendário'; }
-        else if (p.contagem === 'uteis') { const P2 = pp(); if (P2) { try { venc = P2.calcular({ intimacao: iso(base), dias: p.n, tribunal: trib }).vencimento; } catch (e) { venc = ''; } }
+        else if (p.contagem === 'uteis') { const P2 = pp(); if (P2) { try { venc = P2.calcular({ intimacao: iso(base), dias: p.n, tribunal: trib, comarca: com }).vencimento; } catch (e) { venc = ''; } }
           if (!venc) { let d = base, c = 0; while (c < p.n) { d = soma(d, 1); if (utilSimples(d)) c++; } venc = iso(d); } como = p.n + ' dias úteis' + (P2 ? ' (calendário ' + (trib || 'nacional') + ')' : ' (só fins de semana excluídos)'); }
-        else { let d = soma(base, p.n); while (!ehUtil(d, trib)) d = soma(d, 1); venc = iso(d); como = p.n + ' dias corridos' + (p.contagem === 'conferir' ? ' — contagem a conferir' : ', prorrogado para o dia útil se cair em dia sem expediente'); }
+        else { let d = soma(base, p.n); while (!ehUtil(d, trib, com)) d = soma(d, 1); venc = iso(d); como = p.n + ' dias corridos' + (p.contagem === 'conferir' ? ' — contagem a conferir' : ', prorrogado para o dia útil se cair em dia sem expediente'); }
       }
       return Object.assign({}, p, { vencimento: venc, como, vencido: !!(venc && venc < hoje), diasAte: venc ? Math.round((dia(venc) - dia(hoje)) / 864e5) : null }); });
   }
